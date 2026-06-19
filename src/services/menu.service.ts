@@ -6,22 +6,24 @@
  * Last Modified: 2026-06-19
  */
 
-import axios from "axios";
-
 import { MenuItem } from "@/types/menu.types";
 import { ENV } from "@/config/env";
 
 export async function fetchMenu(): Promise<MenuItem[]> {
-  const { data } = await axios.get<MenuItem[]>(
-    `${ENV.WP_API}/custom/v1/menu/primary`,
-    {
-      params: { _: Date.now() },
-      headers: {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        Pragma: "no-cache",
-      },
-    }
-  );
+  if (!ENV.WP_API) {
+    throw new Error("NEXT_PUBLIC_WP_API is not configured");
+  }
 
-  return data;
+  const res = await fetch(`${ENV.WP_API}/custom/v1/menu/primary`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Menu API failed: ${res.status}`);
+  }
+
+  return res.json() as Promise<MenuItem[]>;
 }

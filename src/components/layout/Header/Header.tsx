@@ -10,8 +10,19 @@ import Link from "next/link";
 import Image from "next/image";
 
 import Navbar from "../Navbar/Navbar";
+import { fetchMenu } from "@/services/menu.service";
+import { MenuItem } from "@/types/menu.types";
+import { normalizeMenu } from "@/utils/menu.utils";
 
-export default function Header() {
+export default async function Header() {
+  let menu: MenuItem[] = [];
+
+  try {
+    menu = normalizeMenu(await fetchMenu());
+  } catch (error) {
+    console.error("Menu Error:", error);
+  }
+
   return (
     <header className="border-b bg-white">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
@@ -25,7 +36,7 @@ export default function Header() {
           />
         </Link>
 
-        <Navbar />
+        <Navbar items={menu} />
       </div>
     </header>
   );

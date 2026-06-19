@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import WpPageContent from "@/components/pages/WpPageContent/WpPageContent";
 import { fetchMenu } from "@/services/menu.service";
 import { fetchPageBySlug } from "@/services/page.service";
+import { MenuItem } from "@/types/menu.types";
 import {
   findMenuItemBySlug,
   normalizeMenu,
@@ -26,7 +27,15 @@ export default async function Page({ params }: Props) {
   const { slug } = await params;
   const normalizedSlug = slug.toLowerCase();
 
-  const menu = normalizeMenu(await fetchMenu());
+  let menu: MenuItem[] = [];
+
+  try {
+    menu = normalizeMenu(await fetchMenu());
+  } catch (error) {
+    console.error("Menu fetch failed:", error);
+    notFound();
+  }
+
   const menuItem = findMenuItemBySlug(menu, normalizedSlug);
 
   if (!menuItem) {
