@@ -10,10 +10,6 @@ import { MenuItem } from "@/types/menu.types";
 import { ENV } from "@/config/env";
 
 export async function fetchMenu(): Promise<MenuItem[]> {
-  if (!ENV.WP_API) {
-    throw new Error("NEXT_PUBLIC_WP_API is not configured");
-  }
-
   const res = await fetch(`${ENV.WP_API}/custom/v1/menu/primary`, {
     cache: "no-store",
     headers: {
