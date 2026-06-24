@@ -12,7 +12,7 @@ export function getSlugFromPath(path: string): string {
   return path.replace(/^\/+|\/+$/g, "").toLowerCase();
 }
 
-export function normalizeMenu(items: MenuItem[]): MenuItem[] {
+export async function normalizeMenu(items: MenuItem[]): Promise<MenuItem[]> {
   return items.map((item) => ({
     ...item,
     url: item.url === "/" ? "/" : item.url.toLowerCase(),

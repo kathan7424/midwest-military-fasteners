@@ -12,16 +12,17 @@ import WpPageContent from "@/components/pages/WpPageContent/WpPageContent";
 import { fetchMenu } from "@/services/menu.service";
 import { fetchPageBySlug } from "@/services/page.service";
 import { MenuItem } from "@/types/menu.types";
-import {
-  findMenuItemBySlug,
-  normalizeMenu,
-} from "@/utils/menu.utils";
+import { findMenuItemBySlug } from "@/utils/menu.utils";
 
 type Props = {
   params: Promise<{
     slug: string;
   }>;
 };
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 export default async function Page({ params }: Props) {
   const { slug } = await params;
@@ -30,7 +31,7 @@ export default async function Page({ params }: Props) {
   let menu: MenuItem[] = [];
 
   try {
-    menu = normalizeMenu(await fetchMenu());
+    menu = await fetchMenu();
   } catch (error) {
     console.error("Menu fetch failed:", error);
     notFound();
