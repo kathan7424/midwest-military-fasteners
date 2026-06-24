@@ -43,12 +43,23 @@ export default async function Page({ params }: Props) {
     notFound();
   }
 
-  const wpPage = await fetchPageBySlug(normalizedSlug);
+  let wpPage = null;
+
+  try {
+    wpPage = await fetchPageBySlug(normalizedSlug);
+  } catch (error) {
+    console.error("Page fetch failed:", error);
+    notFound();
+  }
+
+  if (!wpPage) {
+    notFound();
+  }
 
   return (
     <WpPageContent
-      title={wpPage?.title.rendered ?? menuItem.title}
-      content={wpPage?.content.rendered}
+      title={wpPage.title.rendered ?? menuItem.title}
+      content={wpPage.content.rendered}
     />
   );
 }
