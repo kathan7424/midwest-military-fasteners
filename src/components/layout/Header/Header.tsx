@@ -15,13 +15,12 @@ import Navbar from "../Navbar/Navbar";
 import MobileMenu from "../MobileMenu/MobileMenu";
 import { fetchMenu } from "@/services/menu.service";
 import { MenuItem } from "@/types/menu.types";
-import { normalizeMenu } from "@/utils/menu.utils";
 
 export default async function Header() {
   let menu: MenuItem[] = [];
 
   try {
-    menu = normalizeMenu(await fetchMenu());
+    menu = await fetchMenu();
   } catch (error) {
     console.error("Menu Error:", error);
   }

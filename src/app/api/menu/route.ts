@@ -9,13 +9,14 @@
 import { NextResponse } from "next/server";
 
 import { fetchMenu } from "@/services/menu.service";
-import { normalizeMenu } from "@/utils/menu.utils";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 export async function GET() {
   try {
-    const menu = normalizeMenu(await fetchMenu());
+    const menu = await fetchMenu();
 
     return NextResponse.json(menu, {
       headers: {

@@ -11,9 +11,15 @@ import { WpPage } from "@/types/page.types";
 
 export async function fetchPageBySlug(slug: string): Promise<WpPage | null> {
   const res = await fetch(
-    `${ENV.WP_API}/wp/v2/pages?slug=${encodeURIComponent(slug)}`,
+    `${ENV.WP_API}/wp/v2/pages?slug=${encodeURIComponent(slug)}&_=${Date.now()}`,
     {
-      next: { revalidate: 300 },
+      cache: "no-store",
+      next: { revalidate: 0 },
+      headers: {
+        Accept: "application/json",
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+      },
     }
   );
 
