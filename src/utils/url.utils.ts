@@ -31,6 +31,40 @@ export function normalizeWpUrl(url: string): string {
 }
 
 /**
+ * Resolve ACF/link field URLs with a safe fallback.
+ */
+export function resolveLinkUrl(
+  url: string | undefined | null,
+  fallback: string
+): string {
+  if (!url || url === "#") {
+    return fallback;
+  }
+
+  return normalizeWpUrl(url);
+}
+
+/**
+ * Returns true only for real navigable URLs.
+ */
+export function isUsableLink(url: string | undefined | null): boolean {
+  if (!url || url === "#") {
+    return false;
+  }
+
+  if (url.startsWith("/")) {
+    return true;
+  }
+
+  try {
+    const { hostname } = new URL(url);
+    return hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Strip formatting from phone numbers for tel: links.
  */
 export function normalizeTel(phone: string): string {

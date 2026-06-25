@@ -81,7 +81,7 @@ export default async function Loginheader() {
         {/* Logo */}
         <Link href="/" prefetch={false} className="shrink-0 block">
           <Image
-            src="/images/midwest-logo.png"
+            src="/images/midwest-logo.svg"
             alt="Midwest Military Fasteners"
             width={180}
             height={60}

@@ -22,14 +22,14 @@ import { fetchSiteSettings } from "@/services/site-settings.service";
 import { isUserLoggedIn } from "@/services/auth.service";
 import { MenuItem } from "@/types/menu.types";
 import { LinkField } from "@/types/site-settings.types";
-import { normalizeTel, normalizeWpUrl } from "@/utils/url.utils";
+import { normalizeTel, normalizeWpUrl, resolveLinkUrl } from "@/utils/url.utils";
 
 const DEFAULT_PHONE = "313.608.8280";
 const DEFAULT_EMAIL = "sales@mwmilitary.com";
 
 function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
   return {
-    href: normalizeWpUrl(link?.url || fallbackUrl),
+    href: resolveLinkUrl(link?.url, fallbackUrl),
     target: link?.target || undefined,
     title: link?.title,
   };
@@ -149,6 +149,7 @@ export default async function Header() {
             height={60}
             priority
             className="h-auto w-[276px]"
+            style={{ width: "auto", height: "auto" }}
           />
         </Link>
 

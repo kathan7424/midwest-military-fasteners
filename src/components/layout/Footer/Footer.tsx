@@ -12,7 +12,7 @@ import Image from "next/image";
 import { fetchFooterMenu } from "@/services/menu.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
 import { FooterMenuItem } from "@/types/menu.types";
-import { normalizeWpUrl } from "@/utils/url.utils";
+import { isUsableLink, normalizeWpUrl, resolveLinkUrl } from "@/utils/url.utils";
 
 export default async function Footer() {
   const [footer_menu, site_settings] = await Promise.all([
@@ -31,6 +31,7 @@ export default async function Footer() {
     footer_settings?.copy_right_text?.title ||
     "Copyright 2026 Midwest Military Fasteners LLC";
   const build_by_text = footer_settings?.build_by_text || "Website Design by";
+  const copyright_link = footer_settings?.copy_right_text;
   const build_by_link = footer_settings?.build_by_link;
 
   return (
@@ -51,6 +52,7 @@ export default async function Footer() {
               height={144}
               className="h-auto w-[164px]"
               priority
+              style={{ width: "auto", height: "auto" }}
             />
           </Link>
 
@@ -80,10 +82,10 @@ export default async function Footer() {
         <div className="mx-auto max-w-[1680px] px-5">
           <div className="flex flex-col items-center justify-between gap-4 py-4 text-sm text-white lg:flex-row">
             <div>
-              {footer_settings?.copy_right_text?.url ? (
+              {copyright_link && isUsableLink(copyright_link.url) ? (
                 <Link
-                  href={normalizeWpUrl(footer_settings.copy_right_text.url)}
-                  target={footer_settings.copy_right_text.target || undefined}
+                  href={normalizeWpUrl(copyright_link.url)}
+                  target={copyright_link.target || undefined}
                   prefetch={false}
                   className="transition-opacity hover:opacity-80"
                 >
@@ -111,7 +113,7 @@ export default async function Footer() {
             <div>
               {build_by_text}{" "}
               <Link
-                href={normalizeWpUrl(build_by_link?.url || "#")}
+                href={resolveLinkUrl(build_by_link?.url, "#")}
                 target={build_by_link?.target || undefined}
                 prefetch={false}
                 className="hover:underline"
