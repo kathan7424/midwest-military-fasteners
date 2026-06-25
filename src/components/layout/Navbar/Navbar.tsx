@@ -1,9 +1,9 @@
 /**
  * File Name: Navbar.tsx
- * Description:
+ * Description: Desktop navigation links — hidden on mobile, visible from lg breakpoint
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-06-19
+ * Last Modified: 2026-06-24
  */
 
 import Link from "next/link";
@@ -20,14 +20,14 @@ export default function Navbar({ items }: NavbarProps) {
   }
 
   return (
-    <nav aria-label="Primary navigation">
+    <nav aria-label="Primary navigation" className="hidden lg:flex">
       <ul className="flex items-center gap-8">
         {items.map((item) => (
           <li key={item.id}>
             <Link
               href={item.url}
               prefetch={false}
-              className="font-medium text-gray-700 hover:text-black transition"
+              className="text-near-black font-normal text-body uppercase tracking-wide hover:text-blue transition-colors"
             >
               {item.title}
             </Link>
