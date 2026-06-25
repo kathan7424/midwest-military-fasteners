@@ -14,3 +14,11 @@ export interface MenuItem {
   type: string;
   parent: number;
 }
+
+export interface FooterMenuItem {
+  id: number;
+  title: string;
+  url: string;
+  parent: number;
+  children: FooterMenuItem[];
+}

@@ -34,14 +34,9 @@ export default async function Page({ params }: Props) {
     menu = await fetchMenu();
   } catch (error) {
     console.error("Menu fetch failed:", error);
-    notFound();
   }
 
   const menuItem = findMenuItemBySlug(menu, normalizedSlug);
-
-  if (!menuItem) {
-    notFound();
-  }
 
   let wpPage = null;
 
@@ -49,17 +44,16 @@ export default async function Page({ params }: Props) {
     wpPage = await fetchPageBySlug(normalizedSlug);
   } catch (error) {
     console.error("Page fetch failed:", error);
-    notFound();
   }
 
-  if (!wpPage) {
+  if (!menuItem && !wpPage) {
     notFound();
   }
 
   return (
     <WpPageContent
-      title={wpPage.title.rendered ?? menuItem.title}
-      content={wpPage.content.rendered}
+      title={wpPage?.title.rendered ?? menuItem?.title ?? normalizedSlug}
+      content={wpPage?.content.rendered}
     />
   );
 }

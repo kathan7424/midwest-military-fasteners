@@ -19,7 +19,7 @@ export default async function Loginheader() {
   let menu: MenuItem[] = [];
 
   try {
-    menu = normalizeMenu(await fetchMenu());
+    menu = await normalizeMenu(await fetchMenu());
   } catch (error) {
     console.error("Menu Error:", error);
   }
