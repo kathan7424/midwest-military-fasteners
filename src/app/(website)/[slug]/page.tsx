@@ -13,6 +13,9 @@ import { fetchMenu } from "@/services/menu.service";
 import { fetchPageBySlug } from "@/services/page.service";
 import { MenuItem } from "@/types/menu.types";
 import { findMenuItemBySlug } from "@/utils/menu.utils";
+import type { Metadata } from "next";
+import { fetchYoastBySlug } from "@/services/seo.service";
+import { buildYoastMetadata } from "@/utils/seo.utils";
 
 type Props = {
   params: Promise<{
@@ -56,4 +59,13 @@ export default async function Page({ params }: Props) {
       content={wpPage?.content.rendered}
     />
   );
+}
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const yoast = await fetchYoastBySlug(slug.toLowerCase());
+    return buildYoastMetadata(yoast);
+  } catch {
+    return buildYoastMetadata();
+  }
 }

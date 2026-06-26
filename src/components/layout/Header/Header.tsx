@@ -60,7 +60,7 @@ export default async function Header() {
     is_logged_in || Boolean(header_settings?.show_search_bar);
 
   return (
-    <header className="bg-white relative border-b border-light-gray">
+    <header className="bg-white relative">
 
       {/* ── Top utility bar (desktop only) ── */}
       <div className="hidden lg:block bg-off-white">
@@ -136,7 +136,7 @@ export default async function Header() {
       </div>
 
       {/* ── Main row ── */}
-      <div className="max-w-8xl mx-auto flex items-center justify-between gap-6 px-5 py-4">
+      <div className="max-w-8xl mx-auto flex items-center justify-between px-5 py-4">
         <Link href="/" prefetch={false} className="shrink-0 block">
           <Image
             src={branding?.logo?.url ?? "/images/midwest-logo.svg"}
@@ -148,8 +148,7 @@ export default async function Header() {
             width={235}
             height={60}
             priority
-            className="h-auto w-[276px]"
-            style={{ width: "auto", height: "auto" }}
+            className="h-auto max-w-[186px] sm:max-w-full w-[276px]"
           />
         </Link>
 
@@ -167,7 +166,13 @@ export default async function Header() {
             )}
           </>
         ) : (
-          <Navbar items={menu} />
+          <Navbar
+            items={menu}
+            phone={phone}
+            email={email}
+            registerLink={register_link}
+            loginLink={login_link}
+          />
         )}
       </div>
     </header>
