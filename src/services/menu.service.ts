@@ -8,7 +8,7 @@
 
 import { FooterMenuItem, MenuItem } from "@/types/menu.types";
 import { fetchWpJson } from "@/services/wp-api.service";
-import { normalizeMenu } from "@/utils/menu.utils";
+import { normalizeFooterMenu, normalizeMenu } from "@/utils/menu.utils";
 
 export async function fetchMenu(): Promise<MenuItem[]> {
   const items = await fetchWpJson<MenuItem[]>("/custom/v1/menu/primary");
@@ -16,5 +16,6 @@ export async function fetchMenu(): Promise<MenuItem[]> {
 }
 
 export async function fetchFooterMenu(): Promise<FooterMenuItem[]> {
-  return fetchWpJson<FooterMenuItem[]>("/custom/v1/menu/footer");
+  const items = await fetchWpJson<FooterMenuItem[]>("/custom/v1/menu/footer");
+  return normalizeFooterMenu(items);
 }

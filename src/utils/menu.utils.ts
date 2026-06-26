@@ -6,7 +6,8 @@
  * Last Modified: 2026-06-19
  */
 
-import { MenuItem } from "@/types/menu.types";
+import { FooterMenuItem, MenuItem } from "@/types/menu.types";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 export function getSlugFromPath(path: string): string {
   return path.replace(/^\/+|\/+$/g, "").toLowerCase();
@@ -15,8 +16,17 @@ export function getSlugFromPath(path: string): string {
 export async function normalizeMenu(items: MenuItem[]): Promise<MenuItem[]> {
   return items.map((item) => ({
     ...item,
+    title: decodeHtmlEntities(item.title),
     url: item.url === "/" ? "/" : item.url.toLowerCase(),
     slug: item.slug ? item.slug.toLowerCase() : getSlugFromPath(item.url),
+  }));
+}
+
+export function normalizeFooterMenu(items: FooterMenuItem[]): FooterMenuItem[] {
+  return items.map((item) => ({
+    ...item,
+    title: decodeHtmlEntities(item.title),
+    children: normalizeFooterMenu(item.children ?? []),
   }));
 }
 

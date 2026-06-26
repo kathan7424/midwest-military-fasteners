@@ -14,6 +14,7 @@ import { fetchSiteSettings } from "@/services/site-settings.service";
 import { FooterMenuItem } from "@/types/menu.types";
 import { isUsableLink, normalizeWpUrl, resolveLinkUrl } from "@/utils/url.utils";
 import { formatCopyrightText } from "@/utils/footer.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 export default async function Footer() {
   const [footer_menu, site_settings] = await Promise.all([
@@ -100,7 +101,7 @@ export default async function Footer() {
 
             {build_by_text || build_by_link?.title ? (
               <div>
-                {build_by_text ? `${build_by_text} ` : null}
+                {build_by_text ? `${decodeHtmlEntities(build_by_text)} ` : null}
                 {build_by_link?.title ? (
                   <Link
                     href={resolveLinkUrl(build_by_link.url, "#")}
@@ -108,7 +109,7 @@ export default async function Footer() {
                     prefetch={false}
                     className="transition-colors hover:text-black"
                   >
-                    {build_by_link.title}
+                    {decodeHtmlEntities(build_by_link.title)}
                   </Link>
                 ) : null}
               </div>
