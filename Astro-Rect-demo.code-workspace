@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../Astro-Rect-demo"
+		},
+		{
+			"path": "D:/jaimin/2026/Burke and Buell Website/HTML"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "HTML"
+	}
+}
