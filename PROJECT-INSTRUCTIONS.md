@@ -6,11 +6,13 @@
 ## Getting Started
 
 ```bash
-npm install
-npm run dev       # auto-generates .env.local and starts Next.js dev server
+npm install --include=dev    # see warning below
+npm run dev                  # auto-generates .env.local and starts Next.js dev server
 ```
 
 Runs at: `http://localhost:3000`
+
+> ⚠️ **Install with `--include=dev`.** `NODE_ENV=production` is set machine-wide on the current dev environment, which makes npm run with `omit=dev`. A plain `npm install` then **strips devDependencies** (`@tailwindcss/postcss`, `tailwindcss`, `typescript`, `@types/node`) and breaks the build (Tailwind/CSS 500 errors). Always use `npm install --include=dev`, or remove the global `NODE_ENV`.
 
 ---
 
@@ -21,7 +23,10 @@ src/
 ├── app/
 │   ├── (website)/              # Main site route group
 │   │   ├── layout.tsx          # Wraps all pages with Header + Footer
-│   │   ├── page.tsx            # Homepage (placeholder — needs Figma implementation)
+│   │   ├── page.tsx            # Homepage
+│   │   ├── product/
+│   │   │   ├── page.tsx        # Product listing (/product)
+│   │   │   └── [series]/[partNumber]/page.tsx   # Product detail (/product/MS35307/MS35307-303)
 │   │   └── [slug]/page.tsx     # Dynamic CMS pages from WordPress
 │   ├── api/
 │   │   └── menu/route.ts       # Internal proxy for WP menu API
@@ -29,14 +34,23 @@ src/
 │   └── layout.tsx              # Root layout (fonts, metadata)
 │
 ├── components/
-│   └── layout/
-│       ├── Header/             # Async server component — fetches WP menu
-│       ├── Navbar/             # Desktop nav links (needs mobile/responsive work)
-│       ├── Loginheader/        # Logged-in header variant (NOT implemented)
-│       ├── Footer/             # 3-column footer (does NOT match Figma — needs rebuild)
-│       └── Sidebar/            # Category sidebar (NOT implemented)
+│   ├── ui/                     # shadcn/ui primitives + custom DataTable (accordion, table, sheet, button, data-table)
+│   ├── shared_Ui/              # Cross-page reusable widgets (Breadcrumb, IsoSection, QtyAddToOrder)
+│   ├── layout/
+│   │   ├── Header/             # Async server component — fetches WP menu
+│   │   ├── Navbar/             # Desktop nav links (needs mobile/responsive work)
+│   │   ├── Loginheader/        # Logged-in header (logo + search + YOUR ORDER)
+│   │   ├── MobileMenu/         # Mobile hamburger menu
+│   │   ├── Footer/             # Copyright + legal-links amber bar (ISO now lives in shared_Ui)
+│   │   └── Sidebar/            # Accordion category nav (Sidebar, SidebarGroup, SidebarItem, sidebarData.ts, types.ts)
 │   └── pages/
+│       ├── Home/               # Homepage (Hero + IsoSection)
+│       ├── Product/            # Product listing (ProductPage, ProductTable, productData.ts, index.ts)
+│       ├── ProductDetail/      # Product detail (ProductDetailPage, ProductSpecTable, index.ts)
 │       └── WpPageContent/      # Renders raw WordPress page HTML
+│
+├── lib/
+│   └── utils.ts                # cn() class-merge helper (clsx + tailwind-merge)
 │
 ├── config/
 │   └── env.ts                  # Centralized env vars with fallback defaults
@@ -101,6 +115,45 @@ Every file must include this header comment block:
   - `xl` → 1280px
   - `2xl` → 1536px
 - **Mobile-first** — write base styles for mobile, add `md:` / `lg:` overrides for larger screens.
+- **Use token utilities, not hardcoded hex** — prefer `bg-navy`, `text-blue`, `text-mid-gray`, `font-condensed` (auto-generated from `@theme`). Only use an arbitrary value (e.g. `border-[#4F5965]`) when the color genuinely isn't a token.
+- **Override component styles via the `className` prop** — shared components (`IsoSection`, `QtyAddToOrder`, `Breadcrumb`) merge `className` through `cn()` (clsx + tailwind-merge), so a caller class wins over the base on the same axis. Example: `<IsoSection className="pb-[18px] md:justify-start" />` overrides the base bottom padding and justification. Don't fork a component just to tweak spacing/alignment.
+
+---
+
+## Components Architecture
+
+Three tiers — put each new component in the right one:
+
+- **`components/ui/`** — shadcn/ui primitives + the custom generic `DataTable`. Add primitives with `npx shadcn@latest add <name>`. shadcn is initialized (`components.json`, style `base-nova`, base color `neutral`, `cn()` in `lib/utils.ts`). Don't hand-edit generated primitives unless necessary.
+- **`components/shared_Ui/`** — small **cross-page** reusable widgets that aren't layout and aren't page-specific (`Breadcrumb`, `IsoSection`, `QtyAddToOrder`). Reuse these instead of re-writing markup on each page.
+- **`components/pages/<PageName>/`** — page-specific composition. Convention: a `<PageName>Page.tsx` (composes everything), any sub-components, and an `index.ts` barrel export. The route file (`app/(website)/.../page.tsx`) only imports and renders the page component.
+
+---
+
+## ISO Section
+
+- The ISO 9001:2015 trust block is **not** in the Footer anymore. Render it per page with `<IsoSection />` from `components/shared_Ui/`.
+- Props: `align="center" | "left"` (default `center`) + `className`. Home uses `center`; product pages use `left` and bottom-align it with `mt-auto`.
+- Do **not** add it to CMS pages (`/[slug]`) — intentionally omitted there.
+
+---
+
+## Mock Data (frontend-first pattern)
+
+Frontend is built with mock data; the backend developer swaps in the real API later. Follow this so the swap is clean:
+
+- Keep mock data in a dedicated `*Data.ts` file, not inline in components — e.g. `pages/Product/productData.ts` (`MOCK_PRODUCTS`, `HERO`, `getProductByPartNumber()`), `layout/Sidebar/sidebarData.ts` (`SIDEBAR_DATA`).
+- Keep the exported **shape/types stable** (the `Product`, `SidebarCategory` interfaces) — the backend replaces the data source, not the shape.
+- Provide lookup helpers (e.g. `getProductByPartNumber()`) so pages don't reach into the array directly.
+
+---
+
+## Product Routing
+
+- **Listing:** `/product` → `pages/Product/ProductPage.tsx` (currently static MS35307).
+- **Detail:** `/product/[series]/[partNumber]` (e.g. `/product/MS35307/MS35307-303`) → `pages/ProductDetail/ProductDetailPage.tsx`.
+- Route params are async in Next 16 — `const { series, partNumber } = await params;` and call `notFound()` when the product isn't found.
+- The listing's P/N cell links to the detail route; keep that link in sync if the URL scheme changes.
 
 ---
 
@@ -146,9 +199,12 @@ Pages in Figma:
 
 ## Known Issues / Watch-Outs
 
-- **Header is NOT responsive** — Navbar has no mobile breakpoints, no hamburger menu. Fix before any page goes live.
-- **Footer does NOT match Figma** — current footer is a generic placeholder. Needs full rebuild.
-- **globals.css has no brand colors** — only default white/dark theme vars. Brand tokens not added yet.
-- **Homepage is a placeholder** — just renders `<h1>Home Page</h1>`. Full Figma design not implemented.
-- **Loginheader.tsx and Sidebar.tsx are empty files** — scaffolded but not built.
+- **Header responsiveness** — `MobileMenu.tsx` now exists; verify hamburger + `hidden md:flex` on Navbar are wired and correct before go-live.
+- **Homepage not final** — renders `<Hero />` + shared `<IsoSection />`, but the full Figma Home design is not implemented yet.
+- **`Loginheader.tsx`** — built (logo + search + YOUR ORDER → `/cart`), but the order-count badge is static (no cart state yet).
+- **Product pages use mock data** — `/product` and `/product/[series]/[partNumber]` render from `productData.ts` / `sidebarData.ts`; not yet wired to WooCommerce.
+- **`Add to Order` / cart not functional** — `QtyAddToOrder` is presentational only; no Zustand cart store or `/cart` page yet.
+- **Pre-existing TS error** — `Loginheader.tsx` has a `Promise<MenuItem[]>` typing error unrelated to the product work.
 - **next@16.2.9** — double-check this is the correct version (standard Next.js is in the 14.x–15.x range; 16.x may be a custom/future version).
+
+**Resolved since last update:** brand color tokens added to `globals.css`; Footer rebuilt (copyright bar + ISO moved to shared component); Sidebar built.

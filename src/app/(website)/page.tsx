@@ -5,12 +5,18 @@
  * Created Date: 2026-06-19
  * Last Modified: 2026-06-19
  */
-export default function HomePage() {
-  return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-4xl font-bold">
-        Home Page
-      </h1>
-    </div>
-  );
+// export default function HomePage() {
+//   return (
+//     <div className="container mx-auto py-10">
+//       <h1 className="text-4xl font-bold">
+//         Home Page
+//       </h1>
+//     </div>
+//   );
+// }
+
+import HomePage from "@/components/pages/Home";
+
+export default function Page() {
+  return <HomePage />;
 }

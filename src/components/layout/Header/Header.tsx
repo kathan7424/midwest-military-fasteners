@@ -26,7 +26,7 @@ export default async function Header() {
   }
 
   return (
-    <header className="bg-white relative">
+    <header className="bg-white relative shadow-[0_0_10px_rgba(0,0,0,0.05)]">
 
       {/* ── Top utility bar (desktop only) ── */}
       <div className="hidden lg:block bg-off-white">
@@ -81,7 +81,7 @@ export default async function Header() {
             width={235}
             height={60}
             priority
-            className="h-auto w-[276px]"
+            className="h-auto max-w-[186px] sm:max-w-full w-[276px]"
           />
         </Link>
 

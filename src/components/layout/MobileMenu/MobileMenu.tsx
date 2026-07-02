@@ -29,12 +29,12 @@ export default function MobileMenu({ items }: MobileMenuProps) {
         onClick={() => setOpen(!open)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="p-2 text-near-black hover:text-blue transition-colors"
+        className="text-blue hover:text-blue transition-colors"
       >
         {open ? (
-          <HiX className="w-6 h-6" />
+          <HiX className="w-10 h-10" />
         ) : (
-          <HiMenu className="w-6 h-6" />
+          <HiMenu className="w-10 h-10" />
         )}
       </button>
 
