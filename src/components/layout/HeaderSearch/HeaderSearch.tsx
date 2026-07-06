@@ -10,21 +10,21 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 
 export default function HeaderSearch() {
   return (
-    <form
+    <form 
       action="/catalog"
       method="GET"
-      className="hidden lg:flex flex-1 max-w-xl items-center"
+      className="hidden lg:flex flex-1 max-w-[732px] w-full items-center"
     >
-      <div className="flex w-full border border-light-gray rounded overflow-hidden">
+      <div className="flex w-full">
         <input
           type="search"
           name="q"
           placeholder="Search by part # or keywords"
-          className="flex-1 px-4 py-2 text-sm text-near-black placeholder:text-mid-gray outline-none bg-white"
+          className="flex-1 px-4 py-3.5 text-link text-near-black placeholder:text-link placeholder:text-mid-gray outline-none bg-white border border-navy border-r-0 rounded-none h-12"
         />
         <button
           type="submit"
-          className="px-4 py-2 bg-amber text-white hover:bg-amber/90 transition-colors"
+          className="px-4 py-3.5 bg-amber text-white hover:bg-amber/90 transition-colors rounded-none h-12"
           aria-label="Search"
         >
           <FaMagnifyingGlass size={16} />

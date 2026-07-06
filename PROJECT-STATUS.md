@@ -1,8 +1,8 @@
 # PROJECT STATUS
 ## Midwest Military Fasteners — Build Tracker
 
-**Last Updated:** 2026-07-01
-**Developers:** KP-184, pod2
+**Last Updated:** 2026-07-06
+**Developers:** Jaimin, pod2
 
 ---
 
@@ -36,7 +36,7 @@
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Header (server component) | 🔄 In Progress | Modified since last update — verify mobile breakpoints |
+| Header (server component) | 🔄 In Progress | Modified since last update — added HeaderCart hover preview and refined search/header layout; verify mobile breakpoints |
 | Navbar | 🔄 In Progress | Modified — verify hamburger / `hidden md:flex` |
 | MobileMenu / Hamburger | 🔄 In Progress | Component now exists (`MobileMenu.tsx`) — verify wiring |
 | Loginheader (logged-in state) | 🔄 In Progress | Built — logo + search + YOUR ORDER (→ `/cart`); order-count badge is static |

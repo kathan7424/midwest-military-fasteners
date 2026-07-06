@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa6";
 
 import Navbar from "../Navbar/Navbar";
+import HeaderCart from "../HeaderCart/HeaderCart";
 import HeaderSearch from "../HeaderSearch/HeaderSearch";
 import { fetchMenu } from "@/services/menu.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
@@ -36,7 +37,8 @@ function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
 }
 
 export default async function Header() {
-  const [menuResult, settingsResult, is_logged_in] = await Promise.all([
+  //const [menuResult, settingsResult, is_logged_in] = await Promise.all([
+  const [menuResult, settingsResult, loggedIn] = await Promise.all([
     fetchMenu().catch((error) => {
       console.error("Menu Error:", error);
       return [] as MenuItem[];
@@ -47,6 +49,8 @@ export default async function Header() {
     }),
     isUserLoggedIn(),
   ]);
+
+  const is_logged_in = true;
 
   const menu = menuResult;
   const branding = settingsResult?.branding;
@@ -65,8 +69,8 @@ export default async function Header() {
       {/* ── Top utility bar (desktop only) ── */}
       <div className="hidden lg:block bg-off-white">
         <div
-          className={`mx-auto flex items-center px-5 ${
-            is_logged_in ? "justify-between max-w-8xl" : "justify-end gap-6"
+          className={`mx-auto flex items-center justify-end ${
+            is_logged_in ? "gap-14" : "gap-6"
           }`}
         >
           {is_logged_in && (
@@ -77,7 +81,7 @@ export default async function Header() {
                     <Link
                       href={normalizeWpUrl(item.url)}
                       prefetch={false}
-                      className="text-near-black font-semibold text-sm uppercase tracking-wide hover:text-blue transition-colors"
+                      className="text-near-black font-normal text-link uppercase tracking-wide hover:text-blue transition-colors"
                     >
                       {item.title}
                     </Link>
@@ -87,10 +91,10 @@ export default async function Header() {
             </nav>
           )}
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-10">
             <a
               href={`tel:${normalizeTel(phone)}`}
-              className="flex items-center gap-1.5 text-link text-blue hover:text-navy transition-colors"
+              className="flex items-center gap-2.5 text-link text-blue hover:text-navy transition-colors"
             >
               <FaPhone size={13} />
               {phone}
@@ -106,10 +110,10 @@ export default async function Header() {
             {is_logged_in ? (
               <Link
                 href="/my-account"
-                className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
+                className="flex items-center gap-[10px] px-5 xl:px-12 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
               >
                 <FaUser size={13} />
-                MY ACCOUNT
+                ACCOUNT
               </Link>
             ) : (
               <div className="flex">
@@ -136,7 +140,12 @@ export default async function Header() {
       </div>
 
       {/* ── Main row ── */}
-      <div className="max-w-8xl mx-auto flex items-center justify-between px-5 py-4">
+      {/* <div className="max-w-8xl mx-auto flex items-center justify-between px-5 py-4"> */}
+        <div
+          className={`mx-auto flex items-center justify-between px-5 py-4 ${
+            is_logged_in ? "w-full max-w-full" : "max-w-8xl"
+          }`}
+        >
         <Link href="/" prefetch={false} className="shrink-0 block">
           <Image
             src={branding?.logo?.url ?? "/images/midwest-logo.svg"}
@@ -153,18 +162,23 @@ export default async function Header() {
         </Link>
 
         {show_search_bar ? (
-          <>
+          <div className="flex items-center justify-end gap-10 w-8/12">
             <HeaderSearch />
-            {is_logged_in && (
-              <Link
-                href="/cart"
-                className="hidden lg:flex items-center gap-2 px-5 py-2 bg-amber text-white text-sm font-semibold rounded hover:bg-amber/90 transition-colors shrink-0"
-              >
-                <FaCartShopping size={15} />
-                YOUR ORDER
-              </Link>
-            )}
-          </>
+            {is_logged_in && <HeaderCart /> 
+            // (
+            //   <Link
+            //     href="/cart"
+            //     className="relative hidden lg:flex items-center gap-2 px-5 py-[11px] border border-amber text-near-black text-sm font-bold rounded-none transition-colors shrink-0"
+            //   >
+            //     {/* Badge */}
+            //     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber text-link font-normal text-white">
+            //       2
+            //     </span>
+            //     YOUR ORDER
+            //   </Link>
+            // )
+            }
+          </div>
         ) : (
           <Navbar
             items={menu}
