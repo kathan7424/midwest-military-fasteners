@@ -10,6 +10,7 @@ export interface SearchSuggestion {
   id: number;
   code: string;
   title: string;
+  url: string;
 }
 
 export interface SearchBarProps {
@@ -19,4 +20,5 @@ export interface SearchBarProps {
 export interface SearchDropdownProps {
   suggestions: SearchSuggestion[];
   isOpen: boolean;
+  isLoading?: boolean;
 }

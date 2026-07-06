@@ -3,31 +3,17 @@
  * Description: Home page — hero banner, search, and category grid.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-06-26
+ * Last Modified: 2026-07-06
  */
-<<<<<<< HEAD
-// export default function HomePage() {
-//   return (
-//     <div className="container mx-auto py-10">
-//       <h1 className="text-4xl font-bold">
-//         Home Page
-//       </h1>
-//     </div>
-//   );
-// }
-
-import HomePage from "@/components/pages/Home";
-
-export default function Page() {
-  return <HomePage />;
-=======
 
 import type { Metadata } from "next";
 
 import Hero from "@/components/pages/Home/Hero";
 import { fetchHomePage } from "@/services/home-page.service";
+import { fetchProductCatalog } from "@/services/product-catalog.service";
 import { fetchYoastBySlug } from "@/services/seo.service";
 import { HomePageBanner } from "@/types/home-page.types";
+import { resolveCategorySections } from "@/utils/catalog.utils";
 import { buildYoastMetadata } from "@/utils/seo.utils";
 
 const HOME_SLUG = "home-page";
@@ -52,14 +38,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   let banner = EMPTY_BANNER;
+  let categories = resolveCategorySections([]);
 
   try {
-    const homePage = await fetchHomePage();
+    const [homePage, catalogResponse] = await Promise.all([
+      fetchHomePage(),
+      fetchProductCatalog(),
+    ]);
+
     banner = homePage.banner;
+    categories = resolveCategorySections(catalogResponse.catalog);
   } catch (error) {
     console.error("Home page fetch failed:", error);
   }
 
-  return <Hero banner={banner} />;
->>>>>>> upstream/dev
+  return <Hero banner={banner} categories={categories} />;
 }

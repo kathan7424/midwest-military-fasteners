@@ -1,13 +1,4 @@
 /**
-<<<<<<< HEAD
- * File Name: footer.tsx
- * Description: Site footer — copyright + legal links bar. The ISO trust block
- *              now lives in the shared <IsoSection /> rendered per page.
- * Developer: KP-184
- * Created Date: 2026-06-19
- * Last Modified: 2026-07-01
- */
-=======
  * File Name: Footer.tsx
  * Description: Site footer with dynamic settings and footer menu.
  * Developer: KP-184
@@ -17,7 +8,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
->>>>>>> upstream/dev
 
 import { fetchFooterMenu } from "@/services/menu.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
@@ -49,41 +39,6 @@ export default async function Footer() {
   const content_area = footer_settings?.content_area;
 
   return (
-<<<<<<< HEAD
-    <footer className="bg-amber">
-      <div className="mx-auto max-w-[1680px] px-5">
-        <div className="flex flex-col items-center justify-between gap-8 py-4 text-link text-white/70 lg:flex-row lg:gap-4">
-
-          <div className="mb-0 text-center lg:text-left">
-            Copyright 2026 Midwest Military Fasteners LLC
-          </div>
-
-          <ul className="flex flex-col flex-wrap items-center justify-center gap-2.5 md:flex-row md:gap-6">
-            <li>
-              <a href="#" className="transition-colors hover:text-black">
-                Privacy Policy
-              </a>
-            </li>
-            <li>
-              <a href="#" className="transition-colors hover:text-black">
-                Shipping & Returns
-              </a>
-            </li>
-            <li>
-              <a href="#" className="transition-colors hover:text-black">
-                Terms
-              </a>
-            </li>
-          </ul>
-
-          <div>
-            Website Design by{" "}
-            <a href="#" className="transition-colors hover:text-black">
-              build/create
-            </a>
-          </div>
-
-=======
     <footer className="bg-white">
       <div className="mx-auto max-w-[1680px] px-5">
         <div className="flex flex-col items-center gap-8 py-12 md:flex-row md:items-center md:justify-center md:gap-10">
@@ -160,7 +115,6 @@ export default async function Footer() {
               </div>
             ) : null}
           </div>
->>>>>>> upstream/dev
         </div>
       </div>
     </footer>
