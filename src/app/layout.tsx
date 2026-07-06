@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 //import { Open_Sans} from "next/font/google";
 
 import "@/app/globals.css";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 
 // const openSans = Open_Sans({
 //   variable: "--font-sans",
@@ -18,10 +19,40 @@ import "@/app/globals.css";
 //   display: "swap",
 // });
 
-export const metadata: Metadata = {
-  title: "Midwest Military Fasteners",
-  description: "Genuine, certified fasteners for your demanding needs.",
-};
+const DEFAULT_TITLE = "Midwest Military Fasteners";
+const DEFAULT_DESCRIPTION =
+  "Genuine, certified fasteners for your demanding needs.";
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const settings = await fetchSiteSettings();
+    const { branding } = settings;
+    const faviconUrl = branding.favicon?.url;
+
+    return {
+      title: branding.site_title || DEFAULT_TITLE,
+      description: branding.tagline || DEFAULT_DESCRIPTION,
+      ...(faviconUrl && {
+        icons: {
+          icon: faviconUrl,
+          shortcut: faviconUrl,
+          apple: faviconUrl,
+        },
+      }),
+    };
+  } catch (error) {
+    console.error("Site metadata fetch failed:", error);
+
+    return {
+      title: DEFAULT_TITLE,
+      description: DEFAULT_DESCRIPTION,
+    };
+  }
+}
+
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 export default function RootLayout({
   children,
