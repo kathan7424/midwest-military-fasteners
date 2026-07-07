@@ -27,18 +27,23 @@ export default function QtyAddToOrder({
   className,
 }: QtyAddToOrderProps) {
   const [quantity, setQuantity] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
-  const isMutating = useCartStore((state) => state.isMutating);
   const isLg = size === "lg";
 
   const handleAdd = async () => {
     const parsedQty = Math.max(1, Number(quantity) || 1);
+    setIsSubmitting(true);
 
-    await addItem({
-      productId,
-      sku,
-      quantity: parsedQty,
-    });
+    try {
+      await addItem({
+        productId,
+        sku,
+        quantity: parsedQty,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -59,14 +64,14 @@ export default function QtyAddToOrder({
       />
       <button
         type="button"
-        disabled={isMutating}
+        disabled={isSubmitting}
         onClick={() => void handleAdd()}
         className={cn(
           "bg-amber font-bold uppercase text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
           isLg ? "h-[47px] px-6 font-condensed text-[20px]" : "px-3 py-2 text-xs"
         )}
       >
-        {isMutating ? "Adding..." : "Add to Order"}
+        {isSubmitting ? "Adding..." : "Add to Order"}
       </button>
     </div>
   );

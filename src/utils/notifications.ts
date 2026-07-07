@@ -1,54 +1,39 @@
 /**
  * File Name: notifications.ts
- * Description: Toast and SweetAlert notification helpers.
+ * Description: Toast and confirm dialog helpers (Sonner + Untitled UI modal).
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
-import toast from "react-hot-toast";
-import Swal from "sweetalert2";
+import { toast } from "sonner";
+
+import { requestConfirm } from "@/components/providers/ConfirmDialogProvider";
 
 export function notifySuccess(message: string) {
-  toast.success(message, {
-    duration: 3000,
-    position: "top-center",
-  });
+  toast.success(message);
 }
 
 export function notifyError(message: string) {
-  toast.error(message, {
-    duration: 4000,
-    position: "top-center",
-  });
+  toast.error(message);
 }
 
 export function notifyLoading(message: string) {
-  return toast.loading(message, {
-    position: "top-center",
-  });
+  return toast.loading(message);
 }
 
-export function dismissToast(toastId: string) {
+export function dismissToast(toastId: string | number) {
   toast.dismiss(toastId);
 }
 
 /**
- * Confirm destructive cart actions with SweetAlert2.
+ * Confirm destructive cart actions with Untitled UI modal.
  */
 export async function confirmRemoveItem(itemLabel: string): Promise<boolean> {
-  const result = await Swal.fire({
+  return requestConfirm({
     title: "Remove item?",
-    text: `Remove ${itemLabel} from your order?`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Remove",
-    cancelButtonText: "Cancel",
-    confirmButtonColor: "#c99700",
-    cancelButtonColor: "#4f5965",
-    reverseButtons: true,
-    focusCancel: true,
+    message: `Remove ${itemLabel} from your order?`,
+    confirmLabel: "Remove",
+    cancelLabel: "Cancel",
   });
-
-  return result.isConfirmed;
 }

@@ -19,6 +19,7 @@ import QtyAddToOrder from "@/components/shared_Ui/QtyAddToOrder";
 
 /** A single purchasable product row. Mirror this shape from the API later. */
 export interface Product {
+  id: number;
   partNumber: string;
   sku: string;
   description: string;
@@ -30,6 +31,11 @@ export interface Product {
   mfr: string;
   country: string;
   specHref: string;
+  seriesSlug: string;
+  seriesLabel?: string;
+  categorySlug?: string;
+  categoryLabel?: string;
+  image?: string;
 }
 
 export const productColumns: ColumnDef<Product>[] = [
@@ -47,14 +53,29 @@ export const productColumns: ColumnDef<Product>[] = [
     ),
     cell: ({ row }) => (
       <Link
-        href={`/product/MS35307/${row.original.partNumber}`}
+        href={`/product/${row.original.seriesSlug}/${row.original.partNumber}`}
         className="text-blue hover:underline"
       >
         {row.original.partNumber}
       </Link>
     ),
   },
-  { accessorKey: "description", header: "Description" },
+  {
+    accessorKey: "description",
+    header: () => (
+      <span className="block min-w-[220px] max-w-[220px] xl:min-w-[320px] xl:max-w-[320px]">
+        Description
+      </span>
+    ),
+    cell: ({ row }) => (
+      <span
+        className="block min-w-[220px] max-w-[220px] truncate xl:min-w-[320px] xl:max-w-[320px]"
+        title={row.original.description}
+      >
+        {row.original.description}
+      </span>
+    ),
+  },
   { accessorKey: "pkgQty", header: "Pkg Qty" },
   { accessorKey: "price1", header: "1 Pkg" },
   { accessorKey: "price3", header: "3 Pkg" },
@@ -79,7 +100,11 @@ export const productColumns: ColumnDef<Product>[] = [
     id: "order",
     header: "",
     cell: ({ row }) => (
-      <QtyAddToOrder size="sm" sku={row.original.sku} />
+      <QtyAddToOrder
+        size="sm"
+        productId={row.original.id}
+        sku={row.original.sku}
+      />
     ),
   },
 ];

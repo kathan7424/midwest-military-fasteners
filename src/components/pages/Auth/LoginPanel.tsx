@@ -1,27 +1,26 @@
 /**
  * File Name: LoginPanel.tsx
- * Description: Login form panel.
+ * Description: Login form panel (Untitled UI).
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useForm, Controller } from "react-hook-form";
 import { FaChevronRight } from "react-icons/fa6";
-import toast from "react-hot-toast";
+import { z } from "zod";
 
-import AuthField from "@/components/pages/Auth/AuthField";
-import {
-  authInputClass,
-  authSubmitClass,
-} from "@/components/pages/Auth/auth-classes";
-import { AuthErrorResponse, LoginResponse } from "@/types/auth.types";
+import { Button } from "@/components/base/buttons/button";
+import { Input } from "@/components/base/input/input";
+import { PUBLIC_ROUTES } from "@/config/routes";
+import { login_user } from "@/services/auth-client.service";
+import { notifyError, notifySuccess } from "@/utils/notifications";
 
 const loginSchema = z.object({
   email: z
@@ -34,6 +33,11 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const figma_input_wrapper_class =
+  "rounded-none bg-white shadow-none ring-[#bdbdbd] focus-within:ring-blue";
+const figma_input_text_class =
+  "text-sm text-near-black placeholder:text-[#b0b0b0]";
+
 export default function LoginPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,7 +45,7 @@ export default function LoginPanel() {
   const redirectTo = searchParams.get("redirect") || "/";
 
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({
@@ -58,89 +62,102 @@ export default function LoginPanel() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: values.email,
-          password: values.password,
-          remember: true,
-        }),
+      const { ok, data } = await login_user({
+        email: values.email,
+        password: values.password,
+        remember: true,
       });
 
-      const data = (await response.json()) as LoginResponse & AuthErrorResponse;
-
-      if (!response.ok) {
+      if (!ok) {
         throw new Error(data.message || "Invalid email or password.");
       }
 
-      toast.success("Welcome back!");
+      const user_name =
+        data.user?.first_name?.trim() ||
+        data.user?.display_name?.trim() ||
+        "there";
+
+      notifySuccess(`Welcome back, ${user_name}!`);
       router.push(redirectTo.startsWith("/") ? redirectTo : "/");
       router.refresh();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Login failed.";
-      toast.error(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="rounded bg-white p-8 shadow-md lg:p-10">
-      <h2 className="mb-8 text-center text-2xl font-extrabold uppercase tracking-wide text-blue">
+    <div className="bg-white px-8 py-10 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
+      <h2 className="mb-8 text-center font-condensed text-[28px] font-bold uppercase tracking-wide text-blue">
         Login
       </h2>
 
       <form
-        className="flex flex-col gap-2"
+        className="flex flex-col gap-3"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <AuthField
-          label="Email"
-          htmlFor="login_email"
-          required
-          error={errors.email?.message}
-        >
-          <input
-            id="login_email"
-            type="email"
-            placeholder="Email"
-            autoComplete="email"
-            className={authInputClass(Boolean(errors.email))}
-            {...register("email")}
-          />
-        </AuthField>
+        <Controller
+          name="email"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              type="email"
+              placeholder="Email"
+              autoComplete="email"
+              size="sm"
+              isInvalid={Boolean(errors.email)}
+              hint={errors.email?.message}
+              className="w-full"
+              wrapperClassName={figma_input_wrapper_class}
+              inputClassName={figma_input_text_class}
+            />
+          )}
+        />
 
-        <AuthField
-          label="Password"
-          htmlFor="login_password"
-          required
-          error={errors.password?.message}
-          className="mt-3"
-        >
-          <input
-            id="login_password"
-            type="password"
-            placeholder="Password"
-            autoComplete="current-password"
-            className={authInputClass(Boolean(errors.password))}
-            {...register("password")}
-          />
-        </AuthField>
+        <Controller
+          name="password"
+          control={control}
+          render={({ field }) => (
+            <Input
+              {...field}
+              type="password"
+              placeholder="Password"
+              autoComplete="current-password"
+              size="sm"
+              isInvalid={Boolean(errors.password)}
+              hint={errors.password?.message}
+              className="w-full"
+              wrapperClassName={figma_input_wrapper_class}
+              inputClassName={figma_input_text_class}
+            />
+          )}
+        />
 
-        <div className="flex justify-center pt-6">
-          <button
-            type="submit"
-            className={authSubmitClass}
-            disabled={isSubmitting}
+        <div className="text-right">
+          <Link
+            href={PUBLIC_ROUTES.forgotPassword}
+            className="text-sm font-medium text-blue transition-colors hover:text-navy"
           >
-            {isSubmitting ? "LOGGING IN..." : "LOGIN"}
-            <FaChevronRight aria-hidden="true" />
-          </button>
+            Forgot password?
+          </Link>
+        </div>
+
+        <div className="flex justify-center pt-3">
+          <Button
+            type="submit"
+            color="primary"
+            size="md"
+            isDisabled={isSubmitting}
+            className="min-w-[142px] rounded-none bg-amber px-7 py-3 font-condensed text-base font-bold uppercase tracking-wide text-white shadow-none before:rounded-none hover:bg-[#b38600]"
+            iconTrailing={FaChevronRight}
+          >
+            {isSubmitting ? "Logging in..." : "Login"}
+          </Button>
         </div>
       </form>
     </div>

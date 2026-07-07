@@ -63,8 +63,38 @@ function mmf_register_auth_routes(): void {
 		'custom/v1',
 		'/auth/register',
 		array(
-			'methods'             => 'POST',
-			'callback'            => 'mmf_auth_register',
+			'methods'             => WP_REST_Server::READABLE . ',' . WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_auth_register_route',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/auth/register/meta',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'mmf_auth_register_meta',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/auth/register/check-email',
+		array(
+			'methods'             => WP_REST_Server::READABLE,
+			'callback'            => 'mmf_auth_register_check_email',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/auth/forgot-password',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_auth_forgot_password',
 			'permission_callback' => '__return_true',
 		)
 	);
@@ -217,6 +247,153 @@ function mmf_get_entry_password( array $entry ): string {
 	}
 
 	return $password;
+}
+
+/**
+ * Get the configured Gravity Forms registration form.
+ *
+ * @return array|WP_Error
+ */
+function mmf_get_registration_form() {
+	if ( ! class_exists( 'GFAPI' ) ) {
+		return new WP_Error(
+			'gravity_forms_missing',
+			'Gravity Forms is not active.',
+			array( 'status' => 500 )
+		);
+	}
+
+	$form = GFAPI::get_form( MMF_REGISTRATION_FORM_ID );
+
+	if ( empty( $form ) || is_wp_error( $form ) ) {
+		return new WP_Error(
+			'registration_form_missing',
+			'Registration form was not found.',
+			array( 'status' => 404 )
+		);
+	}
+
+	return $form;
+}
+
+/**
+ * Return registration form metadata used by the headless frontend.
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_auth_register_meta() {
+	$form = mmf_get_registration_form();
+
+	if ( is_wp_error( $form ) ) {
+		return $form;
+	}
+
+	return rest_ensure_response(
+		array(
+			'form_id'     => MMF_REGISTRATION_FORM_ID,
+			'title'       => isset( $form['title'] ) ? sanitize_text_field( (string) $form['title'] ) : '',
+			'description' => isset( $form['description'] ) ? wp_kses_post( (string) $form['description'] ) : '',
+		)
+	);
+}
+
+/**
+ * Dispatch registration route by request method.
+ *
+ * GET  => form meta
+ * POST => form submission
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_auth_register_route( WP_REST_Request $request ) {
+	if ( 'GET' === strtoupper( $request->get_method() ) ) {
+		return mmf_auth_register_meta();
+	}
+
+	return mmf_auth_register( $request );
+}
+
+/**
+ * Check whether an email is already registered.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_auth_register_check_email( WP_REST_Request $request ) {
+	$email = sanitize_email( (string) $request->get_param( 'email' ) );
+
+	if ( empty( $email ) ) {
+		return new WP_Error(
+			'missing_email',
+			'Email is required.',
+			array( 'status' => 400 )
+		);
+	}
+
+	if ( ! is_email( $email ) ) {
+		return new WP_Error(
+			'invalid_email',
+			'Please enter a valid email address.',
+			array( 'status' => 400 )
+		);
+	}
+
+	return rest_ensure_response(
+		array(
+			'exists'  => (bool) email_exists( $email ),
+			'message' => email_exists( $email )
+				? 'An account with this email already exists.'
+				: '',
+		)
+	);
+}
+
+/**
+ * Send a password reset email using WordPress core recovery flow.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_auth_forgot_password( WP_REST_Request $request ) {
+	$email_or_login = sanitize_text_field( (string) $request->get_param( 'email' ) );
+
+	if ( empty( $email_or_login ) ) {
+		return new WP_Error(
+			'missing_email',
+			'Email is required.',
+			array( 'status' => 400 )
+		);
+	}
+
+	$user = is_email( $email_or_login )
+		? get_user_by( 'email', $email_or_login )
+		: get_user_by( 'login', $email_or_login );
+
+	if ( ! $user instanceof WP_User ) {
+		return new WP_Error(
+			'user_not_found',
+			'We could not find an account with that email address.',
+			array( 'status' => 404 )
+		);
+	}
+
+	$sent = retrieve_password( $user->user_login );
+
+	if ( is_wp_error( $sent ) ) {
+		return new WP_Error(
+			'forgot_password_failed',
+			$sent->get_error_message(),
+			array( 'status' => 400 )
+		);
+	}
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'message' => 'Password reset instructions have been sent to your email.',
+		)
+	);
 }
 
 /**

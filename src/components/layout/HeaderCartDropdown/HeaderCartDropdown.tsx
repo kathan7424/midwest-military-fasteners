@@ -13,6 +13,7 @@ import Link from "next/link";
 import {
   FaCartShopping,
   FaChevronRight,
+  FaFaceFrown,
   FaXmark,
 } from "react-icons/fa6";
 
@@ -36,6 +37,7 @@ export default function HeaderCartDropdown({
   const isMutating = useCartStore((state) => state.isMutating);
   const removeItem = useCartStore((state) => state.removeItem);
   const itemCount = getCartItemCount(cart);
+  const hasItems = itemCount > 0;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,7 +118,7 @@ export default function HeaderCartDropdown({
             </h2>
           </div>
 
-          {cart?.items.length ? (
+          {hasItems && cart?.items.length ? (
             <ul className="max-h-64 overflow-y-auto">
               {cart.items.map((item) => (
                 <li
@@ -157,30 +159,54 @@ export default function HeaderCartDropdown({
               ))}
             </ul>
           ) : (
-            <p className="px-4 py-6 text-sm text-mid-gray">
-              Your order is empty.
-            </p>
+            <div className="flex flex-col items-center px-6 py-10 text-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#4a4a4a] text-white">
+                <FaFaceFrown size={28} />
+              </span>
+              <p className="mt-4 text-lg font-bold text-near-black">
+                Your cart is currently empty!
+              </p>
+            </div>
           )}
 
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <Link
-              href="/cart"
-              prefetch={false}
-              onClick={() => setIsOpen(false)}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-blue transition-colors hover:text-navy"
-            >
-              <FaCartShopping size={14} />
-              View Cart
-            </Link>
+          <div
+            className={cn(
+              "px-4 py-3",
+              hasItems ? "flex items-center justify-between gap-3" : ""
+            )}
+          >
+            {hasItems ? (
+              <Link
+                href="/cart"
+                prefetch={false}
+                onClick={() => setIsOpen(false)}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-blue transition-colors hover:text-navy"
+              >
+                <FaCartShopping size={14} />
+                View Cart
+              </Link>
+            ) : (
+              <Link
+                href="/product"
+                prefetch={false}
+                onClick={() => setIsOpen(false)}
+                className="inline-flex w-full items-center justify-center gap-2 bg-amber px-4 py-3 text-sm font-extrabold uppercase tracking-wide text-white transition-colors hover:bg-[#b38600]"
+              >
+                Start Shopping
+                <FaChevronRight size={12} />
+              </Link>
+            )}
 
-            {cart?.checkout_url ? (
-              <a
+            {hasItems && cart?.checkout_url ? (
+              <Link
                 href={normalizeWpUrl(cart.checkout_url)}
+                prefetch={false}
+                onClick={() => setIsOpen(false)}
                 className="inline-flex items-center gap-2 bg-amber px-4 py-2 text-sm font-extrabold uppercase tracking-wide text-white transition-colors hover:bg-[#b38600]"
               >
                 Checkout
                 <FaChevronRight size={12} />
-              </a>
+              </Link>
             ) : null}
           </div>
         </div>

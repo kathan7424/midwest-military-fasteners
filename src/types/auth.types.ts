@@ -31,6 +31,8 @@ export interface RegisterPayload {
   last_name: string;
   company?: string;
   email: string;
+  password: string;
+  confirm_password: string;
   expiry_date?: string;
   certificate?: File | null;
 }
@@ -38,6 +40,20 @@ export interface RegisterPayload {
 export interface RegisterResponse {
   success: boolean;
   entry_id?: number | null;
+  message: string;
+}
+
+export interface RegisterMetaResponse {
+  title?: string;
+  message?: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
   message: string;
 }
 

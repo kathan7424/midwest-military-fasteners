@@ -13,7 +13,6 @@
 
 import { Accordion } from "@/components/ui/accordion";
 import SidebarGroup from "./SidebarGroup";
-import { SIDEBAR_DATA } from "./sidebarData";
 import type { SidebarCategory } from "./types";
 
 interface SidebarProps {
@@ -23,7 +22,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
-  categories = SIDEBAR_DATA,
+  categories = [],
   activeGroupId,
   activeSeriesId,
 }: SidebarProps) {
@@ -33,6 +32,7 @@ export default function Sidebar({
       className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
     >
       <Accordion
+        type="multiple"
         defaultValue={activeGroupId ? [activeGroupId] : []}
       >
         {categories.map((category) => (

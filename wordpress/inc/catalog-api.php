@@ -325,11 +325,13 @@ function specparts_api_categories( WP_REST_Request $request ) {
     $parents = [];
     foreach ( $terms as $t ) {
         $map[ $t->term_id ] = [
-            'id'       => $t->term_id,
-            'name'     => $t->name,
-            'slug'     => $t->slug,
-            'count'    => $t->count,
-            'children' => [],
+            'id'          => $t->term_id,
+            'name'        => $t->name,
+            'slug'        => $t->slug,
+            'count'       => $t->count,
+            'parent_id'   => $t->parent,
+            'description' => wp_strip_all_tags( (string) $t->description ),
+            'children'    => [],
         ];
     }
     foreach ( $terms as $t ) {

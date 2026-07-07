@@ -15,7 +15,7 @@ import Sidebar from "@/components/layout/Sidebar/Sidebar";
 import Breadcrumb from "@/components/shared_Ui/Breadcrumb";
 import IsoSection from "@/components/shared_Ui/IsoSection";
 import QtyAddToOrder from "@/components/shared_Ui/QtyAddToOrder";
-import { HERO } from "@/components/pages/Product/productData";
+import type { SidebarCategory } from "@/components/layout/Sidebar/types";
 import type { Product } from "@/components/pages/Product/ProductTable";
 import ProductSpecTable from "./ProductSpecTable";
 
@@ -30,16 +30,26 @@ import {
 interface ProductDetailPageProps {
   series: string;
   product: Product;
+  sidebarCategories: SidebarCategory[];
 }
 
 export default function ProductDetailPage({
   series,
   product,
+  sidebarCategories,
 }: ProductDetailPageProps) {
   const breadcrumb = [
-    { label: "SCREWS", href: "#" },
-    { label: "HEX CAP SCREWS", href: "/product" },
-    { label: series },
+    { label: "PRODUCT CATALOG", href: "/product" },
+    ...(product.categorySlug && product.categoryLabel
+      ? [
+          {
+            label: product.categoryLabel.toUpperCase(),
+            href: `/product-category/${product.categorySlug}`,
+          },
+        ]
+      : []),
+    { label: product.seriesLabel?.toUpperCase() || series.toUpperCase() },
+    { label: product.partNumber },
   ];
 
   return (
@@ -48,7 +58,11 @@ export default function ProductDetailPage({
         {/* Desktop Sidebar */}
         <aside className="hidden w-[300px] shrink-0 lg:block">
           <Breadcrumb items={breadcrumb} className="mb-5" />
-          <Sidebar activeGroupId="hex-cap-screws" activeSeriesId="ms35307" />
+          <Sidebar
+            categories={sidebarCategories}
+            activeGroupId={product.categorySlug}
+            activeSeriesId={product.seriesSlug}
+          />
         </aside>
 
         {/* Main Content */}
@@ -68,34 +82,45 @@ export default function ProductDetailPage({
                   <SheetTitle>Product Categories</SheetTitle>
                 </SheetHeader>
 
-                <Sidebar activeGroupId="hex-cap-screws" activeSeriesId="ms35307" />
+                <Sidebar
+                  categories={sidebarCategories}
+                  activeGroupId={product.categorySlug}
+                  activeSeriesId={product.seriesSlug}
+                />
               </SheetContent>
             </Sheet>
           </div>
 
           {/* Title + description */}
           <h1 className="mb-4 text-h2 font-bold uppercase leading-heading text-near-black">
-            <span className="text-mid-gray">Hex Cap Screw</span>{" "}
+            <span className="text-mid-gray">Part</span>{" "}
             {product.partNumber}
           </h1>
 
           <p className="mb-8 max-w-[770px] text-link text-black">
-            {HERO.description}
+            {product.description}
           </p>
 
           {/* Image + spec table */}
           <div className="flex flex-col gap-5 xl:gap-[130px] lg:flex-row lg:items-start max-w-auto xl:max-w-[1000px]">
             <div className="lg:w-[290px] xl:w-auto">
-              <div className="relative h-[140px] xl:h-[199px] w-[280px] xl:w-[298px]">
-                <Image
-                  src="/images/hex-cap-screws.webp"
-                  alt={`Hex Cap Screw ${product.partNumber}`}
-                  fill
-                  className="object-contain"
-                />
-              </div>
+              {product.image ? (
+                <div className="relative h-[140px] xl:h-[199px] w-[280px] xl:w-[298px]">
+                  <Image
+                    src={product.image}
+                    alt={product.partNumber}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              ) : null}
 
-              <QtyAddToOrder size="lg" className="mt-6" sku={product.sku} />
+              <QtyAddToOrder
+                size="lg"
+                className="mt-6"
+                productId={product.id}
+                sku={product.sku}
+              />
             </div>
 
             <div className="lg:flex-1">

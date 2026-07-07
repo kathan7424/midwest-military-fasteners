@@ -22,6 +22,7 @@ export interface SidebarSeries {
 export interface SidebarGroupData {
   id: string;
   label: string;
+  href?: string;
   series: SidebarSeries[];
 }
 

@@ -14,6 +14,30 @@ import { buildProxiedResponse } from "@/utils/auth-proxy.utils";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+export async function GET() {
+  try {
+    const wpResponse = await fetch(
+      `${ENV.WP_SITE_URL}/wp-json/custom/v1/auth/register`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+
+    return buildProxiedResponse(wpResponse);
+  } catch (error) {
+    console.error("Register meta proxy error:", error);
+
+    return Response.json(
+      { message: "Registration form metadata failed." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

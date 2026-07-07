@@ -1,52 +1,40 @@
 /**
  * File Name: RegisterPanel.tsx
- * Description: Registration form panel.
+ * Description: Registration form panel (Untitled UI).
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { parseDate } from "@internationalized/date";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
+import { FaChevronRight } from "react-icons/fa6";
 import { z } from "zod";
-import { FaChevronRight, FaFileArrowUp } from "react-icons/fa6";
-import toast from "react-hot-toast";
 
-import AuthField from "@/components/pages/Auth/AuthField";
-import {
-  authDateInputClass,
-  authInputClass,
-  authSubmitClass,
-  authUploadBtnClass,
-} from "@/components/pages/Auth/auth-classes";
-import { AuthErrorResponse, RegisterResponse } from "@/types/auth.types";
+import { register_user } from "@/services/auth-client.service";
+import { DatePicker } from "@/components/application/date-picker/date-picker";
+import { Button } from "@/components/base/buttons/button";
+import { Input } from "@/components/base/input/input";
+import SalesTaxExemptionUpload from "@/components/pages/Auth/SalesTaxExemptionUpload";
+import { notifyError, notifySuccess } from "@/utils/notifications";
 
 const registerSchema = z
   .object({
-    first_name: z
-      .string()
-      .trim()
-      .min(1, "First name is required."),
-    last_name: z
-      .string()
-      .trim()
-      .min(1, "Last name is required."),
+    first_name: z.string().trim().min(1, "First name is required."),
+    last_name: z.string().trim().min(1, "Last name is required."),
     company: z.string().trim().optional(),
     email: z
       .string()
       .trim()
       .min(1, "Email is required.")
       .email("Please enter a valid email address."),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters."),
-    confirm_password: z
-      .string()
-      .min(1, "Please confirm your password."),
+    password: z.string().min(8, "Password must be at least 8 characters."),
+    confirm_password: z.string().min(1, "Please confirm your password."),
     expiry_date: z
       .string()
       .optional()
@@ -62,14 +50,25 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-export default function RegisterPanel() {
+interface RegisterPanelProps {
+  title?: string;
+}
+
+const figma_input_wrapper_class =
+  "rounded-none bg-white shadow-none ring-[#bdbdbd] focus-within:ring-blue";
+const figma_input_text_class =
+  "text-sm text-near-black placeholder:text-[#b0b0b0]";
+
+export default function RegisterPanel({
+  title = "Create Your Account",
+}: RegisterPanelProps) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [certificate, setCertificate] = useState<File | null>(null);
+  const [certificateError, setCertificateError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
-    register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -92,224 +91,217 @@ export default function RegisterPanel() {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append("first_name", values.first_name);
-      formData.append("last_name", values.last_name);
-      formData.append("email", values.email);
-      formData.append("password", values.password);
-      formData.append("confirm_password", values.confirm_password);
-
-      if (values.company) {
-        formData.append("company", values.company);
-      }
-
-      if (values.expiry_date) {
-        formData.append("expiry_date", values.expiry_date);
-      }
-
-      if (certificate) {
-        formData.append("certificate", certificate);
-      }
-
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        body: formData,
+      const { ok, data } = await register_user({
+        first_name: values.first_name,
+        last_name: values.last_name,
+        company: values.company,
+        email: values.email,
+        password: values.password,
+        confirm_password: values.confirm_password,
+        expiry_date: values.expiry_date,
+        certificate,
       });
 
-      const data = (await response.json()) as RegisterResponse & AuthErrorResponse;
-
-      if (!response.ok) {
+      if (!ok) {
         throw new Error(data.message || "Registration failed.");
       }
 
-      toast.success(
+      notifySuccess(
         data.message || "Registration successful. You can now log in."
       );
       reset();
       setCertificate(null);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-
+      setCertificateError("");
       router.push("/login");
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Registration failed.";
-      toast.error(message);
+      notifyError(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCertificate(event.target.files?.[0] ?? null);
-  };
-
   return (
     <div>
-      <h2 className="mb-8 text-center text-2xl font-extrabold uppercase tracking-wide text-blue">
-        Create Your Account
+      <h2 className="mb-6 text-center font-sans text-[28px] font-extrabold text-near-black md:text-left">
+        {title}
       </h2>
 
       <form
-        className="flex flex-col gap-2"
+        className="flex flex-col gap-3"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <div className="grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2 md:items-start">
-          <AuthField
-            label="First Name"
-            htmlFor="first_name"
-            required
-            error={errors.first_name?.message}
-          >
-            <input
-              id="first_name"
-              type="text"
-              placeholder="First Name"
-              autoComplete="given-name"
-              className={authInputClass(Boolean(errors.first_name))}
-              {...register("first_name")}
-            />
-          </AuthField>
-
-          <AuthField
-            label="Last Name"
-            htmlFor="last_name"
-            required
-            error={errors.last_name?.message}
-          >
-            <input
-              id="last_name"
-              type="text"
-              placeholder="Last Name"
-              autoComplete="family-name"
-              className={authInputClass(Boolean(errors.last_name))}
-              {...register("last_name")}
-            />
-          </AuthField>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2 md:items-start">
-          <AuthField label="Company" htmlFor="company">
-            <input
-              id="company"
-              type="text"
-              placeholder="Company"
-              autoComplete="organization"
-              className={authInputClass()}
-              {...register("company")}
-            />
-          </AuthField>
-
-          <AuthField
-            label="Email"
-            htmlFor="register_email"
-            required
-            error={errors.email?.message}
-          >
-            <input
-              id="register_email"
-              type="email"
-              placeholder="Email"
-              autoComplete="email"
-              className={authInputClass(Boolean(errors.email))}
-              {...register("email")}
-            />
-          </AuthField>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 md:grid-cols-2 md:items-start">
-          <AuthField
-            label="Password"
-            htmlFor="register_password"
-            required
-            error={errors.password?.message}
-          >
-            <input
-              id="register_password"
-              type="password"
-              placeholder="Enter Password"
-              autoComplete="new-password"
-              className={authInputClass(Boolean(errors.password))}
-              {...register("password")}
-            />
-          </AuthField>
-
-          <AuthField
-            label="Confirm Password"
-            htmlFor="confirm_password"
-            required
-            error={errors.confirm_password?.message}
-          >
-            <input
-              id="confirm_password"
-              type="password"
-              placeholder="Confirm Password"
-              autoComplete="new-password"
-              className={authInputClass(Boolean(errors.confirm_password))}
-              {...register("confirm_password")}
-            />
-          </AuthField>
-        </div>
-
-        <AuthField
-          label="Sales Tax Exemption Doc"
-          htmlFor="certificate_display"
-          className="mt-4"
-        >
-          <div className="flex h-12 overflow-hidden rounded border border-light-gray">
-            <input
-              id="certificate_display"
-              type="text"
-              readOnly
-              value={certificate?.name || ""}
-              placeholder="Upload Sales Tax Exemption Doc"
-              className="min-w-0 flex-1 border-0 bg-white px-4 text-base text-near-black placeholder:text-mid-gray focus:outline-none"
-            />
-            <input
-              ref={fileInputRef}
-              id="certificate"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <button
-              type="button"
-              className={authUploadBtnClass}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <FaFileArrowUp aria-hidden="true" />
-              UPLOAD
-            </button>
-          </div>
-        </AuthField>
-
-        <AuthField
-          label="Expiration Date"
-          htmlFor="expiry_date"
-          className="mt-4 md:max-w-[320px]"
-          error={errors.expiry_date?.message}
-        >
-          <input
-            id="expiry_date"
-            type="date"
-            className={authDateInputClass(Boolean(errors.expiry_date))}
-            {...register("expiry_date")}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Controller
+            name="first_name"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                placeholder="First Name"
+                autoComplete="given-name"
+                size="sm"
+                isInvalid={Boolean(errors.first_name)}
+                hint={errors.first_name?.message}
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
           />
-        </AuthField>
 
-        <div className="flex justify-center pt-6">
-          <button
+          <Controller
+            name="last_name"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                placeholder="Last Name"
+                autoComplete="family-name"
+                size="sm"
+                isInvalid={Boolean(errors.last_name)}
+                hint={errors.last_name?.message}
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Controller
+            name="company"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                placeholder="Company"
+                autoComplete="organization"
+                size="sm"
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
+          />
+
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="email"
+                placeholder="Email"
+                autoComplete="email"
+                size="sm"
+                isInvalid={Boolean(errors.email)}
+                hint={errors.email?.message}
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="password"
+                placeholder="Enter Password"
+                autoComplete="new-password"
+                size="sm"
+                isInvalid={Boolean(errors.password)}
+                hint={errors.password?.message}
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
+          />
+
+          <Controller
+            name="confirm_password"
+            control={control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="password"
+                placeholder="Confirm Password"
+                autoComplete="new-password"
+                size="sm"
+                isInvalid={Boolean(errors.confirm_password)}
+                hint={errors.confirm_password?.message}
+                className="w-full"
+                wrapperClassName={figma_input_wrapper_class}
+                inputClassName={figma_input_text_class}
+              />
+            )}
+          />
+        </div>
+
+        <SalesTaxExemptionUpload
+          file={certificate}
+          error={certificateError}
+          onFileChange={(file) => {
+            setCertificate(file);
+            setCertificateError("");
+          }}
+          onSizeError={() => {
+            const message = "File must be 5 MB or smaller.";
+            setCertificateError(message);
+            notifyError(message);
+          }}
+          onTypeError={() => {
+            const message =
+              "Only PDF, JPG, JPEG, PNG, DOC, and DOCX files are allowed.";
+            setCertificateError(message);
+            notifyError(message);
+          }}
+        />
+
+        <div className="md:max-w-[160px]">
+          <Controller
+            name="expiry_date"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <DatePicker
+                  value={field.value ? parseDate(field.value) : null}
+                  onChange={(date) => {
+                    field.onChange(date ? date.toString() : "");
+                  }}
+                  size="md"
+                />
+                {errors.expiry_date?.message ? (
+                  <p className="mt-1 text-xs text-error-primary">
+                    {errors.expiry_date.message}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          />
+        </div>
+
+        <div className="flex justify-center pt-3 md:justify-center">
+          <Button
             type="submit"
-            className={authSubmitClass}
-            disabled={isSubmitting}
+            color="primary"
+            size="md"
+            isDisabled={isSubmitting}
+            className="min-w-[142px] rounded-none bg-amber px-7 py-3 font-condensed text-base font-bold uppercase tracking-wide text-white shadow-none before:rounded-none hover:bg-[#b38600]"
+            iconTrailing={FaChevronRight}
           >
-            {isSubmitting ? "REGISTERING..." : "REGISTER"}
-            <FaChevronRight aria-hidden="true" />
-          </button>
+            {isSubmitting ? "Registering..." : "Register"}
+          </Button>
         </div>
       </form>
     </div>

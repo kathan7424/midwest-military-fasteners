@@ -10,7 +10,16 @@
 import { notFound } from "next/navigation";
 
 import { ProductDetailPage } from "@/components/pages/ProductDetail";
-import { getProductByPartNumber } from "@/components/pages/Product/productData";
+import {
+  fetch_spec_parts_categories,
+  fetch_spec_parts_products,
+  fetch_spec_parts_product_by_sku,
+} from "@/services/spec-parts.service";
+import {
+  attach_series_to_sidebar,
+  map_spec_parts_categories_to_sidebar,
+  map_spec_parts_product_to_table_product,
+} from "@/utils/spec-parts.utils";
 
 type Props = {
   params: Promise<{
@@ -21,12 +30,30 @@ type Props = {
 
 export default async function Page({ params }: Props) {
   const { series, partNumber } = await params;
+  try {
+    const [category_tree, raw_product] = await Promise.all([
+      fetch_spec_parts_categories(),
+      fetch_spec_parts_product_by_sku(partNumber),
+    ]);
+    const product = map_spec_parts_product_to_table_product(raw_product);
+    const related_products_response = await fetch_spec_parts_products({
+      category: product.categorySlug,
+      per_page: 200,
+    });
+    const sidebar_categories = attach_series_to_sidebar(
+      map_spec_parts_categories_to_sidebar(category_tree),
+      related_products_response.products,
+      product.categorySlug
+    );
 
-  const product = getProductByPartNumber(partNumber);
-
-  if (!product) {
+    return (
+      <ProductDetailPage
+        series={series}
+        product={product}
+        sidebarCategories={sidebar_categories}
+      />
+    );
+  } catch {
     notFound();
   }
-
-  return <ProductDetailPage series={series} product={product} />;
 }

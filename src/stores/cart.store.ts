@@ -11,10 +11,13 @@
 import { create } from "zustand";
 
 import {
-  CartAddResponse,
+  add_cart_item,
+  fetch_cart,
+  remove_cart_item,
+} from "@/services/cart.service";
+import {
   CartData,
   CartErrorResponse,
-  CartRemoveResponse,
 } from "@/types/cart.types";
 import { notifyError, notifySuccess } from "@/utils/notifications";
 
@@ -41,14 +44,6 @@ const EMPTY_CART: CartData = {
   cart_url: "",
 };
 
-async function parseCartError(response: Response): Promise<string> {
-  const data = (await response.json().catch(() => ({}))) as CartErrorResponse & {
-    code?: string;
-  };
-
-  return data.message || data.code || "Cart request failed.";
-}
-
 export const useCartStore = create<CartState>((set, get) => ({
   cart: null,
   isLoading: false,
@@ -62,29 +57,28 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      const response = await fetch("/api/cart", {
-        method: "GET",
-        cache: "no-store",
-      });
+      const { ok, status, data } = await fetch_cart();
 
-      if (response.status === 401) {
+      if (status === 401) {
         set({ cart: EMPTY_CART });
         return;
       }
 
-      if (!response.ok) {
-        if (response.status === 404) {
+      if (!ok) {
+        if (status === 404) {
           set({ cart: EMPTY_CART });
           return;
         }
 
-        console.warn("Cart fetch failed:", await parseCartError(response));
+        console.warn(
+          "Cart fetch failed:",
+          data && "message" in data ? data.message || data.code : "Cart request failed."
+        );
         set({ cart: EMPTY_CART });
         return;
       }
 
-      const cart = (await response.json()) as CartData;
-      set({ cart });
+      set({ cart: data as CartData });
     } catch (error) {
       console.warn("Fetch cart failed:", error);
       set({ cart: EMPTY_CART });
@@ -102,21 +96,13 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isMutating: true });
 
     try {
-      const response = await fetch("/api/cart", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          product_id: productId,
-          sku,
-          quantity,
-        }),
+      const { ok, data } = await add_cart_item({
+        productId,
+        sku,
+        quantity,
       });
 
-      const data = (await response.json()) as CartAddResponse & CartErrorResponse;
-
-      if (!response.ok) {
+      if (!ok) {
         throw new Error(data.message || "Unable to add item.");
       }
 
@@ -137,19 +123,9 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isMutating: true });
 
     try {
-      const response = await fetch("/api/cart/remove", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          cart_item_key: cartItemKey,
-        }),
-      });
+      const { ok, data } = await remove_cart_item(cartItemKey);
 
-      const data = (await response.json()) as CartRemoveResponse & CartErrorResponse;
-
-      if (!response.ok) {
+      if (!ok) {
         throw new Error(data.message || "Unable to remove item.");
       }
 

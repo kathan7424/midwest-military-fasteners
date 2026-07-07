@@ -10,6 +10,7 @@
 export const PUBLIC_ROUTES = {
   home: "/",
   login: "/login",
+  forgotPassword: "/forgot-password",
   register: "/register",
   productListing: "/product",
   productDetail: (series: string, partNumber: string) =>
@@ -18,7 +19,7 @@ export const PUBLIC_ROUTES = {
 } as const;
 
 /** Guest-only pages — logged-in users are redirected away */
-export const GUEST_ONLY_ROUTES = ["/login", "/register"] as const;
+export const GUEST_ONLY_ROUTES = ["/login", "/register", "/forgot-password"] as const;
 
 /** Protected pages — login required */
 export const PROTECTED_ROUTES = ["/my-account", "/cart"] as const;
@@ -30,6 +31,7 @@ export const API_ROUTES = {
     logout: "/api/auth/logout",
     register: "/api/auth/register",
     me: "/api/auth/me",
+    forgotPassword: "/api/auth/forgot-password",
   },
   menu: "/api/menu",
   search: "/api/search",
@@ -43,6 +45,7 @@ export const WP_ROUTES = {
   logout: "/wp-json/custom/v1/auth/logout",
   register: "/wp-json/custom/v1/auth/register",
   me: "/wp-json/custom/v1/auth/me",
+  forgotPassword: "/wp-json/custom/v1/auth/forgot-password",
   cart: "/wp-json/custom/v1/cart",
   cartRemove: "/wp-json/custom/v1/cart/remove",
   homePage: "/wp-json/custom/v1/home-page",

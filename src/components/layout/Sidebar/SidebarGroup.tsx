@@ -8,6 +8,8 @@
  * Last Modified: 2026-06-26
  */
 
+import Link from "next/link";
+
 import {
   AccordionContent,
   AccordionItem,
@@ -27,12 +29,27 @@ export default function SidebarGroup({ group, activeSeriesId }: SidebarGroupProp
 
   return (
     <AccordionItem value={group.id} className="border-b border-mid-gray/40">
-      <AccordionTrigger
-        disabled={!hasSeries}
-        className="py-3 gap-2 px-1 font-normal text-blue hover:no-underline hover:text-dark-gray"
-      >
-        {group.label}
-      </AccordionTrigger>
+      {hasSeries ? (
+        <AccordionTrigger className="py-3 gap-2 px-1 font-normal text-blue hover:no-underline hover:text-dark-gray">
+          {group.label}
+        </AccordionTrigger>
+      ) : group.href ? (
+        <div className="px-1 py-3">
+          <Link
+            href={group.href}
+            className="font-normal text-blue transition-colors hover:text-dark-gray hover:underline"
+          >
+            {group.label}
+          </Link>
+        </div>
+      ) : (
+        <AccordionTrigger
+          disabled
+          className="py-3 gap-2 px-1 font-normal text-blue hover:no-underline hover:text-dark-gray"
+        >
+          {group.label}
+        </AccordionTrigger>
+      )}
 
       {hasSeries && (
         <AccordionContent>
