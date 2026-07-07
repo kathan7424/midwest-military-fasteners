@@ -2,13 +2,10 @@
  * File Name: SidebarGroup.tsx
  * Description: A single accordion section (e.g. "Hex Cap Screws"). The trigger is
  *              the group label; the panel lists its part-series via SidebarItem.
- *              Groups with no series render a non-expandable label.
  * Developer: pod2
  * Created Date: 2026-06-26
- * Last Modified: 2026-06-26
+ * Last Modified: 2026-07-07
  */
-
-import Link from "next/link";
 
 import {
   AccordionContent,
@@ -29,32 +26,14 @@ export default function SidebarGroup({ group, activeSeriesId }: SidebarGroupProp
 
   return (
     <AccordionItem value={group.id} className="border-b border-mid-gray/40">
-      {hasSeries ? (
-        <AccordionTrigger className="py-3 gap-2 px-1 font-normal text-blue hover:no-underline hover:text-dark-gray">
-          {group.label}
-        </AccordionTrigger>
-      ) : group.href ? (
-        <div className="px-1 py-3">
-          <Link
-            href={group.href}
-            className="font-normal text-blue transition-colors hover:text-dark-gray hover:underline"
-          >
-            {group.label}
-          </Link>
-        </div>
-      ) : (
-        <AccordionTrigger
-          disabled
-          className="py-3 gap-2 px-1 font-normal text-blue hover:no-underline hover:text-dark-gray"
-        >
-          {group.label}
-        </AccordionTrigger>
-      )}
+      <AccordionTrigger className="gap-2 px-1 py-3 font-normal text-blue hover:no-underline hover:text-dark-gray">
+        {group.label}
+      </AccordionTrigger>
 
-      {hasSeries && (
-        <AccordionContent>
+      <AccordionContent>
+        {hasSeries ? (
           <ul className="px-1">
-            {group.series.map((series) => ( 
+            {group.series.map((series) => (
               <SidebarItem
                 key={series.id}
                 series={series}
@@ -62,8 +41,8 @@ export default function SidebarGroup({ group, activeSeriesId }: SidebarGroupProp
               />
             ))}
           </ul>
-        </AccordionContent>
-      )}
+        ) : null}
+      </AccordionContent>
     </AccordionItem>
   );
 }

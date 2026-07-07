@@ -9,8 +9,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ENV } from "@/config/env";
-import { CartData, CartItem } from "@/types/cart.types";
+import { CartData, CartItem, CartItemQuantityLimits } from "@/types/cart.types";
 import { buildProxiedResponse, buildWpCookieHeader } from "@/utils/auth-proxy.utils";
+import {
+  mapStoreQuantityLimits,
+  normalizeWcMaxQuantity,
+} from "@/utils/cart-stock.utils";
+import { decodeHtmlEntities, formatNoticeMessage } from "@/utils/text.utils";
 
 export const WC_STORE_NONCE_COOKIE = "wc_store_nonce";
 export const WC_CART_TOKEN_COOKIE = "wc_cart_token";
@@ -33,6 +38,14 @@ interface StoreCartItem {
   permalink: string;
   prices: StoreCartPrice;
   totals: StoreCartItemTotals;
+  quantity_limits?: Partial<CartItemQuantityLimits>;
+  stock_availability?: {
+    text?: string;
+    class?: string;
+  };
+  low_stock_remaining?: number | null;
+  backorders_allowed?: boolean;
+  sold_individually?: boolean;
 }
 
 interface StoreCartTotals {
@@ -64,6 +77,42 @@ function formatMinorUnits(
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+
+function mapQuantityLimits(
+  limits?: Partial<CartItemQuantityLimits>
+): CartItemQuantityLimits | undefined {
+  return mapStoreQuantityLimits(limits);
+}
+
+function mapStockAvailability(item: StoreCartItem) {
+  if (!item.stock_availability?.text && !item.stock_availability?.class) {
+    return undefined;
+  }
+
+  return {
+    text: decodeHtmlEntities(item.stock_availability.text || ""),
+    class: item.stock_availability.class || "",
+  };
+}
+
+function mapIsInStock(item: StoreCartItem): boolean {
+  if (item.stock_availability?.class?.includes("out-of-stock")) {
+    return false;
+  }
+
+  const maxQuantity = normalizeWcMaxQuantity(item.quantity_limits?.maximum);
+
+  if (
+    item.quantity_limits?.maximum === 0 &&
+    maxQuantity === undefined &&
+    !item.backorders_allowed
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
   const minorUnit = storeCart.totals.currency_minor_unit ?? 2;
 
@@ -72,19 +121,27 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
       item.totals.line_total,
       item.prices.currency_minor_unit ?? minorUnit
     );
+    const sku = decodeHtmlEntities(item.sku || item.name);
+    const name = decodeHtmlEntities(item.name);
 
     return {
       key: item.key,
       product_id: item.id,
       quantity: item.quantity,
-      sku: item.sku || item.name,
-      name: item.name,
+      sku,
+      name,
       price: Number(item.prices.price) / 10 ** (item.prices.currency_minor_unit ?? minorUnit),
       line_total:
         Number(item.totals.line_total) /
         10 ** (item.prices.currency_minor_unit ?? minorUnit),
       price_html: lineTotal,
       url: item.permalink,
+      quantity_limits: mapQuantityLimits(item.quantity_limits),
+      stock_availability: mapStockAvailability(item),
+      low_stock_remaining: item.low_stock_remaining ?? null,
+      backorders_allowed: Boolean(item.backorders_allowed),
+      sold_individually: Boolean(item.sold_individually),
+      is_in_stock: mapIsInStock(item),
     };
   });
 
@@ -139,12 +196,19 @@ export async function buildStoreCartResponse(
     | null;
 
   if (!wpResponse.ok || !raw || !("items" in raw)) {
-    const message =
+    const message = formatNoticeMessage(
       raw && "message" in raw && raw.message
         ? raw.message
-        : "Cart request failed.";
+        : "Cart request failed."
+    );
 
-    return NextResponse.json({ message }, { status: wpResponse.status || 500 });
+    return NextResponse.json(
+      {
+        message,
+        code: raw && "code" in raw ? raw.code : undefined,
+      },
+      { status: wpResponse.status || 500 }
+    );
   }
 
   const cart = mapStoreCartToCartData(raw);
@@ -188,18 +252,25 @@ export async function buildStoreCartMutationResponse(
     | null;
 
   if (!wpResponse.ok || !raw || !("items" in raw)) {
-    const message =
+    const message = formatNoticeMessage(
       raw && "message" in raw && raw.message
         ? raw.message
-        : "Cart request failed.";
+        : "Cart request failed."
+    );
 
-    return NextResponse.json({ message }, { status: wpResponse.status || 500 });
+    return NextResponse.json(
+      {
+        message,
+        code: raw && "code" in raw ? raw.code : undefined,
+      },
+      { status: wpResponse.status || 500 }
+    );
   }
 
   const cart = mapStoreCartToCartData(raw);
   const response = NextResponse.json(
     {
-      message: successMessage,
+      message: formatNoticeMessage(successMessage),
       cart,
     },
     { status: wpResponse.status }

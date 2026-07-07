@@ -36,6 +36,7 @@ export const API_ROUTES = {
   menu: "/api/menu",
   search: "/api/search",
   cart: "/api/cart",
+  cartUpdate: "/api/cart/update",
   cartRemove: "/api/cart/remove",
 } as const;
 

@@ -12,6 +12,7 @@
  *   GET /wp-json/spec-parts/v1/products/{id}
  *   GET /wp-json/spec-parts/v1/products/sku/{sku}
  *   GET /wp-json/spec-parts/v1/categories
+ *       Parent product_cat → children → product_series
  *   GET /wp-json/spec-parts/v1/series
  *
  * All standard WC REST product responses are also extended with
@@ -19,6 +20,26 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
+
+if ( ! function_exists( 'specparts_get_series_taxonomy' ) ) {
+    function specparts_get_series_taxonomy() {
+        static $taxonomy = null;
+
+        if ( null !== $taxonomy ) {
+            return $taxonomy;
+        }
+
+        foreach ( [ 'product-series', 'product_series' ] as $candidate ) {
+            if ( taxonomy_exists( $candidate ) ) {
+                $taxonomy = $candidate;
+                return $taxonomy;
+            }
+        }
+
+        $taxonomy = 'product-series';
+        return $taxonomy;
+    }
+}
 
 // ============================================================
 // REGISTER ROUTES
@@ -100,7 +121,7 @@ add_filter( 'woocommerce_rest_prepare_product_object', function ( $response, $pr
     $data['process_certs']      = (bool) get_post_meta( $pid, '_process_certs', true );
     $data['test_reports']       = (bool) get_post_meta( $pid, '_test_reports', true );
     $data['lot_in_use']         = get_post_meta( $pid, '_lot_in_use', true ) ?: '';
-    $data['product_series']     = wp_get_post_terms( $pid, 'product_series', [ 'fields' => 'names' ] );
+    $data['product_series']     = wp_get_post_terms( $pid, specparts_get_series_taxonomy(), [ 'fields' => 'names' ] );
 
     $response->set_data( $data );
     return $response;
@@ -135,7 +156,7 @@ function specparts_api_format_product( $pid ) {
         return [ 'id' => $t->term_id, 'name' => $t->name, 'slug' => $t->slug, 'parent_id' => $t->parent ];
     }, is_array( $categories ) ? $categories : [] );
 
-    $series_terms = wp_get_post_terms( $pid, 'product_series', [ 'fields' => 'all' ] );
+    $series_terms = wp_get_post_terms( $pid, specparts_get_series_taxonomy(), [ 'fields' => 'all' ] );
     $series_list  = array_map( function ( $t ) {
         return [ 'id' => $t->term_id, 'name' => $t->name, 'slug' => $t->slug ];
     }, is_array( $series_terms ) ? $series_terms : [] );
@@ -223,7 +244,7 @@ function specparts_api_products( WP_REST_Request $request ) {
     }
     if ( $series ) {
         $args['tax_query'][] = [
-            'taxonomy' => 'product_series',
+            'taxonomy' => specparts_get_series_taxonomy(),
             'field'    => 'slug',
             'terms'    => $series,
         ];
@@ -309,10 +330,126 @@ function specparts_api_product_by_sku( WP_REST_Request $request ) {
 // GET /categories
 // ============================================================
 
+/**
+ * Get product series assigned to products in a child product_cat term.
+ *
+ * @param WP_Term $category_term Child product category term.
+ * @return array<int, array{id:int,name:string,slug:string,count:int}>
+ */
+function specparts_get_series_for_category_term( $category_term ) {
+    if ( empty( $category_term->parent ) ) {
+        return [];
+    }
+
+    global $wpdb;
+
+    $taxonomy = specparts_get_series_taxonomy();
+    $rows     = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT DISTINCT t.term_id, t.name, t.slug, tt.count
+            FROM {$wpdb->terms} t
+            INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+            INNER JOIN {$wpdb->term_relationships} tr_series ON tt.term_taxonomy_id = tr_series.term_taxonomy_id
+            INNER JOIN {$wpdb->term_relationships} tr_cat ON tr_series.object_id = tr_cat.object_id
+            INNER JOIN {$wpdb->posts} p ON tr_series.object_id = p.ID
+            WHERE tt.taxonomy = %s
+              AND tr_cat.term_taxonomy_id = %d
+              AND p.post_type = 'product'
+              AND p.post_status = 'publish'
+            ORDER BY t.name ASC",
+            $taxonomy,
+            (int) $category_term->term_taxonomy_id
+        )
+    );
+
+    if ( empty( $rows ) ) {
+        return [];
+    }
+
+    $series = [];
+    foreach ( $rows as $row ) {
+        $series[] = [
+            'id'    => (int) $row->term_id,
+            'name'  => $row->name,
+            'slug'  => $row->slug,
+            'count' => (int) $row->count,
+        ];
+    }
+
+    return $series;
+}
+
+/**
+ * Build a map of child product_cat term_id => unique product series terms.
+ *
+ * @return array<int, array<string, array{id:int,name:string,slug:string,count:int}>>
+ */
+function specparts_get_child_category_series_map() {
+    static $cache = null;
+
+    if ( null !== $cache ) {
+        return $cache;
+    }
+
+    $cache = [];
+    $terms = get_terms(
+        [
+            'taxonomy'   => 'product_cat',
+            'hide_empty' => false,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ]
+    );
+
+    if ( is_wp_error( $terms ) ) {
+        return $cache;
+    }
+
+    foreach ( $terms as $term ) {
+        if ( empty( $term->parent ) ) {
+            continue;
+        }
+
+        $series_list = specparts_get_series_for_category_term( $term );
+        if ( empty( $series_list ) ) {
+            continue;
+        }
+
+        $cache[ $term->term_id ] = [];
+        foreach ( $series_list as $series ) {
+            $cache[ $term->term_id ][ $series['slug'] ] = $series;
+        }
+    }
+
+    foreach ( $cache as &$series_list ) {
+        $series_list = array_values( $series_list );
+    }
+    unset( $series_list );
+
+    return $cache;
+}
+
+function specparts_prune_category_tree( $node ) {
+    if ( ! empty( $node['children'] ) ) {
+        $node['children'] = array_values(
+            array_filter(
+                array_map( 'specparts_prune_category_tree', $node['children'] ),
+                static function ( $child ) {
+                    return (int) $child['count'] > 0
+                        || ! empty( $child['children'] )
+                        || ! empty( $child['series'] );
+                }
+            )
+        );
+    }
+
+    return $node;
+}
+
 function specparts_api_categories( WP_REST_Request $request ) {
     $terms = get_terms( [
         'taxonomy'   => 'product_cat',
-        'hide_empty' => true,
+        'hide_empty' => false,
         'orderby'    => 'name',
         'order'      => 'ASC',
     ] );
@@ -332,15 +469,34 @@ function specparts_api_categories( WP_REST_Request $request ) {
             'parent_id'   => $t->parent,
             'description' => wp_strip_all_tags( (string) $t->description ),
             'children'    => [],
+            'series'      => [],
         ];
     }
     foreach ( $terms as $t ) {
         if ( $t->parent && isset( $map[ $t->parent ] ) ) {
-            $map[ $t->parent ]['children'][] = &$map[ $t->term_id ];
+            $child           = &$map[ $t->term_id ];
+            $child['series'] = specparts_get_series_for_category_term( $t );
+            $map[ $t->parent ]['children'][] = &$child;
         } else {
             $parents[] = &$map[ $t->term_id ];
         }
     }
+
+    $parents = array_values(
+        array_filter(
+            array_map( 'specparts_prune_category_tree', $parents ),
+            static function ( $parent ) {
+                if ( 'uncategorized' === $parent['slug'] ) {
+                    return false;
+                }
+
+                return (int) $parent['count'] > 0
+                    || ! empty( $parent['children'] )
+                    || ! empty( $parent['series'] );
+            }
+        )
+    );
+
     return new WP_REST_Response( array_values( $parents ), 200 );
 }
 
@@ -350,7 +506,7 @@ function specparts_api_categories( WP_REST_Request $request ) {
 
 function specparts_api_series( WP_REST_Request $request ) {
     $terms = get_terms( [
-        'taxonomy'   => 'product_series',
+        'taxonomy'   => specparts_get_series_taxonomy(),
         'hide_empty' => true,
         'orderby'    => 'name',
         'order'      => 'ASC',

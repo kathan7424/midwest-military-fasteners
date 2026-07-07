@@ -255,6 +255,30 @@ function theme_allow_svg_uploads( $mimes ) {
 
 if (!defined('ABSPATH')) exit;
 
+if ( ! function_exists( 'specparts_get_series_taxonomy' ) ) {
+    /**
+     * Resolve the registered product series taxonomy slug.
+     * Live site uses product-series; legacy/import code used product_series.
+     */
+    function specparts_get_series_taxonomy() {
+        static $taxonomy = null;
+
+        if ( null !== $taxonomy ) {
+            return $taxonomy;
+        }
+
+        foreach ( [ 'product-series', 'product_series' ] as $candidate ) {
+            if ( taxonomy_exists( $candidate ) ) {
+                $taxonomy = $candidate;
+                return $taxonomy;
+            }
+        }
+
+        $taxonomy = 'product-series';
+        return $taxonomy;
+    }
+}
+
 require_once get_template_directory() . '/inc/shortcode.php';
 require_once get_template_directory() . '/inc/import.php';
 require_once get_template_directory() . '/inc/catalog-api.php';

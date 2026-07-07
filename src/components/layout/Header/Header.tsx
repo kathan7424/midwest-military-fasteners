@@ -15,15 +15,18 @@ import {
 } from "react-icons/fa6";
 
 import Navbar from "../Navbar/Navbar";
-import HeaderSearch from "../HeaderSearch/HeaderSearch";
 import HeaderCartDropdown from "../HeaderCartDropdown/HeaderCartDropdown";
+import HeaderSearch from "../HeaderSearch/HeaderSearch";
+import HeaderCart from "../HeaderCart/HeaderCart";
 import { fetchMenu } from "@/services/menu.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
 import { isUserLoggedIn } from "@/services/auth.service";
 import { MenuItem } from "@/types/menu.types";
 import { LinkField } from "@/types/site-settings.types";
-import { hasText } from "@/utils/content.utils";
 import { normalizeTel, normalizeWpUrl, resolveLinkUrl } from "@/utils/url.utils";
+
+const DEFAULT_PHONE = "313.608.8280";
+const DEFAULT_EMAIL = "sales@mwmilitary.com";
 
 function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
   return {
@@ -34,7 +37,7 @@ function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
 }
 
 export default async function Header() {
-  const [menuResult, settingsResult, is_logged_in] = await Promise.all([
+  const [menuResult, settingsResult, loggedIn] = await Promise.all([
     fetchMenu().catch((error) => {
       console.error("Menu Error:", error);
       return [] as MenuItem[];
@@ -46,170 +49,155 @@ export default async function Header() {
     isUserLoggedIn(),
   ]);
 
+  const is_logged_in = loggedIn;
   const menu = menuResult;
   const branding = settingsResult?.branding;
   const header_settings = settingsResult?.header;
 
-  const phone = hasText(header_settings?.phone) ? header_settings!.phone : null;
-  const email = hasText(header_settings?.email) ? header_settings!.email : null;
+  const phone = header_settings?.phone || DEFAULT_PHONE;
+  const email = header_settings?.email || DEFAULT_EMAIL;
   const register_link = getLinkProps(header_settings?.register_button, "/register");
   const login_link = getLinkProps(header_settings?.login_button, "/login");
-  const show_register = hasText(header_settings?.register_button?.title);
-  const show_login = hasText(header_settings?.login_button?.title);
   const show_search_bar =
     is_logged_in || Boolean(header_settings?.show_search_bar);
-  const has_logo = Boolean(branding?.logo?.url);
-  const has_site_title = hasText(branding?.site_title);
-  const has_menu = menu.length > 0;
-  const show_top_bar =
-    (is_logged_in && has_menu) ||
-    Boolean(phone || email || show_register || show_login || is_logged_in);
-
-  const contactLinkClass = is_logged_in
-    ? "text-link text-amber transition-colors hover:text-[#b38600]"
-    : "text-link text-blue transition-colors hover:text-navy";
 
   return (
-    <header className="relative bg-white shadow-[0_0_10px_rgba(0,0,0,0.05)]">
-      {show_top_bar ? (
-        <div className="hidden bg-off-white lg:block">
-          <div className="mx-auto flex max-w-8xl items-center justify-end gap-6 px-5">
-            {is_logged_in && has_menu ? (
-              <nav aria-label="Top navigation">
-                <ul className="flex items-center gap-6">
-                  {menu.map((item) => (
-                    <li key={item.id}>
-                      <Link
-                        href={normalizeWpUrl(item.url)}
-                        prefetch={false}
-                        className="text-sm font-semibold uppercase tracking-wide text-near-black transition-colors hover:text-blue"
-                      >
-                        {item.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ) : null}
+    <header className="bg-white relative shadow-[0_0_10px_rgba(0,0,0,0.05)]">
+      <div className="hidden lg:block bg-off-white">
+        <div
+          className={`mx-auto flex items-center justify-end ${
+            is_logged_in ? "gap-14" : "gap-6"
+          }`}
+        >
+          {is_logged_in && (
+            <nav aria-label="Top navigation">
+              <ul className="flex items-center gap-6">
+                {menu.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={normalizeWpUrl(item.url)}
+                      prefetch={false}
+                      className="text-near-black font-normal text-link uppercase tracking-wide hover:text-blue transition-colors"
+                    >
+                      {item.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
 
-            {phone ? (
-              <a
-                href={`tel:${normalizeTel(phone)}`}
-                className={`flex items-center gap-1.5 ${contactLinkClass}`}
-              >
-                <FaPhone size={13} />
-                {phone}
-              </a>
-            ) : null}
+          <div className="flex items-center gap-10">
+            <a
+              href={`tel:${normalizeTel(phone)}`}
+              className="flex items-center gap-2.5 text-link text-blue hover:text-navy transition-colors"
+            >
+              <FaPhone size={13} />
+              {phone}
+            </a>
 
-            {email ? (
-              <a
-                href={`mailto:${email}`}
-                className={`uppercase tracking-wide ${contactLinkClass}`}
-              >
-                {email}
-              </a>
-            ) : null}
+            <a
+              href={`mailto:${email}`}
+              className="text-link text-blue uppercase tracking-wide hover:text-navy transition-colors"
+            >
+              {email}
+            </a>
 
             {is_logged_in ? (
               <Link
                 href="/my-account"
-                className="flex items-center gap-[10px] bg-blue px-5 py-4 text-link text-white transition-colors hover:bg-navy"
+                className="flex items-center gap-[10px] px-5 xl:px-12 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
               >
                 <FaUser size={13} />
                 ACCOUNT
               </Link>
             ) : (
               <div className="flex">
-                {show_register ? (
-                  <Link
-                    href={register_link.href}
-                    target={register_link.target}
-                    className="flex items-center gap-[10px] bg-blue px-5 py-4 text-link text-white transition-colors hover:bg-navy"
-                  >
-                    <FaUser size={13} />
-                    {register_link.title}
-                  </Link>
-                ) : null}
-                {show_login ? (
-                  <Link
-                    href={login_link.href}
-                    target={login_link.target}
-                    className={`flex items-center gap-[10px] bg-blue px-5 py-4 text-link text-white transition-colors hover:bg-navy ${
-                      show_register ? "border-l border-white/20" : ""
-                    }`}
-                  >
-                    <FaArrowRightToBracket size={13} />
-                    {login_link.title}
-                  </Link>
-                ) : null}
+                <Link
+                  href={register_link.href}
+                  target={register_link.target}
+                  className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
+                >
+                  <FaUser size={13} />
+                  {register_link.title ?? "REGISTER"}
+                </Link>
+                <Link
+                  href={login_link.href}
+                  target={login_link.target}
+                  className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white text-link hover:bg-navy transition-colors border-l border-white/20"
+                >
+                  <FaArrowRightToBracket size={13} />
+                  {login_link.title ?? "LOGIN"}
+                </Link>
               </div>
             )}
           </div>
         </div>
-      ) : null}
+      </div>
 
-      <div className="mx-auto max-w-8xl px-5 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/" prefetch={false} className="block shrink-0">
-            {has_logo ? (
-              <Image
-                src={branding!.logo!.url}
-                alt={
-                  branding?.logo?.alt ||
-                  branding?.site_title ||
-                  "Midwest Military Fasteners"
-                }
-                width={235}
-                height={60}
-                priority
-                className="h-auto w-[276px] max-w-[186px] sm:max-w-full"
-              />
-            ) : has_site_title ? (
-              <span className="text-xl font-bold text-near-black">
-                {branding!.site_title}
-              </span>
-            ) : null}
-          </Link>
-
-          {show_search_bar ? (
-            <div className="hidden min-w-0 flex-1 lg:block lg:px-6">
-              <HeaderSearch />
-            </div>
-          ) : (
-            <div className="hidden flex-1 lg:block" />
-          )}
-
-          <div className="ml-auto flex shrink-0 items-center gap-3">
-            {show_search_bar && is_logged_in ? (
-              <>
-                <HeaderCartDropdown variant="compact" className="lg:hidden" />
-                <HeaderCartDropdown variant="full" className="hidden lg:block" />
-              </>
-            ) : null}
-
-            {has_menu ? (
-              <Navbar
-                items={menu}
-                phone={phone}
-                email={email}
-                registerLink={register_link}
-                loginLink={login_link}
-                showRegister={show_register}
-                showLogin={show_login}
-                isLoggedIn={is_logged_in}
-                hideDesktopNav={Boolean(show_search_bar)}
-              />
-            ) : null}
-          </div>
-        </div>
+      <div
+        className={`mx-auto flex items-center justify-between px-5 py-4 ${
+          is_logged_in ? "w-full max-w-full" : "max-w-8xl"
+        }`}
+      >
+        <Link href="/" prefetch={false} className="shrink-0 block">
+          <Image
+            src={branding?.logo?.url ?? "/images/midwest-logo.svg"}
+            alt={
+              branding?.logo?.alt ||
+              branding?.site_title ||
+              "Midwest Military Fasteners"
+            }
+            width={235}
+            height={60}
+            priority
+            className="h-auto max-w-[186px] sm:max-w-full w-[276px]"
+          />
+        </Link>
 
         {show_search_bar ? (
-          <div className="mt-3 lg:hidden">
+          <div className="ml-auto flex items-center gap-3 lg:w-8/12 lg:justify-end lg:gap-10">
             <HeaderSearch />
+            {is_logged_in ? (
+              <>
+                <HeaderCart />
+                <HeaderCartDropdown variant="compact" className="lg:hidden" />
+              </>
+            ) : null}
+            <Navbar
+              items={menu}
+              phone={phone}
+              email={email}
+              registerLink={register_link}
+              loginLink={login_link}
+              showRegister={!is_logged_in}
+              showLogin={!is_logged_in}
+              isLoggedIn={is_logged_in}
+              hideDesktopNav
+              showMobileCartLink={!is_logged_in}
+            />
           </div>
-        ) : null}
+        ) : (
+          <Navbar
+            items={menu}
+            phone={phone}
+            email={email}
+            registerLink={register_link}
+            loginLink={login_link}
+            showRegister={!is_logged_in}
+            showLogin={!is_logged_in}
+            isLoggedIn={is_logged_in}
+            showMobileCartLink={!is_logged_in}
+          />
+        )}
       </div>
+
+      {show_search_bar ? (
+        <div className="border-t border-light-gray bg-white px-5 py-3 lg:hidden">
+          <HeaderSearch className="!flex !max-w-none" />
+        </div>
+      ) : null}
+
     </header>
   );
 }

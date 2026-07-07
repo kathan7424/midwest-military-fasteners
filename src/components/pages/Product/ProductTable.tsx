@@ -36,6 +36,8 @@ export interface Product {
   categorySlug?: string;
   categoryLabel?: string;
   image?: string;
+  stock_status?: string;
+  stock_quantity?: number | null;
 }
 
 export const productColumns: ColumnDef<Product>[] = [
@@ -104,6 +106,8 @@ export const productColumns: ColumnDef<Product>[] = [
         size="sm"
         productId={row.original.id}
         sku={row.original.sku}
+        stockStatus={row.original.stock_status}
+        stockQuantity={row.original.stock_quantity}
       />
     ),
   },

@@ -71,3 +71,21 @@ export async function remove_cart_item(
 
   return parse_cart_response<CartRemoveResponse & CartErrorResponse>(response);
 }
+
+export async function update_cart_item(payload: {
+  cart_item_key: string;
+  quantity: number;
+}): Promise<CartApiResponse<CartRemoveResponse & CartErrorResponse>> {
+  const response = await fetch(API_ROUTES.cartUpdate, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      cart_item_key: payload.cart_item_key,
+      quantity: payload.quantity,
+    }),
+  });
+
+  return parse_cart_response<CartRemoveResponse & CartErrorResponse>(response);
+}

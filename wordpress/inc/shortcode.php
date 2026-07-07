@@ -19,19 +19,25 @@ function specparts_render_catalog($atts) {
         'search'   => 1,
     ], $atts, 'parts_catalog');
 
+    $series_taxonomy = specparts_get_series_taxonomy();
+
     // ── Build sidebar tree: parent → children → series ──
-    $get_series_by_category = function ($cat_term_taxonomy_id) {
+    $get_series_by_category = function ( $cat_term_taxonomy_id ) use ( $series_taxonomy ) {
         global $wpdb;
-        return $wpdb->get_results($wpdb->prepare("
+        return $wpdb->get_results( $wpdb->prepare(
+            "
             SELECT DISTINCT t.name, t.slug
             FROM {$wpdb->terms} t
             INNER JOIN {$wpdb->term_taxonomy} tt   ON t.term_id = tt.term_id
             INNER JOIN {$wpdb->term_relationships} tr     ON tt.term_taxonomy_id = tr.term_taxonomy_id
             INNER JOIN {$wpdb->term_relationships} tr_cat ON tr.object_id = tr_cat.object_id
-            WHERE tt.taxonomy = 'product_series'
+            WHERE tt.taxonomy = %s
               AND tr_cat.term_taxonomy_id = %d
             ORDER BY t.name ASC
-        ", $cat_term_taxonomy_id));
+        ",
+            $series_taxonomy,
+            $cat_term_taxonomy_id
+        ) );
     };
 
     $parents = get_terms(['taxonomy' => 'product_cat', 'parent' => 0, 'hide_empty' => false, 'orderby' => 'name']);
@@ -50,7 +56,7 @@ function specparts_render_catalog($atts) {
     // ── Active series & category ──
     $active_series = isset($_GET['series']) ? sanitize_text_field($_GET['series']) : $atts['series'];
     if (empty($active_series)) {
-        $first = get_terms(['taxonomy' => 'product_series', 'hide_empty' => true, 'number' => 1]);
+        $first = get_terms( [ 'taxonomy' => $series_taxonomy, 'hide_empty' => true, 'number' => 1 ] );
         if (!empty($first) && !is_wp_error($first)) $active_series = $first[0]->slug;
     }
 
@@ -59,7 +65,7 @@ function specparts_render_catalog($atts) {
         $sample = get_posts([
             'post_type'      => 'product',
             'posts_per_page' => 1,
-            'tax_query'      => [['taxonomy' => 'product_series', 'field' => 'slug', 'terms' => $active_series]],
+            'tax_query'      => [ [ 'taxonomy' => $series_taxonomy, 'field' => 'slug', 'terms' => $active_series ] ],
             'fields'         => 'ids',
         ]);
         if (!empty($sample)) {
@@ -78,7 +84,7 @@ function specparts_render_catalog($atts) {
         'order'          => 'ASC',
     ];
     if ($active_series) {
-        $query_args['tax_query'] = [['taxonomy' => 'product_series', 'field' => 'slug', 'terms' => $active_series]];
+        $query_args['tax_query'] = [ [ 'taxonomy' => $series_taxonomy, 'field' => 'slug', 'terms' => $active_series ] ];
     }
     $query = new WP_Query($query_args);
 

@@ -9,7 +9,6 @@
 import Header from "@/components/layout/Header/Header";
 import Footer from "@/components/layout/Footer/Footer";
 import CartProvider from "@/components/layout/CartProvider/CartProvider";
-import ConfirmDialogProvider from "@/components/providers/ConfirmDialogProvider";
 import RouteProvider from "@/components/providers/RouteProvider";
 import ToasterProvider from "@/components/shared_Ui/ToasterProvider";
 import { isUserLoggedIn } from "@/services/auth.service";
@@ -26,8 +25,7 @@ export default async function WebsiteLayout({
   const is_logged_in = await isUserLoggedIn();
 
   return (
-  <RouteProvider>
-    <ConfirmDialogProvider>
+    <RouteProvider>
       <ToasterProvider />
       <CartProvider isLoggedIn={is_logged_in}>
         <Header />
@@ -36,7 +34,6 @@ export default async function WebsiteLayout({
 
         <Footer />
       </CartProvider>
-    </ConfirmDialogProvider>
-  </RouteProvider>
+    </RouteProvider>
   );
 }

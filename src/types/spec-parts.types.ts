@@ -13,6 +13,7 @@ export interface SpecPartsCategoryTerm {
   parent_id?: number;
   description?: string;
   children: SpecPartsCategoryTerm[];
+  series?: SpecPartsSeriesTerm[];
 }
 
 export interface SpecPartsSeriesTerm {

@@ -31,13 +31,26 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
   } = useGlobalSearch();
 
   return (
-    <div
-      ref={wrapperRef}
-      className={cn("relative min-w-0 w-full", className)}
+    <form
+      ref={(node) => {
+        (
+          wrapperRef as unknown as {
+            current: HTMLFormElement | null;
+          }
+        ).current = node;
+      }}
+      action="/catalog"
+      method="GET"
+      className={cn(
+        "relative hidden w-full max-w-[690px] flex-1 items-center lg:flex",
+        className
+      )}
+      onSubmit={(event) => event.preventDefault()}
     >
-      <div className="flex overflow-hidden rounded border border-light-gray bg-white">
+      <div className="flex w-full">
         <input
           type="search"
+          name="q"
           value={query}
           placeholder={SEARCH_PLACEHOLDER}
           onFocus={() => {
@@ -48,12 +61,12 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
           onChange={(event) => {
             setQuery(event.target.value);
           }}
-          className="min-w-0 flex-1 bg-white px-3 py-2.5 text-sm text-near-black placeholder:text-mid-gray focus:outline-none sm:px-4"
+          className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-link text-near-black outline-none placeholder:text-[#A5A5A5]"
         />
         <button
           type="button"
           aria-label="Search"
-          className="shrink-0 bg-amber px-3 py-2.5 text-white transition-colors hover:bg-[#b38600] sm:px-4"
+          className="h-12 rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
         >
           <FaMagnifyingGlass size={16} />
         </button>
@@ -65,6 +78,6 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
         isLoading={isLoading}
         suggestions={suggestions}
       />
-    </div>
+    </form>
   );
 }

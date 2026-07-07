@@ -32,7 +32,7 @@ export default function Sidebar({
       className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
     >
       <Accordion
-        type="multiple"
+        multiple
         defaultValue={activeGroupId ? [activeGroupId] : []}
       >
         {categories.map((category) => (

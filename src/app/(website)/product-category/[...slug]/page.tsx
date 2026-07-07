@@ -17,7 +17,6 @@ import {
   build_catalog_breadcrumb,
 } from "@/utils/catalog-page.utils";
 import {
-  attach_series_to_sidebar,
   map_spec_parts_categories_to_sidebar,
   map_spec_parts_product_to_table_product,
 } from "@/utils/spec-parts.utils";
@@ -49,11 +48,7 @@ export default async function ProductCategoryPage({
     notFound();
   }
 
-  const [sidebar_products_response, products_response] = await Promise.all([
-    fetch_spec_parts_products({
-      category: active_category_slug,
-      per_page: 200,
-    }),
+  const [products_response] = await Promise.all([
     fetch_spec_parts_products({
       category: active_category_slug,
       search: query.search,
@@ -63,15 +58,11 @@ export default async function ProductCategoryPage({
     }),
   ]);
 
-  const sidebar_categories = attach_series_to_sidebar(
-    map_spec_parts_categories_to_sidebar(categories),
-    sidebar_products_response.products,
-    active_category_slug
-  );
+  const sidebar_categories = map_spec_parts_categories_to_sidebar(categories);
 
-  const active_series = sidebar_products_response.products
-    .flatMap((product) => product.product_series)
-    .find((series) => series.slug === query.series);
+  const active_series = active_category.series?.find(
+    (series) => series.slug === query.series
+  );
 
   return (
     <ProductPage

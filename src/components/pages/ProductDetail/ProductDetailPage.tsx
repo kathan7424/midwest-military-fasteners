@@ -120,6 +120,8 @@ export default function ProductDetailPage({
                 className="mt-6"
                 productId={product.id}
                 sku={product.sku}
+                stockStatus={product.stock_status}
+                stockQuantity={product.stock_quantity}
               />
             </div>
 

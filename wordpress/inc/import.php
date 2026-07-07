@@ -221,10 +221,11 @@ function specparts_ensure_product_category( $name, $parent_id = 0 ) {
 
 function specparts_ensure_series_term( $name ) {
     if ( empty( $name ) ) return 0;
+    $taxonomy = specparts_get_series_taxonomy();
     $slug     = sanitize_title( $name );
-    $existing = term_exists( $slug, 'product_series' );
+    $existing = term_exists( $slug, $taxonomy );
     if ( $existing ) return intval( $existing['term_id'] );
-    $result = wp_insert_term( $name, 'product_series', [ 'slug' => $slug ] );
+    $result = wp_insert_term( $name, $taxonomy, [ 'slug' => $slug ] );
     return is_wp_error( $result ) ? 0 : intval( $result['term_id'] );
 }
 
@@ -851,7 +852,7 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         // Product Series
         if ( $ctx_series ) {
             $series_id = specparts_ensure_series_term( $ctx_series );
-            if ( $series_id ) wp_set_object_terms( $pid, $series_id, 'product_series' );
+            if ( $series_id ) wp_set_object_terms( $pid, $series_id, specparts_get_series_taxonomy() );
         }
 
         // Post meta
@@ -1037,7 +1038,7 @@ function specparts_import_demo() {
         if ( $dfar_term_id ) wp_set_object_terms( $pid, $dfar_term_id, 'pa_specs_standard' );
 
         $series_id = specparts_ensure_series_term( $d['series'] );
-        if ( $series_id ) wp_set_object_terms( $pid, $series_id, 'product_series' );
+        if ( $series_id ) wp_set_object_terms( $pid, $series_id, specparts_get_series_taxonomy() );
 
         update_post_meta( $pid, '_mfr_coc',          $d['mfr_coc'] );
         update_post_meta( $pid, '_material_certs',   $d['mat_certs'] );

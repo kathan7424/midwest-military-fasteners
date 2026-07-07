@@ -20,8 +20,10 @@ export default async function CartPage() {
   await requireAuth("/cart");
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12">
-      <h1 className="mb-8 text-3xl font-bold text-near-black">Your Order</h1>
+    <div className="mx-auto w-full max-w-8xl px-4 py-6 xl:px-5 xl:py-[30px]">
+      <h1 className="mb-6 text-h2 font-bold uppercase text-near-black">
+        Your Cart
+      </h1>
       <CartPageContent />
     </div>
   );

@@ -12,6 +12,7 @@ import type {
   SpecPartsPackagePricingTier,
   SpecPartsProduct,
 } from "@/types/spec-parts.types";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 function format_price(value: unknown): string {
   const numeric = Number(value);
@@ -48,9 +49,11 @@ export function map_spec_parts_product_to_table_product(
 
   return {
     id: product.id,
-    partNumber: product.sku || product.name,
-    sku: product.sku,
-    description: product.short_description || product.description || product.name,
+    partNumber: decodeHtmlEntities(product.sku || product.name),
+    sku: decodeHtmlEntities(product.sku),
+    description: decodeHtmlEntities(
+      product.short_description || product.description || product.name
+    ),
     pkgQty: product.pkg_qty ?? 0,
     price1: get_tier_price(product.package_pricing, 1) || format_price(product.price),
     price3: get_tier_price(product.package_pricing, 3),
@@ -60,28 +63,43 @@ export function map_spec_parts_product_to_table_product(
     country: product.country,
     specHref: product.spec_file_url || "#",
     seriesSlug: primary_series?.slug || "series",
-    seriesLabel: primary_series?.name,
+    seriesLabel: primary_series?.name
+      ? decodeHtmlEntities(primary_series.name)
+      : undefined,
     categorySlug: primary_category?.slug,
-    categoryLabel: primary_category?.name,
+    categoryLabel: primary_category?.name
+      ? decodeHtmlEntities(primary_category.name)
+      : undefined,
     image: product.image,
+    stock_status: product.stock_status,
+    stock_quantity: product.stock_quantity,
   };
 }
 
 export function map_spec_parts_categories_to_sidebar(
   categories: SpecPartsCategoryTerm[]
 ): SidebarCategory[] {
-  return categories.map((parent) => ({
-    id: parent.slug,
-    label: parent.name.toUpperCase(),
-    groups: parent.children.map((child) => ({
-      id: child.slug,
-      label: child.name,
-      href: `/product-category/${child.slug}`,
-      series: [],
-    })),
-  }));
+  return categories
+    .filter((parent) => parent.slug !== "uncategorized")
+    .map((parent) => ({
+      id: parent.slug,
+      label: decodeHtmlEntities(parent.name).toUpperCase(),
+      groups: parent.children.map((child) => ({
+        id: child.slug,
+        label: decodeHtmlEntities(child.name),
+        href: `/product-category/${child.slug}`,
+        series: (child.series ?? []).map((series) => ({
+          id: series.slug,
+          label: decodeHtmlEntities(series.name).toUpperCase(),
+          href: `/product-category/${child.slug}?series=${encodeURIComponent(series.slug)}`,
+        })),
+      })),
+    }));
 }
 
+/**
+ * @deprecated Series are now returned directly from /categories API.
+ */
 export function attach_series_to_sidebar(
   sidebar_categories: SidebarCategory[],
   products: SpecPartsProduct[],
@@ -113,10 +131,16 @@ export function attach_series_to_sidebar(
 
   return sidebar_categories.map((parent) => ({
     ...parent,
-    groups: parent.groups.map((group) => ({
-      ...group,
-      series: Array.from(series_by_category.get(group.id)?.values() ?? []),
-    })),
+    groups: parent.groups.map((group) => {
+      if (group.series.length > 0) {
+        return group;
+      }
+
+      return {
+        ...group,
+        series: Array.from(series_by_category.get(group.id)?.values() ?? []),
+      };
+    }),
   }));
 }
 

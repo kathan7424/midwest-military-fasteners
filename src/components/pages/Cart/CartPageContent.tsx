@@ -12,13 +12,17 @@ import Link from "next/link";
 import { FaChevronRight, FaXmark } from "react-icons/fa6";
 
 import { useCartStore } from "@/stores/cart.store";
-import { confirmRemoveItem } from "@/utils/notifications";
+import CartQuantityControl from "@/components/shared_Ui/CartQuantityControl";
+import CartStockNotice from "@/components/shared_Ui/CartStockNotice";
+import { getCartItemQuantityControlProps } from "@/utils/cart-stock.utils";
 import { normalizeWpUrl } from "@/utils/url.utils";
 
 export default function CartPageContent() {
   const cart = useCartStore((state) => state.cart);
   const isLoading = useCartStore((state) => state.isLoading);
   const isMutating = useCartStore((state) => state.isMutating);
+  const updatingItemKey = useCartStore((state) => state.updatingItemKey);
+  const updateItem = useCartStore((state) => state.updateItem);
   const removeItem = useCartStore((state) => state.removeItem);
 
   if (isLoading) {
@@ -41,61 +45,89 @@ export default function CartPageContent() {
     );
   }
 
-  const handleRemove = async (key: string, label: string) => {
-    const confirmed = await confirmRemoveItem(label);
-
-    if (!confirmed) {
-      return;
-    }
-
+  const handleRemove = async (key: string) => {
     await removeItem(key);
   };
 
+  const handleQuantityChange = async (key: string, nextQuantity: number) => {
+    await updateItem(key, Math.max(1, nextQuantity));
+  };
+
   return (
-    <div className="space-y-6">
-      <ul className="divide-y divide-light-gray border border-light-gray bg-white">
-        {cart.items.map((item) => (
-          <li
-            key={item.key}
-            className="flex items-start justify-between gap-4 px-4 py-4 sm:px-6"
-          >
-            <div className="min-w-0 flex-1">
-              <Link
-                href={normalizeWpUrl(item.url)}
-                className="text-lg font-semibold text-blue hover:text-navy"
-              >
-                {item.sku || item.name}
-              </Link>
-              <p className="mt-1 text-sm uppercase tracking-wide text-mid-gray">
-                QTY {item.quantity}
-              </p>
-              <p className="mt-2 text-base text-near-black">
-                <span className="text-mid-gray">Price </span>
-                <span
-                  className="font-bold"
-                  dangerouslySetInnerHTML={{ __html: item.price_html }}
-                />
-              </p>
-            </div>
+    <div className="max-w-[1320px]">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-navy text-left text-link font-bold uppercase text-white">
+              <th className="px-5 py-4">Part #</th>
+              <th className="px-5 py-4">Description</th>
+              <th className="px-5 py-4 text-center">Qty</th>
+              <th className="px-5 py-4">Price</th>
+              <th className="px-5 py-4 text-center">Remove</th>
+            </tr>
+          </thead>
 
-            <button
-              type="button"
-              disabled={isMutating}
-              aria-label={`Remove ${item.sku || item.name}`}
-              onClick={() => void handleRemove(item.key, item.sku || item.name)}
-              className="shrink-0 text-red-500 transition-colors hover:text-red-700 disabled:opacity-50"
-            >
-              <FaXmark size={16} />
-            </button>
-          </li>
-        ))}
-      </ul>
+          <tbody className="divide-y divide-light-gray border-b border-light-gray">
+            {cart.items.map((item) => {
+              const quantityProps = getCartItemQuantityControlProps(item);
 
-      <div className="flex flex-col gap-4 border border-light-gray bg-off-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              return (
+              <tr key={item.key}>
+                <td className="px-5 py-3 text-link text-blue">
+                  <Link href={normalizeWpUrl(item.url)} className="hover:underline">
+                    {item.sku || item.name}
+                  </Link>
+                </td>
+
+                <td className="px-5 py-3 text-near-black">
+                  <span className="block max-w-[480px] truncate" title={item.name}>
+                    {item.name}
+                  </span>
+                  <CartStockNotice item={item} className="mt-1 normal-case" />
+                </td>
+
+                <td className="px-5 py-3 text-center">
+                  <CartQuantityControl
+                    quantity={item.quantity}
+                    minQuantity={quantityProps.minQuantity}
+                    maxQuantity={quantityProps.maxQuantity}
+                    editable={quantityProps.editable}
+                    disabled={quantityProps.disabled}
+                    isUpdating={updatingItemKey === item.key}
+                    size="lg"
+                    onChange={(nextQuantity) =>
+                      handleQuantityChange(item.key, nextQuantity)
+                    }
+                  />
+                </td>
+
+                <td className="px-5 py-3 whitespace-nowrap text-near-black">
+                  <span
+                    dangerouslySetInnerHTML={{ __html: item.price_html }}
+                  />
+                </td>
+
+                <td className="px-5 py-3 text-center">
+                  <button
+                    type="button"
+                    disabled={isMutating}
+                    aria-label={`Remove ${item.sku || item.name}`}
+                    onClick={() => void handleRemove(item.key)}
+                    className="text-[#E12222] transition-colors hover:text-red-700 disabled:opacity-50"
+                  >
+                    <FaXmark size={18} />
+                  </button>
+                </td>
+              </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-8 flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-wide text-mid-gray">
-            Subtotal
-          </p>
+          <p className="text-sm uppercase tracking-wide text-mid-gray">Subtotal</p>
           <p
             className="text-2xl font-bold text-near-black"
             dangerouslySetInnerHTML={{ __html: cart.subtotal }}
@@ -103,13 +135,14 @@ export default function CartPageContent() {
         </div>
 
         {cart.checkout_url ? (
-          <a
+          <Link
             href={normalizeWpUrl(cart.checkout_url)}
-            className="inline-flex items-center justify-center gap-2 bg-amber px-6 py-3 text-base font-extrabold uppercase tracking-wide text-white transition-colors hover:bg-[#b38600]"
+            prefetch={false}
+            className="inline-flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
           >
             Checkout
-            <FaChevronRight size={14} />
-          </a>
+            <FaChevronRight size={12} />
+          </Link>
         ) : null}
       </div>
     </div>

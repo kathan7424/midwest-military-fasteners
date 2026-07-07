@@ -12,11 +12,9 @@ import { notFound } from "next/navigation";
 import { ProductDetailPage } from "@/components/pages/ProductDetail";
 import {
   fetch_spec_parts_categories,
-  fetch_spec_parts_products,
   fetch_spec_parts_product_by_sku,
 } from "@/services/spec-parts.service";
 import {
-  attach_series_to_sidebar,
   map_spec_parts_categories_to_sidebar,
   map_spec_parts_product_to_table_product,
 } from "@/utils/spec-parts.utils";
@@ -36,15 +34,7 @@ export default async function Page({ params }: Props) {
       fetch_spec_parts_product_by_sku(partNumber),
     ]);
     const product = map_spec_parts_product_to_table_product(raw_product);
-    const related_products_response = await fetch_spec_parts_products({
-      category: product.categorySlug,
-      per_page: 200,
-    });
-    const sidebar_categories = attach_series_to_sidebar(
-      map_spec_parts_categories_to_sidebar(category_tree),
-      related_products_response.products,
-      product.categorySlug
-    );
+    const sidebar_categories = map_spec_parts_categories_to_sidebar(category_tree);
 
     return (
       <ProductDetailPage
