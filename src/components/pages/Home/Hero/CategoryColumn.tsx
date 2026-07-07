@@ -19,8 +19,12 @@ export default function CategoryColumn({
   title,
   items,
 }: CategoryColumnProps) {
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="w-full">
+    <div className="w-[calc(50%-16px)] shrink-0 grow-0 sm:w-[calc(33.33%-22px)] md:w-auto">
       <h3 className="mb-4 whitespace-normal text-[18px] font-bold leading-[1.3] text-white">
         {title}
       </h3>

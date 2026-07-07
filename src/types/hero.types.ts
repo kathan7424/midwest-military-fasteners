@@ -7,10 +7,11 @@
  */
 
 export interface SearchSuggestion {
-  id: number;
+  id: string;
   code: string;
   title: string;
   url: string;
+  type: "product" | "page" | "post" | "term";
 }
 
 export interface SearchBarProps {

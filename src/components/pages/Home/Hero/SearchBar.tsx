@@ -8,91 +8,25 @@
  * Last Modified: 2026-07-06
  */
 
-import { useEffect, useRef, useState } from "react";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
-import SearchDropdown from "@/components/pages/Home/Hero/SearchDropdown";
+import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
 import { SEARCH_PLACEHOLDER } from "@/data/hero.data";
-import { SearchBarProps, SearchSuggestion } from "@/types/hero.types";
-import { SearchApiResponse } from "@/types/search.types";
-import { normalizeWpUrl } from "@/utils/url.utils";
-
-function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
-  return data.posts.map((post) => ({
-    id: post.id,
-    code: post.product?.sku || "",
-    title: post.title,
-    url: normalizeWpUrl(post.url),
-  }));
-}
+import { useGlobalSearch } from "@/hooks/use-global-search";
+import { SearchBarProps } from "@/types/hero.types";
 
 export default function SearchBar({
   placeholder = SEARCH_PLACEHOLDER,
 }: SearchBarProps) {
-  const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    const trimmed = query.trim();
-
-    if (trimmed.length < 2) {
-      setSuggestions([]);
-      setIsLoading(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(async () => {
-      setIsLoading(true);
-
-      try {
-        const response = await fetch(
-          `/api/search?q=${encodeURIComponent(trimmed)}`,
-          { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error("Search request failed");
-        }
-
-        const data = (await response.json()) as SearchApiResponse;
-        setSuggestions(mapSearchResponse(data));
-        setIsOpen(true);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error("Home search failed:", error);
-          setSuggestions([]);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    }, 300);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timeoutId);
-    };
-  }, [query]);
+  const {
+    query,
+    setQuery,
+    isOpen,
+    setIsOpen,
+    suggestions,
+    isLoading,
+    wrapperRef,
+  } = useGlobalSearch();
 
   return (
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-[800px]">
@@ -106,8 +40,8 @@ export default function SearchBar({
               setIsOpen(true);
             }
           }}
-          onChange={(e) => {
-            setQuery(e.target.value);
+          onChange={(event) => {
+            setQuery(event.target.value);
           }}
           className="h-14 min-w-0 flex-1 border border-navy px-4 text-base font-normal text-near-black placeholder:text-base placeholder:text-mid-gray focus:border-b-transparent focus:outline-none sm:h-16 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:h-[72px] lg:px-8 lg:text-[24px] lg:placeholder:text-[24px]"
         />
@@ -119,7 +53,8 @@ export default function SearchBar({
           <FaMagnifyingGlass className="text-lg sm:text-xl lg:text-2xl" />
         </button>
       </div>
-      <SearchDropdown
+      <GlobalSearchDropdown
+        variant="hero"
         isOpen={isOpen}
         isLoading={isLoading}
         suggestions={suggestions}

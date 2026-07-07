@@ -1,6 +1,6 @@
 /**
  * File Name: route.ts
- * Description: Internal proxy for WordPress product search API.
+ * Description: Internal proxy for WordPress global search API.
  * Developer: KP-184
  * Created Date: 2026-07-06
  * Last Modified: 2026-07-06

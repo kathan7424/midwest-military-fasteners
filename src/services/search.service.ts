@@ -11,12 +11,11 @@ import { SearchApiResponse } from "@/types/search.types";
 
 export async function fetchSearchResults(
   query: string,
-  limit = 10
+  limit = 15
 ): Promise<SearchApiResponse> {
   const params = new URLSearchParams({
     q: query,
     limit: String(limit),
-    post_type: "product",
   });
 
   return fetchWpJson<SearchApiResponse>(`/custom/v1/search?${params.toString()}`);

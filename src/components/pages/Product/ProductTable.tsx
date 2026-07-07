@@ -78,7 +78,9 @@ export const productColumns: ColumnDef<Product>[] = [
   {
     id: "order",
     header: "",
-    cell: () => <QtyAddToOrder size="sm" />,
+    cell: ({ row }) => (
+      <QtyAddToOrder size="sm" sku={row.original.sku} />
+    ),
   },
 ];
 

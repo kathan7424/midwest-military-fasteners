@@ -14,6 +14,10 @@ interface CategoryGridProps {
 }
 
 export default function CategoryGrid({ categories }: CategoryGridProps) {
+  if (categories.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mt-20 w-full max-w-8xl px-0 xl:px-5">
       <div className="grid grid-cols-1 gap-[40px] lg:grid-cols-[1fr_1fr] xl:gap-[60px]">
@@ -28,12 +32,11 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
 
             <div className="flex flex-wrap gap-x-8 gap-y-10">
               {category.columns.map((column) => (
-                <div
+                <CategoryColumn
                   key={column.title}
-                  className="w-[calc(50%-16px)] shrink-0 grow-0 sm:w-[calc(33.33%-22px)] md:w-auto"
-                >
-                  <CategoryColumn title={column.title} items={column.items} />
-                </div>
+                  title={column.title}
+                  items={column.items}
+                />
               ))}
             </div>
           </section>
@@ -53,12 +56,11 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
 
               <div className="flex flex-wrap gap-x-8 gap-y-10">
                 {category.columns.map((column) => (
-                  <div
+                  <CategoryColumn
                     key={column.title}
-                    className="w-[calc(50%-16px)] shrink-0 grow-0 sm:w-[calc(33.33%-22px)] md:w-auto"
-                  >
-                    <CategoryColumn title={column.title} items={column.items} />
-                  </div>
+                    title={column.title}
+                    items={column.items}
+                  />
                 ))}
               </div>
             </section>

@@ -53,10 +53,17 @@ export default async function Page({ params }: Props) {
     notFound();
   }
 
+  const pageTitle = wpPage?.title.rendered ?? menuItem?.title ?? "";
+  const pageContent = wpPage?.content.rendered;
+
+  if (!pageTitle && !pageContent) {
+    notFound();
+  }
+
   return (
     <WpPageContent
-      title={wpPage?.title.rendered ?? menuItem?.title ?? normalizedSlug}
-      content={wpPage?.content.rendered}
+      title={pageTitle || undefined}
+      content={pageContent}
     />
   );
 }

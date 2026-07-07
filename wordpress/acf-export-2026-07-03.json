@@ -1,0 +1,164 @@
+[
+    {
+        "key": "group_6a3e56e3859d1",
+        "title": "Home Page Product",
+        "fields": [
+            {
+                "key": "field_6a3e56e98ac00",
+                "label": "Product Catalog",
+                "name": "product_catalog",
+                "aria-label": "",
+                "type": "repeater",
+                "instructions": "",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "layout": "row",
+                "pagination": 0,
+                "min": 0,
+                "max": 0,
+                "collapsed": "",
+                "button_label": "Add Row",
+                "rows_per_page": 20,
+                "sub_fields": [
+                    {
+                        "key": "field_6a3e57528ac01",
+                        "label": "Parent Category",
+                        "name": "parent_category",
+                        "aria-label": "",
+                        "type": "taxonomy",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "taxonomy": "product_cat",
+                        "add_term": 1,
+                        "save_terms": 0,
+                        "load_terms": 0,
+                        "return_format": "id",
+                        "field_type": "select",
+                        "allow_null": 0,
+                        "allow_in_bindings": 0,
+                        "bidirectional": 0,
+                        "multiple": 0,
+                        "bidirectional_target": [],
+                        "parent_repeater": "field_6a3e56e98ac00"
+                    },
+                    {
+                        "key": "field_6a3e57d98ac02",
+                        "label": "Child Category",
+                        "name": "child_category",
+                        "aria-label": "",
+                        "type": "repeater",
+                        "instructions": "",
+                        "required": 0,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "",
+                            "class": "",
+                            "id": ""
+                        },
+                        "layout": "block",
+                        "min": 0,
+                        "max": 0,
+                        "collapsed": "",
+                        "button_label": "Add Row",
+                        "rows_per_page": 20,
+                        "sub_fields": [
+                            {
+                                "key": "field_6a3e57ea8ac03",
+                                "label": "Child Category",
+                                "name": "child_category",
+                                "aria-label": "",
+                                "type": "taxonomy",
+                                "instructions": "",
+                                "required": 0,
+                                "conditional_logic": 0,
+                                "wrapper": {
+                                    "width": "",
+                                    "class": "",
+                                    "id": ""
+                                },
+                                "taxonomy": "product_cat",
+                                "add_term": 1,
+                                "save_terms": 0,
+                                "load_terms": 0,
+                                "return_format": "id",
+                                "field_type": "select",
+                                "allow_null": 0,
+                                "allow_in_bindings": 0,
+                                "bidirectional": 0,
+                                "multiple": 0,
+                                "bidirectional_target": [],
+                                "parent_repeater": "field_6a3e57d98ac02"
+                            },
+                            {
+                                "key": "field_6a3e589b8ac04",
+                                "label": "Product",
+                                "name": "product",
+                                "aria-label": "",
+                                "type": "relationship",
+                                "instructions": "",
+                                "required": 0,
+                                "conditional_logic": 0,
+                                "wrapper": {
+                                    "width": "",
+                                    "class": "",
+                                    "id": ""
+                                },
+                                "post_type": [
+                                    "product"
+                                ],
+                                "post_status": "",
+                                "taxonomy": "",
+                                "filters": [
+                                    "search",
+                                    "post_type",
+                                    "taxonomy"
+                                ],
+                                "return_format": "object",
+                                "min": "",
+                                "max": "",
+                                "allow_in_bindings": 0,
+                                "elements": "",
+                                "bidirectional": 0,
+                                "bidirectional_target": [],
+                                "parent_repeater": "field_6a3e57d98ac02"
+                            }
+                        ],
+                        "parent_repeater": "field_6a3e56e98ac00"
+                    }
+                ]
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "page",
+                    "operator": "==",
+                    "value": "110"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": "",
+        "active": true,
+        "description": "",
+        "show_in_rest": 0,
+        "display_title": "",
+        "allow_ai_access": false,
+        "ai_description": ""
+    }
+]

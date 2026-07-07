@@ -95,7 +95,7 @@ export default function ProductDetailPage({
                 />
               </div>
 
-              <QtyAddToOrder size="lg" className="mt-6" />
+              <QtyAddToOrder size="lg" className="mt-6" sku={product.sku} />
             </div>
 
             <div className="lg:flex-1">
