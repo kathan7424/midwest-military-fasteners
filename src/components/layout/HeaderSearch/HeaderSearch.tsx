@@ -13,14 +13,14 @@ export default function HeaderSearch() {
     <form 
       action="/catalog"
       method="GET"
-      className="hidden lg:flex flex-1 max-w-[732px] w-full items-center"
+      className="hidden lg:flex flex-1 max-w-[690px] w-full items-center"
     >
       <div className="flex w-full">
         <input
           type="search"
           name="q"
           placeholder="Search by part # or keywords"
-          className="flex-1 px-4 py-3.5 text-link text-near-black placeholder:text-link placeholder:text-mid-gray outline-none bg-white border border-navy border-r-0 rounded-none h-12"
+          className="flex-1 px-4 py-3.5 text-link text-near-black placeholder:text-link placeholder:text-[#A5A5A5] outline-none bg-white border border-navy border-r-0 rounded-none h-12"
         />
         <button
           type="submit"
