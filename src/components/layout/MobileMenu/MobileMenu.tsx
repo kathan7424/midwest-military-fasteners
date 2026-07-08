@@ -9,7 +9,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiMenu, HiX } from "react-icons/hi";
@@ -53,7 +52,6 @@ export default function MobileMenu({
   showMobileCartLink = true,
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [menuTop, setMenuTop] = useState(0);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
@@ -82,58 +80,26 @@ export default function MobileMenu({
   }, []);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const updateMenuPosition = () => {
-      const header = document.querySelector("header");
-      if (header) {
-        setMenuTop(header.getBoundingClientRect().bottom);
-      }
-    };
+    if (!open) return;
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
+      if (event.key === "Escape") setOpen(false);
     };
 
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
     document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-      document.removeEventListener("keydown", handleEscape);
-    };
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [open]);
 
   if (items.length === 0) {
     return null;
   }
 
-  const menuPanel =
-    open && mounted ? (
-      <>
-        <button
-          type="button"
-          aria-label="Close menu overlay"
-          onClick={closeMenu}
-          className="fixed inset-0 z-[60] bg-transparent"
-        />
-
-        <div
-          className="fixed left-0 right-0 z-[61] overflow-y-auto border-t border-light-gray bg-white shadow-lg"
-          style={{
-            top: menuTop,
-            maxHeight: `calc(100vh - ${menuTop}px)`,
-          }}
-        >
-          <nav aria-label="Mobile navigation">
-            <ul className="flex flex-col px-4 py-2">
+  const menuPanel = open && mounted ? (
+    <>
+      <div className="absolute top-full left-0 right-0 bg-white border-t border-light-gray shadow-lg z-50">
+        
+        <nav aria-label="Mobile navigation">
+          <ul className="flex flex-col px-4 py-2">
               {items.map((item) => (
                 <li key={item.id}>
                   <Link
@@ -199,13 +165,14 @@ export default function MobileMenu({
               ) : null}
 
               {isLoggedIn ? (
-                <li className="flex flex-col gap-3 pb-3 pt-4">
+                <li className="flex gap-3 pb-3 pt-4">
                   <Link
                     href="/my-account"
                     onClick={closeMenu}
                     className="flex items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
                   >
-                    <FaUser size={13} />
+                    <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M4.5 4C4.5 5.375 5.625 6.5 7 6.5C8.375 6.5 9.5 5.375 9.5 4C9.5 2.625 8.375 1.5 7 1.5C5.625 1.5 4.5 2.625 4.5 4ZM1.5625 16H0L2 9.5H12L14 16H12.4375L10.9062 11H3.09375L1.5625 16ZM7 8C4.78125 8 3 6.21875 3 4C3 1.78125 4.78125 0 7 0C9.21875 0 11 1.78125 11 4C11 6.21875 9.21875 8 7 8Z" fill="currentColor"/></svg>
+
                     ACCOUNT
                   </Link>
                   {showMobileCartLink ? (
@@ -223,8 +190,8 @@ export default function MobileMenu({
             </ul>
           </nav>
         </div>
-      </>
-    ) : null;
+    </>
+  ) : null;
 
   return (
     <div className="lg:hidden">
@@ -233,7 +200,7 @@ export default function MobileMenu({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="text-blue transition-colors hover:text-navy"
+        className="text-blue hover:text-blue transition-colors"
       >
         {open ? (
           <HiX className="h-10 w-10" />
@@ -242,7 +209,7 @@ export default function MobileMenu({
         )}
       </button>
 
-      {menuPanel && mounted ? createPortal(menuPanel, document.body) : null}
+      {menuPanel}
     </div>
   );
 }

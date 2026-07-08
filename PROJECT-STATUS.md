@@ -1,8 +1,10 @@
 # PROJECT STATUS
 ## Midwest Military Fasteners — Build Tracker
 
-**Last Updated:** 2026-07-06
+**Last Updated:** 2026-07-08
 **Developers:** Jaimin, pod2
+
+**Overall Status:** 🔄 In Progress — Core auth UI pages and shared form styling are now implemented; product/cart/backend integration remains the next priority.
 
 ---
 
@@ -56,9 +58,34 @@
 | Product Catalog | `/catalog` | ❌ Not Started | — |
 | Cart | `/cart` | ❌ Not Started | Planned — deferred (see Next Steps) |
 | Checkout | `/checkout` | ❌ Not Started | — |
-| Login / Register | `/login` | ❌ Not Started | — |
+| Login / Register / Forgot Password | `/login`, `/register`, `/forgot-password` | 🔄 In Progress | Auth UI screens are built and styled; API wiring and final validation flow still need verification |
 | My Account | `/account` | ❌ Not Started | — |
 | Certifications | `/certifications` | ❌ Not Started | — |
+
+---
+
+## Recent Implementation Updates (2026-07-08)
+
+### New Files
+| File | Type | Notes |
+|------|------|-------|
+| `src/components/pages/Auth/LoginButton.tsx` | New | Custom button component used on login, register, and forgot-password forms |
+
+### Updated / Modified Files
+| File | Type | Notes |
+|------|------|-------|
+| `src/components/pages/Auth/LoginPanel.tsx` | Updated | Custom button, form input styling, and focus-ring cleanup |
+| `src/components/pages/Auth/ForgotPasswordPanel.tsx` | Updated | Matched login-page styling and button treatment |
+| `src/components/pages/Auth/RegisterPanel.tsx` | Updated | Register form input styling, upload field styling, date-picker styling, and button treatment |
+| `src/components/pages/Auth/SalesTaxExemptionUpload.tsx` | Updated | Upload field styled to match other auth inputs |
+| `src/components/application/date-picker/date-picker.tsx` | Updated | Added placeholder support and trigger button class support for square styling |
+| `src/app/(website)/login/page.tsx` | Updated | Adjusted login page container width |
+| `src/app/(website)/register/page.tsx` | Updated | Register page continues to use the updated auth panel |
+
+### Current Focus
+- Finish and verify the auth form flow end-to-end
+- Continue cart and product-data integration next
+- Keep shared auth UI components consistent across login, register, and forgot-password flows
 
 ---
 

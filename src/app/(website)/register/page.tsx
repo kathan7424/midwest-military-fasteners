@@ -48,13 +48,13 @@ export default async function RegisterPage() {
   const register_form_title = await get_register_form_title();
 
   return (
-    <section className="bg-off-white px-5 py-12 lg:py-16">
+    <section className="bg-white px-5 py-12 lg:py-[150px]">
       <div className="mx-auto w-full max-w-3xl">
         <div className="rounded bg-white p-8 shadow-md lg:p-10">
           <RegisterPanel title={register_form_title} />
         </div>
 
-        <p className="mt-6 text-center text-sm text-dark-gray">
+        <p className="mt-6 text-center text-link text-dark-gray">
           Already have an account?{" "}
           <Link
             href="/login"

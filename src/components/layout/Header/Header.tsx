@@ -108,7 +108,7 @@ export default async function Header() {
                 href="/my-account"
                 className="flex items-center gap-[10px] px-5 xl:px-12 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
               >
-                <FaUser size={13} />
+                <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M4.5 4C4.5 5.375 5.625 6.5 7 6.5C8.375 6.5 9.5 5.375 9.5 4C9.5 2.625 8.375 1.5 7 1.5C5.625 1.5 4.5 2.625 4.5 4ZM1.5625 16H0L2 9.5H12L14 16H12.4375L10.9062 11H3.09375L1.5625 16ZM7 8C4.78125 8 3 6.21875 3 4C3 1.78125 4.78125 0 7 0C9.21875 0 11 1.78125 11 4C11 6.21875 9.21875 8 7 8Z" fill="currentColor"/></svg>
                 ACCOUNT
               </Link>
             ) : (

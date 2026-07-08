@@ -66,16 +66,18 @@ export default function SalesTaxExemptionUpload({
 
   return (
     <div>
-      <label
+      {/* <label
         htmlFor="certificate_display"
         className="mb-1.5 block text-sm font-semibold text-dark-gray"
       >
         Sales Tax Exemption Doc
-      </label>
+      </label> */}
 
       <div
-        className={`flex h-10 overflow-hidden bg-white ${
-          error ? "border border-red-300" : "border border-[#bdbdbd]"
+        className={`flex items-center h-12 overflow-hidden bg-white ${
+          error
+            ? "border border-red-300"
+            : "rounded-none border border-[#666666] bg-white ring-0 focus-within:ring-0 focus-within:ring-transparent focus-within:outline-none shadow-none"
         }`}
       >
         <input
@@ -84,7 +86,7 @@ export default function SalesTaxExemptionUpload({
           readOnly
           value={file?.name || ""}
           placeholder="Upload Sales Tax Exemption Doc"
-          className="min-w-0 flex-1 border-0 bg-white px-3 text-sm text-near-black placeholder:text-[#b0b0b0] focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-3 text-link text-[#989898] placeholder:text-[#989898] focus:outline-none ring-0 focus:ring-0 shadow-none"
         />
 
         <input
@@ -98,7 +100,7 @@ export default function SalesTaxExemptionUpload({
 
         <button
           type="button"
-          className="flex shrink-0 items-center gap-1.5 bg-blue px-4 text-xs font-bold uppercase tracking-wide text-white transition-colors hover:bg-navy"
+          className="flex h-full shrink-0 items-center gap-1.5 bg-blue px-4 text-link font-bold uppercase text-white transition-colors hover:bg-navy"
           onClick={() => fileInputRef.current?.click()}
         >
           <FaFileArrowUp aria-hidden="true" />

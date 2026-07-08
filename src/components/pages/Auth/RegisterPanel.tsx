@@ -18,7 +18,7 @@ import { z } from "zod";
 
 import { register_user } from "@/services/auth-client.service";
 import { DatePicker } from "@/components/application/date-picker/date-picker";
-import { Button } from "@/components/base/buttons/button";
+import LoginButton from "@/components/pages/Auth/LoginButton";
 import { Input } from "@/components/base/input/input";
 import SalesTaxExemptionUpload from "@/components/pages/Auth/SalesTaxExemptionUpload";
 import { notifyError, notifySuccess } from "@/utils/notifications";
@@ -55,9 +55,9 @@ interface RegisterPanelProps {
 }
 
 const figma_input_wrapper_class =
-  "rounded-none bg-white shadow-none ring-[#bdbdbd] focus-within:ring-blue";
+  "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12 ring-0 focus-within:ring-0 focus-within:ring-transparent focus-within:outline-none shadow-none";
 const figma_input_text_class =
-  "text-sm text-near-black placeholder:text-[#b0b0b0]";
+  "text-link text-[#989898] placeholder:text-[#989898] focus:outline-none ring-0 focus:ring-0 shadow-none";
 
 export default function RegisterPanel({
   title = "Create Your Account",
@@ -124,16 +124,16 @@ export default function RegisterPanel({
 
   return (
     <div>
-      <h2 className="mb-6 text-center font-sans text-[28px] font-extrabold text-near-black md:text-left">
+      <h1 className="font-sans text-h2 font-bold mb-6 text-center text-dark-gray">
         {title}
-      </h2>
+      </h1>
 
       <form
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-5"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="first_name"
             control={control}
@@ -145,7 +145,7 @@ export default function RegisterPanel({
                 size="sm"
                 isInvalid={Boolean(errors.first_name)}
                 hint={errors.first_name?.message}
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -163,7 +163,7 @@ export default function RegisterPanel({
                 size="sm"
                 isInvalid={Boolean(errors.last_name)}
                 hint={errors.last_name?.message}
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -171,7 +171,7 @@ export default function RegisterPanel({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="company"
             control={control}
@@ -181,7 +181,7 @@ export default function RegisterPanel({
                 placeholder="Company"
                 autoComplete="organization"
                 size="sm"
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -200,7 +200,7 @@ export default function RegisterPanel({
                 size="sm"
                 isInvalid={Boolean(errors.email)}
                 hint={errors.email?.message}
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -208,7 +208,7 @@ export default function RegisterPanel({
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Controller
             name="password"
             control={control}
@@ -221,7 +221,7 @@ export default function RegisterPanel({
                 size="sm"
                 isInvalid={Boolean(errors.password)}
                 hint={errors.password?.message}
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -240,7 +240,7 @@ export default function RegisterPanel({
                 size="sm"
                 isInvalid={Boolean(errors.confirm_password)}
                 hint={errors.confirm_password?.message}
-                className="w-full"
+                className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
                 wrapperClassName={figma_input_wrapper_class}
                 inputClassName={figma_input_text_class}
               />
@@ -280,6 +280,8 @@ export default function RegisterPanel({
                     field.onChange(date ? date.toString() : "");
                   }}
                   size="md"
+                  placeholder="Expiration Date"
+                  buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left text-link text-[#989898] outline-none focus:outline-none ring-0 focus:ring-0 shadow-none"
                 />
                 {errors.expiry_date?.message ? (
                   <p className="mt-1 text-xs text-error-primary">
@@ -292,16 +294,14 @@ export default function RegisterPanel({
         </div>
 
         <div className="flex justify-center pt-3 md:justify-center">
-          <Button
+          <LoginButton
             type="submit"
-            color="primary"
-            size="md"
-            isDisabled={isSubmitting}
-            className="min-w-[142px] rounded-none bg-amber px-7 py-3 font-condensed text-base font-bold uppercase tracking-wide text-white shadow-none before:rounded-none hover:bg-[#b38600]"
+            disabled={isSubmitting}
+            className="min-w-[167px] h-[47px] rounded-none bg-amber px-8 py-3.5 font-condensed text-[18px] font-bold uppercase text-white hover:bg-[#b38600]"
             iconTrailing={FaChevronRight}
           >
             {isSubmitting ? "Registering..." : "Register"}
-          </Button>
+          </LoginButton>
         </div>
       </form>
     </div>
