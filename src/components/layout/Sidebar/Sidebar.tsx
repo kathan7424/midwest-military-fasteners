@@ -31,26 +31,33 @@ export default function Sidebar({
       aria-label="Product categories"
       className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
     >
-      <Accordion
-        multiple
-        defaultValue={activeGroupId ? [activeGroupId] : []}
-      >
-        {categories.map((category) => (
-          <section key={category.id} className="mb-8 last:mb-0">
-            <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
-              {category.label}
-            </h2>
+      {categories.map((category) => (
+        <section key={category.id} className="mb-8 last:mb-0">
+          {/* <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
+            {category.label}
+          </h2> */}
 
-            {category.groups.map((group) => (
-              <SidebarGroup
-                key={group.id}
-                group={group}
-                activeSeriesId={activeSeriesId}
-              />
+          <Accordion
+            defaultValue={activeGroupId ? [activeGroupId] : []}
+          >
+            {categories.map((category) => (
+              <section key={category.id} className="mb-8 last:mb-0">
+                <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
+                  {category.label}
+                </h2>
+
+                {category.groups.map((group) => (
+                  <SidebarGroup
+                    key={group.id}
+                    group={group}
+                    activeSeriesId={activeSeriesId}
+                  />
+                ))}
+              </section>
             ))}
-          </section>
-        ))}
-      </Accordion>
+          </Accordion>
+        </section>
+      ))}
     </nav>
   );
 }

@@ -82,6 +82,18 @@
 | `src/app/(website)/login/page.tsx` | Updated | Adjusted login page container width |
 | `src/app/(website)/register/page.tsx` | Updated | Register page continues to use the updated auth panel |
 
+### About Page (2026-07-08)
+#### New Files
+| File | Type | Notes |
+|------|------|-------|
+| `src/components/pages/About/AboutAccordion.tsx` | New | Page-scoped Figma-styled accordion used only on About page to avoid affecting sidebar/product accordions |
+
+#### Updated / Modified Files
+| File | Type | Notes |
+|------|------|-------|
+| `src/components/pages/About/AboutPage.tsx` | Updated | Rebuilt responsive About page: hero, overview, highlights, and FAQ; responsive stacking at `lg` breakpoint; uses `AboutAccordion` for FAQ |
+| `src/components/ui/accordion.tsx` | Updated (reverted) | Temporarily adjusted for Figma look then restored to original shared styling to avoid site-wide changes |
+
 ### Current Focus
 - Finish and verify the auth form flow end-to-end
 - Continue cart and product-data integration next

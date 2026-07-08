@@ -16,6 +16,38 @@ Runs at: `http://localhost:3000`
 
 ---
 
+## Git Workflow Essentials
+
+Use these commands for the day-to-day Git workflow:
+
+```bash
+git clone <repo-url>         # Clone a repository
+git status                   # Check changes
+git add .                    # Stage all changes
+git commit -m "message"      # Commit changes
+git pull                     # Get latest changes
+git push                     # Upload changes
+git fetch                    # Download remote updates without merging
+git branch                   # List branches
+git switch <branch>          # Switch branches
+git switch -c <branch>       # Create and switch to a new branch
+git merge <branch>           # Merge branches
+git rebase <branch>          # Reapply commits onto another branch
+git stash                    # Temporarily save changes
+git diff                     # Show differences
+git log --oneline            # View concise commit history
+git restore <file>           # Discard file changes
+git reset <options>          # Reset commits or staging area
+git remote -v                # View remote repositories
+git tag                      # Manage release tags
+git cherry-pick <commit>     # Apply a specific commit to another branch
+git revert <commit>          # Undo a commit by creating a new commit
+```
+
+These commands cover most of the standard development workflow for this project.
+
+---
+
 ## Folder Structure
 
 ```

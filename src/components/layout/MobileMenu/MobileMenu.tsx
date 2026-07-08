@@ -56,6 +56,20 @@ export default function MobileMenu({
   const pathname = usePathname();
 
   const closeMenu = () => setOpen(false);
+  const hasAboutLink = items.some((item) => {
+    const normalizedUrl = normalizeWpUrl(item.url).toLowerCase();
+    const slug = item.slug?.toLowerCase();
+
+    return (
+      slug === "about" ||
+      slug === "about-us" ||
+      normalizedUrl === "/about" ||
+      normalizedUrl === "/about-us"
+    );
+  });
+  const navItems = hasAboutLink
+    ? items
+    : [...items, { id: 999999, title: "ABOUT", slug: "about", url: "/about", type: "custom", parent: 0 }];
   const hasContact = Boolean(phone || email);
   const hasAuthButtons = showRegister || showLogin;
 
@@ -100,7 +114,7 @@ export default function MobileMenu({
         
         <nav aria-label="Mobile navigation">
           <ul className="flex flex-col px-4 py-2">
-              {items.map((item) => (
+              {navItems.map((item) => (
                 <li key={item.id}>
                   <Link
                     href={normalizeWpUrl(item.url)}
