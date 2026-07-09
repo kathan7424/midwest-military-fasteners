@@ -1585,7 +1585,25 @@ function specparts_repair_category_hierarchy() {
     ];
 }
 
+// The category tree is expensive (per-term series + hero meta lookups) —
+// cache it in a transient and bust on any category/product change.
+define( 'SPECPARTS_CATEGORIES_CACHE_KEY', 'specparts_categories_tree_v1' );
+
+function specparts_clear_categories_cache(): void {
+    delete_transient( SPECPARTS_CATEGORIES_CACHE_KEY );
+}
+add_action( 'created_product_cat', 'specparts_clear_categories_cache' );
+add_action( 'edited_product_cat', 'specparts_clear_categories_cache' );
+add_action( 'delete_product_cat', 'specparts_clear_categories_cache' );
+add_action( 'save_post_product', 'specparts_clear_categories_cache' );
+add_action( 'woocommerce_update_product', 'specparts_clear_categories_cache' );
+
 function specparts_api_categories( WP_REST_Request $request ) {
+    $cached = get_transient( SPECPARTS_CATEGORIES_CACHE_KEY );
+    if ( false !== $cached && is_array( $cached ) ) {
+        return new WP_REST_Response( $cached, 200 );
+    }
+
     $terms = get_terms( [
         'taxonomy'   => 'product_cat',
         'hide_empty' => false,
@@ -1596,9 +1614,11 @@ function specparts_api_categories( WP_REST_Request $request ) {
         return new WP_REST_Response( [ 'error' => $terms->get_error_message() ], 500 );
     }
 
-    $parents = specparts_build_normalized_category_tree( $terms );
+    $parents = array_values( specparts_build_normalized_category_tree( $terms ) );
 
-    return new WP_REST_Response( array_values( $parents ), 200 );
+    set_transient( SPECPARTS_CATEGORIES_CACHE_KEY, $parents, 10 * MINUTE_IN_SECONDS );
+
+    return new WP_REST_Response( $parents, 200 );
 }
 
 /**

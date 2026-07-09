@@ -122,6 +122,7 @@ the response body usually names the real cause.
 - **Product detail gallery** — when a product has 2+ images (main + WC gallery), thumbnails render under the main image; clicking a thumbnail swaps the main image (active thumb has an amber border). Single-image products show no thumbnail strip.
 - **Sidebar accordion is single-open** — opening a category group (e.g. "Rounded Head Screws") closes whichever group was open before, even across sections (SCREWS/NUTS/WASHERS). Clicking the open group's header closes it. Navigating to a category page auto-opens that category's group. Two groups open at once IS a bug.
 - **Shop/category filter is two-speed by design** — typing filters the loaded rows instantly (client-side), then a debounced (150ms) server search replaces results with the full catalog match. A brief pending state between the two is normal; results "growing" after a pause is the server response landing, not a bug.
+- **Catalog speed layers** — the WP categories tree is transient-cached 10 min WP-side (busted automatically on any category/product save) AND 60–120s ISR-cached Next-side. First request after both caches expire pays the full build (~1–6s on Pantheon dev); everything after is instant. If category pages are consistently slow on EVERY request, one of the cache layers is broken. Localhost dev is also inherently slower (on-demand compile) — judge speed on the production build.
 
 ## 8. Regression Scope by Change Type
 
