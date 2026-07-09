@@ -120,6 +120,8 @@ the response body usually names the real cause.
 - **Spec sheet / certificate links force a real download** — they route through `/api/download?url=...` (same-origin proxy that sets `Content-Disposition: attachment`), so the browser downloads the file instead of opening it in a new tab. The proxy ONLY accepts files hosted on the WP origin (403 for anything else) and only allowed file extensions. If a spec link opens in a tab instead of downloading, the proxy wrapper is missing.
 - **Adding the same product to cart MERGES quantities (WooCommerce standard)** — adding qty 1 then qty 3 of the same product gives ONE cart row with qty 4, not two rows. Package tier pricing recalculates on the merged quantity (e.g. crossing the 3-pkg tier drops the unit price). Two rows for the same simple product IS a bug.
 - **Product detail gallery** — when a product has 2+ images (main + WC gallery), thumbnails render under the main image; clicking a thumbnail swaps the main image (active thumb has an amber border). Single-image products show no thumbnail strip.
+- **Sidebar accordion is single-open** — opening a category group (e.g. "Rounded Head Screws") closes whichever group was open before, even across sections (SCREWS/NUTS/WASHERS). Clicking the open group's header closes it. Navigating to a category page auto-opens that category's group. Two groups open at once IS a bug.
+- **Shop/category filter is two-speed by design** — typing filters the loaded rows instantly (client-side), then a debounced (150ms) server search replaces results with the full catalog match. A brief pending state between the two is normal; results "growing" after a pause is the server response landing, not a bug.
 
 ## 8. Regression Scope by Change Type
 

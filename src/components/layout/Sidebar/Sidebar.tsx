@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
 
 import { Accordion } from "@/components/ui/accordion";
 import SidebarGroup from "./SidebarGroup";
@@ -22,26 +22,42 @@ interface SidebarProps {
   activeSeriesId?: string;
 }
 
+function resolve_openable_group(
+  categories: SidebarCategory[],
+  groupId?: string
+): string | null {
+  if (!groupId) {
+    return null;
+  }
+
+  const group = categories
+    .flatMap((category) => category.groups)
+    .find((item) => item.id === groupId);
+
+  return group && group.series.length > 0 ? groupId : null;
+}
+
 export default function Sidebar({
   categories = [],
   activeGroupId,
   activeSeriesId,
 }: SidebarProps) {
-  const open_groups = useMemo(() => {
-    if (!activeGroupId) {
-      return [];
+  // Single-open accordion across ALL category sections: opening a group
+  // closes whichever group was open before, anywhere in the sidebar.
+  const [openGroup, setOpenGroup] = useState<string | null>(() =>
+    resolve_openable_group(categories, activeGroupId)
+  );
+
+  // Adopt the new active group on navigation (adjust state during render).
+  const [prevActiveGroupId, setPrevActiveGroupId] = useState(activeGroupId);
+
+  if (prevActiveGroupId !== activeGroupId) {
+    setPrevActiveGroupId(activeGroupId);
+    const next = resolve_openable_group(categories, activeGroupId);
+    if (next) {
+      setOpenGroup(next);
     }
-
-    const active_group = categories
-      .flatMap((category) => category.groups)
-      .find((group) => group.id === activeGroupId);
-
-    if (active_group && active_group.series.length > 0) {
-      return [activeGroupId];
-    }
-
-    return [];
-  }, [categories, activeGroupId]);
+  }
 
   if (categories.length === 0) {
     return null;
@@ -53,12 +69,12 @@ export default function Sidebar({
       className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
     >
       {categories.map((category) => {
-        const section_open_groups = category.groups.some(
-          (group) =>
-            group.id === activeGroupId && group.series.length > 0
-        )
-          ? open_groups
-          : [];
+        // Controlled value per section: only the section containing the open
+        // group renders it open; every other section renders fully closed.
+        const sectionValue =
+          openGroup && category.groups.some((group) => group.id === openGroup)
+            ? [openGroup]
+            : [];
 
         return (
           <section key={category.id} className="mb-8 last:mb-0">
@@ -66,7 +82,16 @@ export default function Sidebar({
               {category.label}
             </h2>
 
-            <Accordion multiple defaultValue={section_open_groups}>
+            <Accordion
+              value={sectionValue}
+              onValueChange={(value) => {
+                const items = Array.isArray(value) ? value : [];
+                // Newly opened item wins; empty array means the user closed it.
+                setOpenGroup(
+                  items.length ? String(items[items.length - 1]) : null
+                );
+              }}
+            >
               {category.groups.map((group) => (
                 <SidebarGroup
                   key={group.id}

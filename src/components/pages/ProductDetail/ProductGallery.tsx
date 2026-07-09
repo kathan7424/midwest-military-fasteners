@@ -46,16 +46,14 @@ export default function ProductGallery({
       {/* Thumbnail strip — only rendered when product has 2+ images */}
       {hasMultiple ? (
         <div
-          className="mt-3 flex flex-wrap gap-2"
-          style={{ maxWidth: "298px" }}
-          role="list"
+          className="mt-3 flex max-w-[298px] flex-wrap gap-2"
+          role="group"
           aria-label="Product images"
         >
           {allImages.map((img, index) => (
             <button
               key={img}
               type="button"
-              role="listitem"
               onClick={() => setActive(img)}
               aria-label={`View image ${index + 1}`}
               aria-pressed={active === img}

@@ -22,6 +22,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-08 | Click "Download Spec Sheet" (detail page) or "Download" (shop table) | File DOWNLOADS (no new tab); filename matches the WP file name |
 | PDP-09 | Request `/api/download?url=https://evil.example.com/x.pdf` directly | 403 — proxy only allows the WP origin |
 | PDP-10 | Shop page: add same product twice (qty 1, then qty 3) | Mini-cart shows ONE row with qty 4 (WC merges); unit price recalculates to the matching package tier |
+| PDP-11 | Sidebar: open "Hex Cap Screws", then open "Cap Nuts" (different section) | "Hex Cap Screws" closes automatically — only ONE group open at a time across the whole sidebar |
+| PDP-12 | Sidebar: click the currently open group's header | Group closes; no group is open |
+| PDP-13 | Navigate to a category page (e.g. /product-category/screws/hex-cap-screws) | That category's sidebar group is open on load; all others closed |
 
 ## TC-IMP — CSV Import
 
