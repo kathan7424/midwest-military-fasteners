@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
 
-    return buildProxiedResponse(wpResponse);
+    // Clear the WC cart session — otherwise the next login sees this user's cart.
+    return buildProxiedResponse(wpResponse, { clearWcSession: true });
   } catch (error) {
     console.error("Logout proxy error:", error);
 

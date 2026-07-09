@@ -12,20 +12,40 @@ import { useState } from "react";
 
 import { useCartStore } from "@/stores/cart.store";
 import { cn } from "@/lib/utils";
-import { getProductStockState } from "@/utils/cart-stock.utils";
+import {
+  getProductStockMessage,
+  getProductStockState,
+} from "@/utils/cart-stock.utils";
+import { notifyError, notifyWarning } from "@/utils/notifications";
 
 interface QtyAddToOrderProps {
   productId?: number;
   sku?: string;
+  productName?: string;
   stockStatus?: string;
   stockQuantity?: number | null;
   size?: "sm" | "lg";
   className?: string;
 }
 
+function clamp_quantity(
+  value: number,
+  min_quantity: number,
+  max_quantity?: number
+): number {
+  const normalized = Math.max(min_quantity, Number(value) || min_quantity);
+
+  if (max_quantity && max_quantity > 0) {
+    return Math.min(normalized, max_quantity);
+  }
+
+  return normalized;
+}
+
 export default function QtyAddToOrder({
   productId,
   sku,
+  productName,
   stockStatus,
   stockQuantity,
   size = "sm",
@@ -38,20 +58,72 @@ export default function QtyAddToOrder({
   const stock = getProductStockState(stockStatus, stockQuantity);
   const isOutOfStock = !stock.in_stock;
 
-  const handleAdd = async () => {
-    if (isOutOfStock) {
+  const handleQuantityChange = (raw_value: string, commit = false) => {
+    const raw = Number(raw_value) || 1;
+
+    if (stock.max_quantity !== undefined && raw > stock.max_quantity) {
+      notifyError(
+        `You cannot add that amount to the cart — we have ${stock.max_quantity} in stock.`
+      );
+      setQuantity(stock.max_quantity);
       return;
     }
 
-    const parsedQty = Math.max(1, Number(quantity) || 1);
+    const parsed = clamp_quantity(raw, 1, stock.max_quantity);
+
+    if (commit && parsed > quantity) {
+      const message = getProductStockMessage(
+        stockStatus,
+        stockQuantity,
+        parsed
+      );
+
+      if (message) {
+        notifyWarning(message);
+      }
+    }
+
+    setQuantity(parsed);
+  };
+
+  const handleAdd = async () => {
+    if (isOutOfStock) {
+      notifyError("Sorry, this product is out of stock.");
+      return;
+    }
+
+    const parsedQty = clamp_quantity(quantity, 1, stock.max_quantity);
+    const stock_message = getProductStockMessage(
+      stockStatus,
+      stockQuantity,
+      parsedQty
+    );
+
+    if (
+      stock.max_quantity !== undefined &&
+      parsedQty > stock.max_quantity
+    ) {
+      notifyError(
+        stock_message ??
+          `You cannot add that amount to the cart — we have ${stock.max_quantity} in stock.`
+      );
+      setQuantity(stock.max_quantity);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await addItem({
+      const added = await addItem({
         productId,
         sku,
+        productName,
         quantity: parsedQty,
       });
+
+      if (added && stock_message) {
+        notifyWarning(stock_message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -79,9 +151,9 @@ export default function QtyAddToOrder({
       <input
         type="number"
         min={1}
-        max={stock.max_quantity}
         value={quantity}
-        onChange={(event) => setQuantity(Number(event.target.value))}
+        onChange={(event) => handleQuantityChange(event.target.value)}
+        onBlur={(event) => handleQuantityChange(event.target.value, true)}
         placeholder="QTY"
         aria-label="Quantity"
         className={cn(

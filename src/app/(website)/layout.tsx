@@ -10,30 +10,51 @@ import Header from "@/components/layout/Header/Header";
 import Footer from "@/components/layout/Footer/Footer";
 import CartProvider from "@/components/layout/CartProvider/CartProvider";
 import RouteProvider from "@/components/providers/RouteProvider";
+import { SiteConfigProvider } from "@/components/providers/SiteConfigProvider";
 import ToasterProvider from "@/components/shared_Ui/ToasterProvider";
-import { isUserLoggedIn } from "@/services/auth.service";
-
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
+import { getWebsiteShellData } from "@/services/shell-data.service";
+import { warm_catalog_categories_cache } from "@/services/catalog-data.service";
+import { warm_sidebar_categories_cache } from "@/utils/spec-parts.utils";
+import CatalogWarmup from "@/components/providers/CatalogWarmup";
+import { get_catalog_listing_path } from "@/utils/catalog-path.utils";
 
 export default async function WebsiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const is_logged_in = await isUserLoggedIn();
+  const shell = await getWebsiteShellData();
+  const catalog_listing_path = get_catalog_listing_path(shell.settings?.woocommerce);
+  const iso_section = shell.settings?.footer
+    ? {
+        logo: shell.settings.footer.iso_logo,
+        contentHtml: shell.settings.footer.content_area || "",
+      }
+    : null;
+
+  warm_catalog_categories_cache();
+  warm_sidebar_categories_cache();
 
   return (
     <RouteProvider>
-      <ToasterProvider />
-      <CartProvider isLoggedIn={is_logged_in}>
-        <Header />
+      <SiteConfigProvider
+        catalogListingPath={catalog_listing_path}
+        isoSection={iso_section}
+      >
+        <CatalogWarmup />
+        <ToasterProvider />
+        <CartProvider isLoggedIn={shell.is_logged_in}>
+          <Header
+            menu={shell.menu}
+            settings={shell.settings}
+            isLoggedIn={shell.is_logged_in}
+          />
 
-        <main className="min-h-screen">{children}</main>
+          <main className="min-h-screen">{children}</main>
 
-        <Footer />
-      </CartProvider>
+          <Footer footerMenu={shell.footer_menu} settings={shell.settings} />
+        </CartProvider>
+      </SiteConfigProvider>
     </RouteProvider>
   );
 }

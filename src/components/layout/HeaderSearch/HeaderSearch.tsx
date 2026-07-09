@@ -28,6 +28,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
     suggestions,
     isLoading,
     wrapperRef,
+    clearSearch,
   } = useGlobalSearch();
 
   return (
@@ -59,7 +60,14 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
             }
           }}
           onChange={(event) => {
-            setQuery(event.target.value);
+            const value = event.target.value;
+
+            if (value.trim() === "") {
+              clearSearch();
+              return;
+            }
+
+            setQuery(value);
           }}
           className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-link text-near-black outline-none placeholder:text-[#A5A5A5]"
         />

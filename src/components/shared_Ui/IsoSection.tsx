@@ -1,16 +1,19 @@
 /**
  * File Name: IsoSection.tsx
- * Description: Shared ISO 9001:2015 trust block — logo + tagline + copy. Matches
- *              the site Footer's ISO section (font, width, wording). Reused across
- *              product listing / detail pages.
+ * Description: Shared ISO trust block — logo + content from WP footer settings
+ *              (same API source as the Footer). Renders nothing when the API
+ *              provides no content. Reused across product / cart pages.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-01
+ * Last Modified: 2026-07-08
  */
+
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
 
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { cn } from "@/lib/utils";
 
 interface IsoSectionProps {
@@ -23,6 +26,15 @@ export default function IsoSection({
   align = "center",
   className,
 }: IsoSectionProps) {
+  const { isoSection } = useSiteConfig();
+
+  const hasLogo = Boolean(isoSection?.logo?.url);
+  const hasContent = Boolean(isoSection?.contentHtml);
+
+  if (!hasLogo && !hasContent) {
+    return null;
+  }
+
   return (
     <div
       className={cn(
@@ -31,29 +43,24 @@ export default function IsoSection({
         className
       )}
     >
-      <Link href="/" prefetch={false} className="block shrink-0">
-        <Image
-          src="/images/ISO_9001-2015-logo.svg"
-          alt="Midwest Military Fasteners"
-          width={164}
-          height={144}
-          className="h-auto w-[164px]"
+      {hasLogo ? (
+        <Link href="/" prefetch={false} className="block shrink-0">
+          <Image
+            src={isoSection!.logo!.url}
+            alt={isoSection!.logo!.alt || "ISO certification logo"}
+            width={164}
+            height={144}
+            className="h-auto w-[164px]"
+          />
+        </Link>
+      ) : null}
+
+      {hasContent ? (
+        <div
+          className="max-w-[950px] text-center prose prose-lg md:text-left"
+          dangerouslySetInnerHTML={{ __html: isoSection!.contentHtml }}
         />
-      </Link>
-
-      <div className="max-w-[950px] text-center md:text-left">
-        <h2 className="mb-5 text-3xl font-black text-black">
-          Your First &amp; Final Stop for Standard and Specialty Fasteners.
-        </h2>
-
-        <p className="mb-5 text-lg leading-relaxed text-black">
-          Proudly serving customers ranging from small machine shops, to the
-          military, aerospace, marine, and heavy industrial. We are the fast,
-          honest, and knowledgeable supplier for your critical hardware needs.
-        </p>
-
-        <p className="mb-0 text-lg text-black">ISO 9001:2015 Registered</p>
-      </div>
+      ) : null}
     </div>
   );
 }

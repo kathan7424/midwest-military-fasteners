@@ -50,12 +50,19 @@ function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
   return [...posts, ...terms];
 }
 
-export function useGlobalSearch() {
+export interface UseGlobalSearchOptions {
+  /** "catalog" = products + product categories/series only (home hero). */
+  scope?: "global" | "catalog";
+}
+
+export function useGlobalSearch(options: UseGlobalSearchOptions = {}) {
+  const scope = options.scope ?? "global";
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const latestQueryRef = useRef("");
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,20 +83,23 @@ export function useGlobalSearch() {
 
   useEffect(() => {
     const trimmed = query.trim();
+    latestQueryRef.current = trimmed;
 
     if (trimmed.length < 2) {
       setSuggestions([]);
       setIsLoading(false);
+      setIsOpen(false);
       return;
     }
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
+      const searchQuery = trimmed;
       setIsLoading(true);
 
       try {
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(trimmed)}`,
+          `/api/search?q=${encodeURIComponent(searchQuery)}${scope === "catalog" ? "&scope=catalog" : ""}`,
           { signal: controller.signal }
         );
 
@@ -97,16 +107,25 @@ export function useGlobalSearch() {
           throw new Error("Search request failed");
         }
 
+        if (latestQueryRef.current !== searchQuery) {
+          return;
+        }
+
         const data = (await response.json()) as SearchApiResponse;
         setSuggestions(mapSearchResponse(data));
         setIsOpen(true);
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error("Global search failed:", error);
-          setSuggestions([]);
+          if (latestQueryRef.current === searchQuery) {
+            console.error("Global search failed:", error);
+            setSuggestions([]);
+            setIsOpen(false);
+          }
         }
       } finally {
-        setIsLoading(false);
+        if (latestQueryRef.current === searchQuery) {
+          setIsLoading(false);
+        }
       }
     }, 300);
 
@@ -114,7 +133,15 @@ export function useGlobalSearch() {
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [query]);
+  }, [query, scope]);
+
+  const clearSearch = () => {
+    latestQueryRef.current = "";
+    setQuery("");
+    setSuggestions([]);
+    setIsLoading(false);
+    setIsOpen(false);
+  };
 
   return {
     query,
@@ -124,5 +151,6 @@ export function useGlobalSearch() {
     suggestions,
     isLoading,
     wrapperRef,
+    clearSearch,
   };
 }

@@ -63,7 +63,7 @@ export function getCartItemStockMessage(item: CartItem): string | null {
   }
 
   if (!isCartItemInStock(item)) {
-    return "Out of stock";
+    return "Sorry, this product is out of stock.";
   }
 
   if (
@@ -74,6 +74,8 @@ export function getCartItemStockMessage(item: CartItem): string | null {
     return `Only ${item.low_stock_remaining} left in stock`;
   }
 
+  // Being AT the stock limit is not an error — WooCommerce only complains
+  // when the shopper tries to exceed it (handled in the quantity control).
   return null;
 }
 
@@ -110,6 +112,30 @@ export function mapStoreQuantityLimits(
     multiple_of: Number(limits.multiple_of ?? 1) || 1,
     editable: limits.editable !== false,
   };
+}
+
+export function getProductStockMessage(
+  stock_status?: string,
+  stock_quantity?: number | null,
+  requested_quantity = 1
+): string | null {
+  const stock = getProductStockState(stock_status, stock_quantity);
+
+  if (!stock.in_stock) {
+    return "Sorry, this product is out of stock.";
+  }
+
+  const max_quantity = stock.max_quantity;
+
+  if (max_quantity === undefined) {
+    return null;
+  }
+
+  if (requested_quantity > max_quantity) {
+    return `You cannot add that amount to the cart — we have ${max_quantity} in stock.`;
+  }
+
+  return null;
 }
 
 export function getCartItemQuantityControlProps(item: CartItem) {

@@ -5,64 +5,85 @@
  * Created Date: 2026-07-07
  */
 
+import {
+  get_cached_spec_parts_categories,
+  fetch_cached_spec_parts_products,
+} from "@/services/catalog-data.service";
+import { get_cached_sidebar_categories } from "@/utils/spec-parts.utils";
 import { fetchWpJson } from "@/services/wp-api.service";
 import {
   SpecPartsCategoryTerm,
   SpecPartsProduct,
-  SpecPartsProductsResponse,
+  SpecPartsProductsQueryParams,
   SpecPartsSeriesTerm,
 } from "@/types/spec-parts.types";
 
-export interface FetchSpecPartsProductsParams {
-  search?: string;
-  sku?: string;
-  category?: string;
-  series?: string;
-  manufacturer?: string;
-  country?: string;
-  dfar?: boolean;
-  per_page?: number;
-  page?: number;
-}
-
-function build_params(params: FetchSpecPartsProductsParams): string {
-  const search_params = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") {
-      return;
-    }
-
-    search_params.set(key, typeof value === "boolean" ? (value ? "1" : "0") : String(value));
-  });
-
-  return search_params.toString();
-}
+export type FetchSpecPartsProductsParams = SpecPartsProductsQueryParams;
 
 export async function fetch_spec_parts_products(
   params: FetchSpecPartsProductsParams = {}
-): Promise<SpecPartsProductsResponse> {
-  const query = build_params(params);
-  const endpoint = query
-    ? `/spec-parts/v1/products?${query}`
-    : "/spec-parts/v1/products";
-
-  return fetchWpJson<SpecPartsProductsResponse>(endpoint);
+) {
+  return fetch_cached_spec_parts_products(params);
 }
 
 export async function fetch_spec_parts_categories(): Promise<SpecPartsCategoryTerm[]> {
-  return fetchWpJson<SpecPartsCategoryTerm[]>("/spec-parts/v1/categories");
+  return get_cached_spec_parts_categories();
+}
+
+export async function fetch_sidebar_categories() {
+  return get_cached_sidebar_categories();
+}
+
+export async function fetch_spec_parts_category_by_slug(
+  slug: string
+): Promise<SpecPartsCategoryTerm> {
+  const normalized_slug = decodeURIComponent(slug.trim());
+
+  return fetchWpJson<SpecPartsCategoryTerm>(
+    `/spec-parts/v1/categories/slug/${encodeURIComponent(normalized_slug)}`,
+    { mode: "static", revalidate: 120 }
+  );
 }
 
 export async function fetch_spec_parts_series(): Promise<SpecPartsSeriesTerm[]> {
-  return fetchWpJson<SpecPartsSeriesTerm[]>("/spec-parts/v1/series");
+  return fetchWpJson<SpecPartsSeriesTerm[]>("/spec-parts/v1/series", {
+    mode: "static",
+    revalidate: 120,
+  });
 }
 
 export async function fetch_spec_parts_product_by_sku(
   sku: string
 ): Promise<SpecPartsProduct> {
   return fetchWpJson<SpecPartsProduct>(
-    `/spec-parts/v1/products/sku/${encodeURIComponent(sku)}`
+    `/spec-parts/v1/products/sku/${encodeURIComponent(sku)}`,
+    { mode: "static", revalidate: 60 }
   );
 }
 
+export async function fetch_spec_parts_product_by_slug(
+  slug: string
+): Promise<SpecPartsProduct> {
+  const normalized_slug = decodeURIComponent(slug.trim());
+
+  try {
+    return await fetchWpJson<SpecPartsProduct>(
+      `/spec-parts/v1/products/slug/${encodeURIComponent(normalized_slug)}`,
+      { mode: "static", revalidate: 60 }
+    );
+  } catch {
+    const response = await fetch_spec_parts_products({
+      slug: normalized_slug,
+      per_page: 1,
+      page: 1,
+    });
+
+    const product = response.products[0];
+
+    if (!product) {
+      throw new Error("Product not found.");
+    }
+
+    return product;
+  }
+}

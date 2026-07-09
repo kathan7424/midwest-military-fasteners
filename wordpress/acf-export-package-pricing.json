@@ -1,0 +1,99 @@
+[
+    {
+        "key": "group_spec_parts_v2",
+        "title": "Spec Parts: Package Pricing",
+        "fields": [
+            {
+                "key": "field_spp_pricing_tiers",
+                "label": "Package Pricing Tiers",
+                "name": "package_pricing_tiers",
+                "aria-label": "",
+                "type": "repeater",
+                "instructions": "One row per quantity break. Qty = minimum number of PACKAGES to qualify for this price. Cart pricing automatically picks the matching tier. Shipping weight\/dimensions are managed in the WooCommerce Shipping tab (Shippo).",
+                "required": 0,
+                "conditional_logic": 0,
+                "wrapper": {
+                    "width": "",
+                    "class": "",
+                    "id": ""
+                },
+                "collapsed": "field_spp_tier_qty",
+                "min": 0,
+                "max": 10,
+                "layout": "table",
+                "button_label": "Add Pricing Tier",
+                "rows_per_page": 20,
+                "sub_fields": [
+                    {
+                        "key": "field_spp_tier_qty",
+                        "label": "Pkg Qty Break",
+                        "name": "qty",
+                        "aria-label": "",
+                        "type": "number",
+                        "instructions": "Minimum packages for this price",
+                        "required": 1,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "40",
+                            "class": "",
+                            "id": ""
+                        },
+                        "default_value": "",
+                        "min": 1,
+                        "max": "",
+                        "placeholder": 1,
+                        "step": 1,
+                        "prepend": "",
+                        "append": "pkgs",
+                        "parent_repeater": "field_spp_pricing_tiers"
+                    },
+                    {
+                        "key": "field_spp_tier_price",
+                        "label": "Price \/ Package ($)",
+                        "name": "price",
+                        "aria-label": "",
+                        "type": "number",
+                        "instructions": "Price per package at this qty break",
+                        "required": 1,
+                        "conditional_logic": 0,
+                        "wrapper": {
+                            "width": "60",
+                            "class": "",
+                            "id": ""
+                        },
+                        "default_value": "",
+                        "min": 0,
+                        "max": "",
+                        "placeholder": "57.78",
+                        "step": "0.01",
+                        "prepend": "$",
+                        "append": "",
+                        "parent_repeater": "field_spp_pricing_tiers"
+                    }
+                ]
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "product"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": "",
+        "active": true,
+        "description": "ACF manages ONLY package_pricing_tiers repeater. pkg_qty and everything else = WooCommerce standard fields\/post meta. Shipping data lives in the WC Shipping tab for Shippo.",
+        "show_in_rest": 0,
+        "display_title": "",
+        "allow_ai_access": false,
+        "ai_description": "",
+        "modified": 1751000002
+    }
+]

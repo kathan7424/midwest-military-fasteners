@@ -22,22 +22,29 @@ function specparts_render_catalog($atts) {
     $series_taxonomy = specparts_get_series_taxonomy();
 
     // ── Build sidebar tree: parent → children → series ──
-    $get_series_by_category = function ( $cat_term_taxonomy_id ) use ( $series_taxonomy ) {
-        global $wpdb;
-        return $wpdb->get_results( $wpdb->prepare(
-            "
-            SELECT DISTINCT t.name, t.slug
-            FROM {$wpdb->terms} t
-            INNER JOIN {$wpdb->term_taxonomy} tt   ON t.term_id = tt.term_id
-            INNER JOIN {$wpdb->term_relationships} tr     ON tt.term_taxonomy_id = tr.term_taxonomy_id
-            INNER JOIN {$wpdb->term_relationships} tr_cat ON tr.object_id = tr_cat.object_id
-            WHERE tt.taxonomy = %s
-              AND tr_cat.term_taxonomy_id = %d
-            ORDER BY t.name ASC
-        ",
-            $series_taxonomy,
-            $cat_term_taxonomy_id
-        ) );
+    $get_series_by_category = function ( $cat_term_id ) use ( $series_taxonomy ) {
+        $product_ids = get_posts( [
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'fields'         => 'ids',
+            'tax_query'      => [ [
+                'taxonomy'         => 'product_cat',
+                'field'            => 'term_id',
+                'terms'            => $cat_term_id,
+                'include_children' => false,
+            ] ],
+        ] );
+
+        if ( empty( $product_ids ) ) return [];
+
+        return get_terms( [
+            'taxonomy'   => $series_taxonomy,
+            'hide_empty' => false,
+            'object_ids' => $product_ids,
+            'orderby'    => 'name',
+            'order'      => 'ASC',
+        ] );
     };
 
     $parents = get_terms(['taxonomy' => 'product_cat', 'parent' => 0, 'hide_empty' => false, 'orderby' => 'name']);
@@ -47,7 +54,7 @@ function specparts_render_catalog($atts) {
         if ($parent->slug === 'uncategorized') continue;
         $children = get_terms(['taxonomy' => 'product_cat', 'parent' => $parent->term_id, 'hide_empty' => false, 'orderby' => 'name']);
         foreach ($children as $child) {
-            $child->series = $get_series_by_category($child->term_taxonomy_id);
+            $child->series = $get_series_by_category($child->term_id);
         }
         $parent->children = $children;
         $sidebar_groups[] = $parent;

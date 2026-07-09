@@ -40,6 +40,8 @@ export interface CartData {
   items: CartItem[];
   item_count: number;
   subtotal: string;
+  shipping_total: string;
+  tax_total: string;
   total: string;
   checkout_url: string;
   cart_url: string;

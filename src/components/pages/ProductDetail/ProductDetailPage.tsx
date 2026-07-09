@@ -8,16 +8,19 @@
  * Last Modified: 2026-07-01
  */
 
-import Image from "next/image";
 import { Filter } from "lucide-react";
 
 import Sidebar from "@/components/layout/Sidebar/Sidebar";
 import Breadcrumb from "@/components/shared_Ui/Breadcrumb";
 import IsoSection from "@/components/shared_Ui/IsoSection";
+import ProductImage from "@/components/shared_Ui/ProductImage";
 import QtyAddToOrder from "@/components/shared_Ui/QtyAddToOrder";
 import type { SidebarCategory } from "@/components/layout/Sidebar/types";
 import type { Product } from "@/components/pages/Product/ProductTable";
 import ProductSpecTable from "./ProductSpecTable";
+import { build_product_category_path } from "@/utils/catalog-url.utils";
+import { DEFAULT_CATALOG_LISTING_PATH } from "@/utils/catalog-path.utils";
+import { find_parent_category_slug } from "@/utils/catalog-page.utils";
 
 import {
   Sheet,
@@ -31,20 +34,32 @@ interface ProductDetailPageProps {
   series: string;
   product: Product;
   sidebarCategories: SidebarCategory[];
+  catalogListingPath?: string;
 }
 
 export default function ProductDetailPage({
   series,
   product,
   sidebarCategories,
+  catalogListingPath = DEFAULT_CATALOG_LISTING_PATH,
 }: ProductDetailPageProps) {
+  const parent_category_slug =
+    product.parentCategorySlug ??
+    find_parent_category_slug(sidebarCategories, product.categorySlug);
+  const category_href =
+    product.categorySlug && parent_category_slug
+      ? build_product_category_path(parent_category_slug, product.categorySlug)
+      : product.categorySlug
+        ? `/product-category/${product.categorySlug}`
+        : undefined;
+
   const breadcrumb = [
-    { label: "PRODUCT CATALOG", href: "/product" },
-    ...(product.categorySlug && product.categoryLabel
+    { label: "PRODUCT CATALOG", href: catalogListingPath },
+    ...(product.categorySlug && product.categoryLabel && category_href
       ? [
           {
             label: product.categoryLabel.toUpperCase(),
-            href: `/product-category/${product.categorySlug}`,
+            href: category_href,
           },
         ]
       : []),
@@ -59,6 +74,7 @@ export default function ProductDetailPage({
         <aside className="hidden w-[300px] shrink-0 lg:block">
           <Breadcrumb items={breadcrumb} className="mb-5" />
           <Sidebar
+            key={`${product.categorySlug ?? "catalog"}-${product.seriesSlug}`}
             categories={sidebarCategories}
             activeGroupId={product.categorySlug}
             activeSeriesId={product.seriesSlug}
@@ -104,22 +120,19 @@ export default function ProductDetailPage({
           {/* Image + spec table */}
           <div className="flex flex-col gap-5 xl:gap-[130px] lg:flex-row lg:items-start max-w-auto xl:max-w-[1000px]">
             <div className="lg:w-[290px] xl:w-auto">
-              {product.image ? (
-                <div className="relative h-[140px] xl:h-[199px] w-[280px] xl:w-[298px]">
-                  <Image
-                    src={product.image}
-                    alt={product.partNumber}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              ) : null}
+              <ProductImage
+                src={product.image}
+                alt={product.partNumber}
+                fill
+                containerClassName="h-[140px] w-[280px] xl:h-[199px] xl:w-[298px]"
+              />
 
               <QtyAddToOrder
                 size="lg"
                 className="mt-6"
                 productId={product.id}
                 sku={product.sku}
+                productName={product.partNumber || product.sku}
                 stockStatus={product.stock_status}
                 stockQuantity={product.stock_quantity}
               />

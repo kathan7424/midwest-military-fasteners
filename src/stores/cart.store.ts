@@ -17,7 +17,8 @@ import {
   update_cart_item,
 } from "@/services/cart.service";
 import { CartData, CartErrorResponse, CartItem } from "@/types/cart.types";
-import { notifyError, notifySuccess } from "@/utils/notifications";
+import { getCartItemStockMessage } from "@/utils/cart-stock.utils";
+import { notifyError, notifySuccess, notifyWarning } from "@/utils/notifications";
 
 interface CartState {
   cart: CartData | null;
@@ -28,6 +29,7 @@ interface CartState {
   addItem: (payload: {
     productId?: number;
     sku?: string;
+    productName?: string;
     quantity: number;
   }) => Promise<boolean>;
   updateItem: (cartItemKey: string, quantity: number) => Promise<boolean>;
@@ -35,10 +37,27 @@ interface CartState {
   setCart: (cart: CartData | null) => void;
 }
 
+/**
+ * WooCommerce-style session guard: an expired/missing login on a cart action
+ * shows the WC notice and sends the visitor to login, returning here after.
+ */
+function handle_session_expired(): void {
+  notifyError("You must be logged in to manage your order.");
+
+  if (typeof window !== "undefined") {
+    const redirect = encodeURIComponent(
+      window.location.pathname + window.location.search
+    );
+    window.location.href = `/login?redirect=${redirect}`;
+  }
+}
+
 const EMPTY_CART: CartData = {
   items: [],
   item_count: 0,
   subtotal: "",
+  shipping_total: "",
+  tax_total: "",
   total: "",
   checkout_url: "",
   cart_url: "",
@@ -75,7 +94,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   async fetchCart() {
-    set({ isLoading: true });
+    // Stale-while-revalidate: only show the loading state on the very first
+    // fetch. Background refreshes keep the current cart on screen.
+    if (get().cart === null) {
+      set({ isLoading: true });
+    }
 
     try {
       const { ok, status, data } = await fetch_cart();
@@ -86,7 +109,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       if (!ok) {
-        if (status === 404) {
+        if (status === 404 || status === 400) {
           set({ cart: EMPTY_CART });
           return;
         }
@@ -108,7 +131,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  async addItem({ productId, sku, quantity }) {
+  async addItem({ productId, sku, productName, quantity }) {
     if (!productId && !sku) {
       notifyError("Product information is missing.");
       return false;
@@ -117,11 +140,16 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isMutating: true });
 
     try {
-      const { ok, data } = await add_cart_item({
+      const { ok, status, data } = await add_cart_item({
         productId,
         sku,
         quantity,
       });
+
+      if (status === 401) {
+        handle_session_expired();
+        return false;
+      }
 
       if (!ok) {
         const errorData = data as CartErrorResponse;
@@ -129,7 +157,15 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       set({ cart: data.cart });
-      notifySuccess(data.message || "Item added to your order.");
+      notifySuccess(
+        productName
+          ? `“${productName}” has been added to your cart.`
+          : "Product added to your cart.",
+        {
+          label: "View cart",
+          href: "/cart",
+        }
+      );
       return true;
     } catch (error) {
       const message =
@@ -146,7 +182,12 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isMutating: true });
 
     try {
-      const { ok, data } = await remove_cart_item(cartItemKey);
+      const { ok, status, data } = await remove_cart_item(cartItemKey);
+
+      if (status === 401) {
+        handle_session_expired();
+        return false;
+      }
 
       if (!ok) {
         const errorData = data as CartErrorResponse;
@@ -154,7 +195,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       set({ cart: data.cart });
-      notifySuccess(data.message || "Item removed from your order.");
+      notifySuccess(data.message || "Item removed.");
       return true;
     } catch (error) {
       const message =
@@ -179,10 +220,18 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     try {
-      const { ok, data } = await update_cart_item({
+      const { ok, status, data } = await update_cart_item({
         cart_item_key: cartItemKey,
         quantity,
       });
+
+      if (status === 401) {
+        if (previousCart) {
+          set({ cart: previousCart });
+        }
+        handle_session_expired();
+        return false;
+      }
 
       if (!ok) {
         const errorData = data as CartErrorResponse;
@@ -190,6 +239,19 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       set({ cart: data.cart });
+      const updated_item = data.cart.items.find((item) => item.key === cartItemKey);
+      const stock_message = updated_item
+        ? getCartItemStockMessage(updated_item)
+        : null;
+
+      if (stock_message && quantity > (previousCart?.items.find((item) => item.key === cartItemKey)?.quantity ?? 0)) {
+        notifyWarning(stock_message);
+      } else {
+        // WooCommerce-style confirmation. Fixed message = stable toast id, so
+        // rapid +/- clicks replace the toast instead of stacking.
+        notifySuccess("Cart updated.");
+      }
+
       return true;
     } catch (error) {
       if (previousCart) {

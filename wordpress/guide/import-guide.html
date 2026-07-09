@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Import Guide — Midwest Military Fasteners</title>
+<style>
+  :root {
+    --navy: #1a3659;
+    --blue: #2563eb;
+    --amber: #d69e2e;
+    --green: #7f9c3f;
+    --red: #b81c23;
+    --gray: #f7f6f7;
+    --text: #2d3748;
+    --muted: #718096;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    line-height: 1.6;
+    background: #fff;
+  }
+  .hero {
+    background: var(--navy);
+    color: #fff;
+    padding: 40px 32px;
+  }
+  .hero h1 { font-size: 26px; letter-spacing: 0.02em; }
+  .hero h1 span { color: var(--amber); }
+  .hero p { color: #cbd5e0; margin-top: 6px; font-size: 14px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px; }
+  h2 {
+    font-size: 20px;
+    color: var(--navy);
+    margin: 40px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 3px solid var(--amber);
+    display: inline-block;
+  }
+  h3 { font-size: 15px; color: var(--navy); margin: 22px 0 8px; }
+  p { margin: 8px 0; font-size: 14px; }
+  code {
+    background: var(--gray);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    font-size: 12.5px;
+    border-radius: 3px;
+    color: var(--red);
+  }
+  pre {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    border-radius: 6px;
+    margin: 12px 0;
+    line-height: 1.7;
+  }
+  pre .ctx { color: #f6ad55; }
+  pre .prod { color: #9ae6b4; }
+  pre .hdr { color: #90cdf4; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  th {
+    background: var(--navy);
+    color: #fff;
+    text-align: left;
+    padding: 9px 12px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #fafafa; }
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .tag.wc { background: #ebf8ff; color: #2b6cb0; }
+  .tag.meta { background: #faf5ff; color: #6b46c1; }
+  .tag.acf { background: #f0fff4; color: #276749; }
+  .tag.tax { background: #fffaf0; color: #975a16; }
+  .tag.ignored { background: #edf2f7; color: #718096; }
+  .tag.internal { background: #fff5f5; color: #c53030; }
+  .flow { display: flex; flex-wrap: wrap; gap: 0; align-items: stretch; margin: 18px 0; }
+  .flow .step {
+    flex: 1;
+    min-width: 150px;
+    background: var(--gray);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--blue);
+    padding: 12px 14px;
+    position: relative;
+  }
+  .flow .step + .step { margin-left: 26px; }
+  .flow .step + .step::before {
+    content: "→";
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 18px;
+  }
+  .flow .step b { display: block; color: var(--navy); font-size: 13px; margin-bottom: 4px; }
+  .flow .step span { font-size: 12px; color: var(--muted); }
+  .callout {
+    border-left: 4px solid var(--amber);
+    background: #fffbeb;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 13.5px;
+  }
+  .callout.green { border-color: var(--green); background: #f4f9ec; }
+  .callout.red { border-color: var(--red); background: #fff5f5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } .flow { flex-direction: column; } .flow .step + .step { margin: 26px 0 0; } .flow .step + .step::before { content: "↓"; left: 50%; top: -22px; transform: translateX(-50%); } }
+  .toc { background: var(--gray); border: 1px solid var(--border); padding: 16px 22px; margin-top: 20px; border-radius: 6px; }
+  .toc a { color: var(--blue); text-decoration: none; font-size: 13.5px; }
+  .toc li { margin: 3px 0 3px 16px; }
+  footer { margin-top: 50px; padding: 18px 32px; background: var(--gray); color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap" style="padding:0 32px">
+    <h1>PRODUCT IMPORT <span>GUIDE</span></h1>
+    <p>Midwest Military Fasteners — WooCommerce CSV Importer · WP Admin → WooCommerce → Parts Import</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div class="toc">
+  <b style="color:var(--navy);font-size:13px">CONTENTS</b>
+  <ul style="list-style:none;margin-top:6px">
+    <li><a href="#flow">1. Import flow (how it works)</a></li>
+    <li><a href="#context">2. Context rows — category &amp; series cascade</a></li>
+    <li><a href="#columns">3. All 36 CSV columns</a></li>
+    <li><a href="#media">4. Media — images, gallery, spec &amp; certificate</a></li>
+    <li><a href="#created">5. What one product row creates</a></li>
+    <li><a href="#sample">6. Sample CSV (genuine template)</a></li>
+    <li><a href="#trouble">7. Troubleshooting</a></li>
+  </ul>
+</div>
+
+<h2 id="flow">1. Import Flow</h2>
+<div class="flow">
+  <div class="step"><b>Upload CSV</b><span>Import tab · nonce + <code>manage_woocommerce</code> verified</span></div>
+  <div class="step"><b>Parse rows</b><span>Positional (by column #, not header) — headers repeat in this format</span></div>
+  <div class="step"><b>Context / Product</b><span>Blank P/N = context row; else create/update product by SKU</span></div>
+  <div class="step"><b>Sideload media</b><span>Images, spec, cert from uploads folders</span></div>
+  <div class="step"><b>Save</b><span>WC product + taxonomies + tiers + meta</span></div>
+</div>
+<div class="callout">
+  <b>Positional parsing:</b> the file has multiple <code>SHIPPING DIMENSIONS</code> / <code>SHIPPING WEIGHT</code> headers, so the importer reads by <b>column position</b>. Never reorder or delete columns — keep the exact 36-column layout of the template.
+</div>
+<p><b>Update existing:</b> checkbox on the Import tab. When checked, a row whose P/N matches an existing SKU updates that product in place instead of being skipped.</p>
+
+<h2 id="context">2. Context Rows — Category &amp; Series Cascade</h2>
+<p>A row with a <b>blank P/N (column 5)</b> doesn't create a product — it sets the active <b>category + sub-category + series</b>. Every product row after it inherits that context until the next context row.</p>
+<pre>
+<span class="hdr">CATEGORY IMAGE,PRODUCT CATEGORY,PRODUCT SUB CATEGORY,PART SERIES,P/N,DESCRIPTION,...</span>
+<span class="ctx">,SCREWS,HEX CAP SCREWS,MS35307,,,...                       ← context row (P/N blank)</span>
+<span class="prod">,,,,MS35307-303,"1/4-20 X 1/2 HEX CAP SCREW ...",50,...    ← product → SCREWS &gt; HEX CAP SCREWS &gt; MS35307</span>
+<span class="prod">,,,,MS35307-306,"1/4-20 X 3/4 HEX CAP SCREW ...",50,...    ← product (same context)</span>
+<span class="ctx">,SCREWS,HEX CAP SCREWS,MS35308,,,...                       ← new context — series changes to MS35308</span>
+<span class="prod">,,,,MS35308-303,"1/4-28 X 1/2 HEX CAP SCREW ...",50,...</span>
+</pre>
+
+<h2 id="columns">3. All 36 CSV Columns</h2>
+<table>
+<thead><tr><th style="width:36px">#</th><th>Header</th><th style="width:210px">Stored as</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>CATEGORY IMAGE LOCATION</td><td><span class="tag tax">category</span></td><td>Category thumbnail filename (context rows only)</td></tr>
+<tr><td>2</td><td>PRODUCT CATEGORY</td><td><span class="tag tax">product_cat</span></td><td>Parent: SCREWS / NUTS / WASHERS — context</td></tr>
+<tr><td>3</td><td>PRODUCT SUB CATEGORY</td><td><span class="tag tax">product_cat</span></td><td>Child category (e.g. HEX CAP SCREWS) — context</td></tr>
+<tr><td>4</td><td>PART SERIES</td><td><span class="tag tax">product-series</span></td><td>Series term (e.g. MS35307) — context</td></tr>
+<tr><td>5</td><td><b>P/N</b></td><td><span class="tag wc">SKU + title</span></td><td><b>Blank = context row.</b> Filled = creates/updates the product</td></tr>
+<tr><td>6</td><td>DESCRIPTION</td><td><span class="tag wc">short description</span></td><td></td></tr>
+<tr><td>7</td><td>PACKAGE QTY</td><td><span class="tag meta">_pkg_qty</span></td><td>Pieces per package — read by cart + REST API</td></tr>
+<tr><td>8</td><td>SHIPPING DIMENSIONS H×W×L</td><td><span class="tag wc">WC dimensions</span></td><td>Tier-1 box size → Shippo. Format <code>2x4x6</code> inches</td></tr>
+<tr><td>9</td><td>SHIPPING WEIGHT</td><td><span class="tag wc">WC weight</span></td><td>Tier-1 lbs → Shippo rate quotes</td></tr>
+<tr><td>10</td><td>1 PKG COST</td><td><span class="tag acf">tier qty 1</span></td><td>Also becomes WC regular price. $ and commas stripped</td></tr>
+<tr><td>11</td><td>3 PKG COST</td><td><span class="tag acf">tier qty 3</span></td><td></td></tr>
+<tr><td>12–13</td><td>SHIP DIMS / WEIGHT (3 pkg)</td><td><span class="tag ignored">ignored</span></td><td>Shippo uses tier-1 values</td></tr>
+<tr><td>14</td><td>5 PKG COST</td><td><span class="tag acf">tier qty 5</span></td><td></td></tr>
+<tr><td>15–16</td><td>SHIP DIMS / WEIGHT (5 pkg)</td><td><span class="tag ignored">ignored</span></td><td></td></tr>
+<tr><td>17</td><td>10 PKG COST</td><td><span class="tag acf">tier qty 10</span></td><td></td></tr>
+<tr><td>18–19</td><td>SHIP DIMS / WEIGHT (10 pkg)</td><td><span class="tag ignored">ignored</span></td><td></td></tr>
+<tr><td>20</td><td>QUANTITY IN STOCK</td><td><span class="tag wc">stock</span></td><td>Blank → stock mgmt OFF, "instock". Number → managed stock</td></tr>
+<tr><td>21</td><td>BACKORDER LEADTIME</td><td><span class="tag meta">_backorder_leadtime</span></td><td>e.g. "2-3 DAYS"</td></tr>
+<tr><td>22</td><td>REORDER LIMIT</td><td><span class="tag internal">_reorder_limit</span></td><td>Internal — never in public API</td></tr>
+<tr><td>23</td><td>COUNTRY OF ORIGIN</td><td><span class="tag wc">pa_country</span></td><td>Attribute — filterable</td></tr>
+<tr><td>24</td><td>DFAR?</td><td><span class="tag wc">pa_specs_standard</span></td><td>Y → DFAR attribute term</td></tr>
+<tr><td>25</td><td>MFR C OF C</td><td><span class="tag meta">_mfr_coc</span></td><td>Y/N boolean</td></tr>
+<tr><td>26</td><td>MATERIAL CERTS</td><td><span class="tag meta">_material_certs</span></td><td>Y/N</td></tr>
+<tr><td>27</td><td>PROCESS CERTS</td><td><span class="tag meta">_process_certs</span></td><td>Y/N</td></tr>
+<tr><td>28</td><td>TEST REPORTS</td><td><span class="tag meta">_test_reports</span></td><td>Y/N</td></tr>
+<tr><td>29</td><td>MFR</td><td><span class="tag wc">pa_manufacturer</span></td><td>Attribute — filterable</td></tr>
+<tr><td>30</td><td>LOT IN USE</td><td><span class="tag internal">_lot_in_use</span></td><td>Internal batch reference</td></tr>
+<tr><td>31</td><td>COST PER EA</td><td><span class="tag meta">_cost_per_ea</span></td><td>Internal cost reference</td></tr>
+<tr><td>32</td><td>CERT LOCATION</td><td><span class="tag internal">_cert_location</span></td><td>Internal — physical cert storage</td></tr>
+<tr><td>33</td><td>PER PIECE WEIGHT</td><td><span class="tag wc">WC weight (fallback)</span></td><td>Used when tier-1 ship weight is blank</td></tr>
+<tr><td>34</td><td>PRODUCT IMAGE</td><td><span class="tag wc">featured + gallery</span></td><td><b>Comma-separated:</b> first = featured, rest = gallery</td></tr>
+<tr><td>35</td><td>SPEC SHEET</td><td><span class="tag meta">_spec_file_url</span></td><td>Filename / URL / blank (SKU fallback <code>{SKU}-spec.pdf</code>)</td></tr>
+<tr><td>36</td><td>CERTIFICATE</td><td><span class="tag meta">_certificate_file_url</span></td><td>Filename / URL / blank (SKU fallback <code>{SKU}-cert.pdf</code>)</td></tr>
+</tbody>
+</table>
+<p style="font-size:12.5px">
+  <span class="tag wc">WC</span> WooCommerce native &nbsp;
+  <span class="tag tax">TAX</span> taxonomy &nbsp;
+  <span class="tag acf">ACF</span> pricing tier (+ <code>_package_pricing</code> meta mirror) &nbsp;
+  <span class="tag meta">META</span> post meta &nbsp;
+  <span class="tag internal">INTERNAL</span> admin-only, excluded from public API &nbsp;
+  <span class="tag ignored">IGNORED</span> not imported
+</p>
+
+<h2 id="media">4. Media — Images, Gallery, Spec &amp; Certificate</h2>
+<div class="grid2">
+  <div>
+    <h3>Folders (Settings tab)</h3>
+    <table>
+      <thead><tr><th>Content</th><th>Default folder</th></tr></thead>
+      <tbody>
+        <tr><td>Images</td><td><code>uploads/product-images/</code></td></tr>
+        <tr><td>Spec sheets</td><td><code>uploads/product-specs/</code></td></tr>
+        <tr><td>Certificates</td><td><code>uploads/product-certs/</code></td></tr>
+      </tbody>
+    </table>
+    <div class="callout red">
+      <b>Security:</b> configured folders must resolve <b>inside</b> <code>wp-content/uploads/</code> — anything else is rejected. Filenames are reduced to their basename (no <code>../</code> path tricks).
+    </div>
+  </div>
+  <div>
+    <h3>Resolution order (each file)</h3>
+    <ol style="font-size:13.5px;margin-left:18px">
+      <li>Full URL in the cell → stored directly</li>
+      <li>Filename → looked up in Media Library (reused if already imported)</li>
+      <li>Not in library → sideloaded from the folder</li>
+      <li>Cell blank → SKU fallback tried: <code>{SKU}.jpg</code>, <code>{SKU}-spec.pdf</code>, <code>{SKU}-cert.pdf</code> (also UPPERCASE)</li>
+    </ol>
+    <h3>Gallery example (column 34)</h3>
+    <pre>MS35307-303.jpg, MS35307-303-side.jpg, MS35307-303-top.jpg</pre>
+    <p style="font-size:13px">First file = featured image, remaining = WC product gallery.</p>
+  </div>
+</div>
+<div class="callout green">
+  <b>Manual editing after import:</b> Product data → <b>General</b> tab has "Spec Sheet (PDF)" and "Certificate (PDF)" fields with an <b>Upload / Select</b> button (WP Media Library). Pricing tiers: "Spec Parts: Package Pricing" box. Shipping weight/dims: WC <b>Shipping</b> tab (Shippo reads these).
+</div>
+
+<h2 id="created">5. What One Product Row Creates</h2>
+<table>
+<thead><tr><th>Data</th><th>Destination</th></tr></thead>
+<tbody>
+<tr><td>Simple product — SKU, title, description, regular price (tier 1)</td><td>WooCommerce</td></tr>
+<tr><td>Category assignment (deepest level) + series term</td><td><code>product_cat</code>, <code>product-series</code></td></tr>
+<tr><td>Manufacturer / Country / DFAR</td><td><code>pa_manufacturer</code>, <code>pa_country</code>, <code>pa_specs_standard</code></td></tr>
+<tr><td>Pricing tiers (1/3/5/10 pkg)</td><td>ACF <code>package_pricing_tiers</code> (admin UI) <b>+</b> <code>_package_pricing</code> meta (cart/API runtime — works without ACF)</td></tr>
+<tr><td>Weight + dimensions (tier 1)</td><td>WC native → Shippo</td></tr>
+<tr><td>Stock (only when column 20 has a number)</td><td>WC managed stock</td></tr>
+<tr><td>Featured image + gallery</td><td>Media Library → <code>_thumbnail_id</code> + <code>_product_image_gallery</code></td></tr>
+<tr><td>Spec / Certificate URLs</td><td><code>_spec_file_url</code>, <code>_certificate_file_url</code></td></tr>
+<tr><td>Compliance flags + internal fields</td><td>Post meta (see column table)</td></tr>
+</tbody>
+</table>
+
+<h2 id="sample">6. Sample CSV (genuine template)</h2>
+<p>The real template ships alongside this guide: <a href="./import-template.csv"><b>import-template.csv</b></a> — 10 genuine products (MS35307 + MS35308 hex cap screws) with real tier pricing, stock, lots, and compliance flags. The same file must exist at the <b>theme root</b> on the server for the admin "Download sample CSV" button:</p>
+<pre>wp-content/themes/&lt;theme&gt;/import-template.csv</pre>
+<pre style="font-size:10.5px"><span class="hdr">CATEGORY IMAGE LOCATION,PRODCUT CATEGORY,PRODUCT SUB CATEGORY,PART SERIES,P/N,DESCRIPTION,PACKAGE QTY,...(36 cols)</span>
+<span class="ctx">,SCREWS,HEX CAP SCREWS,MS35307,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,</span>
+<span class="prod">,,,,MS35307-303,"1/4-20 X 1/2 HEX CAP SCREW STAINLESS STEEL DFAR",50,,0.65,57.78,48.25,,,42.15,,,39.90,,,,,2-3 DAYS,100,USA,Y,Y,Y,Y,Y,USA MFR,,0.39,,0.0118,MS35307-303.jpg,MS35307-303-spec.pdf,MS35307-303-cert.pdf</span>
+<span class="prod">,,,,MS35307-333,"5/16-18 X 7/8 HEX CAP SCREW STAINLESS STEEL DFAR",50,,1.30,141.88,104.05,,,94.59,,,85.13,,,1690,2-3 DAYS,50,USA,Y,Y,Y,Y,Y,STILLWATER FASTENER,I15ZMS,0.94587,,0.02557,MS35307-333.jpg,...</span>
+<span class="ctx">,SCREWS,HEX CAP SCREWS,MS35308,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,</span>
+<span class="prod">,,,,MS35308-303,"1/4-28 X 1/2 HEX CAP SCREW STAINLESS STEEL DFAR FINE",50,,0.62,85.57,62.75,,,57.04,,,51.34,,,,,2-3 DAYS,50,USA,Y,Y,Y,Y,Y,USA MFR,,0.57044,,0.01217,MS35308-303.jpg,...</span></pre>
+<p style="font-size:13px">Note <b>MS35307-333</b>: stock 1690 (managed), MFR "STILLWATER FASTENER", lot <code>I15ZMS</code> — a full-data example row.</p>
+
+<h2 id="trouble">7. Troubleshooting</h2>
+<table>
+<thead><tr><th>Symptom</th><th>Cause → Fix</th></tr></thead>
+<tbody>
+<tr><td>"Download sample CSV" → template not found</td><td><code>import-template.csv</code> missing from theme root on the server → upload it</td></tr>
+<tr><td>Imported, but sidebar/frontend unchanged</td><td>Pantheon Varnish (5-min TTL) or frontend cache → Dashboard → Clear Caches, wait ≤5 min</td></tr>
+<tr><td>Images not attached</td><td>Filename mismatch (case-sensitive) or file missing from configured uploads folder</td></tr>
+<tr><td>Series appears in two taxonomies</td><td>Legacy imports used <code>product_series</code>; live uses <code>product-series</code>. All code reads both — harmless</td></tr>
+<tr><td>Duplicate categories (two "FLAT WASHERS")</td><td>Same-name terms from imports. APIs merge them; product queries match all duplicates</td></tr>
+<tr><td>Row skipped silently</td><td>P/N blank (treated as context row) or duplicate SKU without "Update existing" checked</td></tr>
+</tbody>
+</table>
+
+</div>
+
+<footer>Midwest Military Fasteners · Import Guide · generated from <code>inc/import.php</code> — keep in sync when the importer changes</footer>
+
+</body>
+</html>

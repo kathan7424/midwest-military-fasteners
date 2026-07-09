@@ -1,30 +1,26 @@
 /**
  * File Name: page.tsx
- * Description: Cart / Your Order page — protected route.
+ * Description: Cart / Your Order page — Figma layout, protected route.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
 import type { Metadata } from "next";
 
-import CartPageContent from "@/components/pages/Cart/CartPageContent";
+import CartPageView from "@/components/pages/Cart/CartPageView";
 import { requireAuth } from "@/services/auth.service";
+import { fetch_sidebar_categories } from "@/services/spec-parts.service";
 
 export const metadata: Metadata = {
-  title: "Your Order | Midwest Military Fasteners",
+  title: "Your Cart | Midwest Military Fasteners",
   description: "View your Midwest Military Fasteners order.",
 };
 
 export default async function CartPage() {
   await requireAuth("/cart");
 
-  return (
-    <div className="mx-auto w-full max-w-8xl px-4 py-6 xl:px-5 xl:py-[30px]">
-      <h1 className="mb-6 text-h2 font-bold uppercase text-near-black">
-        Your Cart
-      </h1>
-      <CartPageContent />
-    </div>
-  );
+  const sidebar_categories = await fetch_sidebar_categories();
+
+  return <CartPageView sidebarCategories={sidebar_categories} />;
 }

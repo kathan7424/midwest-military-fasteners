@@ -9,17 +9,17 @@ import { notFound } from "next/navigation";
 
 import { ProductPage } from "@/components/pages/Product";
 import {
+  fetch_sidebar_categories,
   fetch_spec_parts_categories,
+  fetch_spec_parts_category_by_slug,
   fetch_spec_parts_products,
 } from "@/services/spec-parts.service";
 import {
   find_spec_parts_category,
   build_catalog_breadcrumb,
+  build_catalog_hero_context,
 } from "@/utils/catalog-page.utils";
-import {
-  map_spec_parts_categories_to_sidebar,
-  map_spec_parts_product_to_table_product,
-} from "@/utils/spec-parts.utils";
+import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
 
 type Props = {
   params: Promise<{
@@ -41,44 +41,52 @@ export default async function ProductCategoryPage({
   const active_category_slug = slug[slug.length - 1];
   const current_page = Math.max(1, Number(query.page) || 1);
 
-  const categories = await fetch_spec_parts_categories();
-  const active_category = find_spec_parts_category(categories, active_category_slug);
+  const [categories, direct_category, products_response, sidebar_categories] =
+    await Promise.all([
+      fetch_spec_parts_categories(),
+      fetch_spec_parts_category_by_slug(active_category_slug).catch(() => null),
+      fetch_spec_parts_products({
+        category: active_category_slug,
+        search: query.search,
+        series: query.series,
+        per_page: 10,
+        page: current_page,
+      }),
+      fetch_sidebar_categories(),
+    ]);
+
+  const active_category =
+    direct_category ?? find_spec_parts_category(categories, active_category_slug);
 
   if (!active_category) {
     notFound();
   }
 
-  const [products_response] = await Promise.all([
-    fetch_spec_parts_products({
-      category: active_category_slug,
-      search: query.search,
-      series: query.series,
-      per_page: 10,
-      page: current_page,
-    }),
-  ]);
-
-  const sidebar_categories = map_spec_parts_categories_to_sidebar(categories);
-
-  const active_series = active_category.series?.find(
-    (series) => series.slug === query.series
+  const product_fallback_image = products_response.products[0]?.image;
+  const hero = build_catalog_hero_context(
+    categories,
+    active_category_slug,
+    query.series,
+    product_fallback_image,
+    direct_category
   );
 
   return (
     <ProductPage
-      title={active_category.name}
-      description={active_category.description || undefined}
+      title={hero.title}
+      description={hero.description}
+      imageSrc={hero.imageSrc}
       products={products_response.products.map(map_spec_parts_product_to_table_product)}
       sidebarCategories={sidebar_categories}
       breadcrumb={build_catalog_breadcrumb(
         sidebar_categories,
         active_category_slug,
-        active_series?.name
+        hero.partSeriesLabel
       )}
       activeGroupId={active_category_slug}
       activeSeriesId={query.series}
       initialSearch={query.search ?? ""}
-      partSeriesLabel={active_series?.name}
+      partSeriesLabel={hero.partSeriesLabel}
       currentPage={products_response.page}
       totalPages={products_response.pages}
     />

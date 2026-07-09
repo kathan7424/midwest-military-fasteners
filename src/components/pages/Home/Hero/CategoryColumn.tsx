@@ -31,11 +31,10 @@ export default function CategoryColumn({
 
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={`${title}-${item.label}`}>
+          <li key={item.id ? `product-${item.id}` : `${title}-${item.label}`}>
             <Link
               href={item.href}
-              prefetch={false}
-              className="text-[16px] font-normal leading-[1.97] text-white underline underline-offset-2 transition-opacity duration-300 hover:opacity-75"
+              className="relative z-10 inline-block cursor-pointer text-[16px] font-normal leading-[1.97] text-white underline underline-offset-2 transition-opacity duration-300 hover:opacity-75"
             >
               {item.label}
             </Link>

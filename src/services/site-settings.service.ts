@@ -6,9 +6,11 @@
  * Last Modified: 2026-06-25
  */
 
+import { cache } from "react";
+
 import { fetchWpJson } from "@/services/wp-api.service";
 import { SiteSettings } from "@/types/site-settings.types";
 
-export async function fetchSiteSettings(): Promise<SiteSettings> {
-  return fetchWpJson<SiteSettings>("/custom/v1/site-settings");
-}
+export const fetchSiteSettings = cache(async (): Promise<SiteSettings> => {
+  return fetchWpJson<SiteSettings>("/custom/v1/site-settings", { mode: "static" });
+});

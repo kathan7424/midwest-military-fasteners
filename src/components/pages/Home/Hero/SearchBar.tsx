@@ -18,6 +18,8 @@ import { SearchBarProps } from "@/types/hero.types";
 export default function SearchBar({
   placeholder = SEARCH_PLACEHOLDER,
 }: SearchBarProps) {
+  // Home hero search: products, product categories, and part series only.
+  // The header search stays global (pages + products + everything).
   const {
     query,
     setQuery,
@@ -26,7 +28,7 @@ export default function SearchBar({
     suggestions,
     isLoading,
     wrapperRef,
-  } = useGlobalSearch();
+  } = useGlobalSearch({ scope: "catalog" });
 
   return (
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-[800px]">

@@ -30,7 +30,7 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
               <div className="h-px w-full bg-white/70" />
             </div>
 
-            <div className="flex flex-wrap gap-x-8 gap-y-10">
+            <div className="relative z-10 flex flex-wrap gap-x-8 gap-y-10">
               {category.columns.map((column) => (
                 <CategoryColumn
                   key={column.title}
@@ -54,7 +54,7 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
                 <div className="h-px w-full bg-white/70" />
               </div>
 
-              <div className="flex flex-wrap gap-x-8 gap-y-10">
+              <div className="relative z-10 flex flex-wrap gap-x-8 gap-y-10">
                 {category.columns.map((column) => (
                   <CategoryColumn
                     key={column.title}

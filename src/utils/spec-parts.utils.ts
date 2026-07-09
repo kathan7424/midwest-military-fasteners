@@ -5,14 +5,67 @@
  * Created Date: 2026-07-07
  */
 
+import { cache } from "react";
+
 import type { SidebarCategory } from "@/components/layout/Sidebar/types";
 import type { Product } from "@/components/pages/Product/ProductTable";
 import type {
   SpecPartsCategoryTerm,
   SpecPartsPackagePricingTier,
   SpecPartsProduct,
+  SpecPartsSeriesTerm,
 } from "@/types/spec-parts.types";
 import { decodeHtmlEntities } from "@/utils/text.utils";
+import {
+  build_product_category_path,
+  build_product_category_series_path,
+  build_product_path,
+  extract_product_slug_from_permalink,
+} from "@/utils/catalog-url.utils";
+import { resolve_product_image_url } from "@/utils/product-image.utils";
+import {
+  get_cached_category_series_for_sidebar,
+  get_cached_spec_parts_categories,
+} from "@/services/catalog-data.service";
+
+/**
+ * Sidebar shows the WP category tree as-is: real parents, real children,
+ * "uncategorized" excluded. Category structure is managed in WP Admin —
+ * the frontend never invents or re-buckets categories.
+ */
+export function filter_spec_parts_categories_for_sidebar(
+  categories: SpecPartsCategoryTerm[]
+): SpecPartsCategoryTerm[] {
+  return categories
+    .filter((parent) => parent.slug !== "uncategorized")
+    .map((parent) => ({
+      ...parent,
+      children: [...(parent.children ?? [])].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      ),
+    }));
+}
+
+export function has_product_spec_sheet(spec_file_url?: string | null): boolean {
+  const value = spec_file_url?.trim();
+  return Boolean(value && value !== "#");
+}
+
+export function has_product_document(file_url?: string | null): boolean {
+  return has_product_spec_sheet(file_url);
+}
+
+export function map_product_spec_href(spec_file_url?: string | null): string {
+  if (!has_product_spec_sheet(spec_file_url)) {
+    return "";
+  }
+
+  return spec_file_url!.trim();
+}
+
+export function map_product_certificate_href(certificate_file_url?: string | null): string {
+  return map_product_spec_href(certificate_file_url);
+}
 
 function format_price(value: unknown): string {
   const numeric = Number(value);
@@ -47,8 +100,13 @@ export function map_spec_parts_product_to_table_product(
     product.categories.find((category) => category.parent_id > 0) ??
     product.categories[0];
 
+  const slug =
+    product.slug?.trim() ||
+    extract_product_slug_from_permalink(product.permalink);
+
   return {
     id: product.id,
+    slug,
     partNumber: decodeHtmlEntities(product.sku || product.name),
     sku: decodeHtmlEntities(product.sku),
     description: decodeHtmlEntities(
@@ -59,18 +117,24 @@ export function map_spec_parts_product_to_table_product(
     price3: get_tier_price(product.package_pricing, 3),
     price5: get_tier_price(product.package_pricing, 5),
     price10: get_tier_price(product.package_pricing, 10),
-    mfr: product.manufacturer,
-    country: product.country,
-    specHref: product.spec_file_url || "#",
+    mfr: decodeHtmlEntities(product.manufacturer || ""),
+    country: decodeHtmlEntities(product.country || ""),
+    specHref: map_product_spec_href(product.spec_file_url),
+    certHref: map_product_certificate_href(product.certificate_file_url),
     seriesSlug: primary_series?.slug || "series",
     seriesLabel: primary_series?.name
       ? decodeHtmlEntities(primary_series.name)
       : undefined,
     categorySlug: primary_category?.slug,
+    parentCategorySlug:
+      primary_category?.parent_slug ||
+      product.categories.find(
+        (category) => category.id === primary_category?.parent_id
+      )?.slug,
     categoryLabel: primary_category?.name
       ? decodeHtmlEntities(primary_category.name)
       : undefined,
-    image: product.image,
+    image: resolve_product_image_url(product.image),
     stock_status: product.stock_status,
     stock_quantity: product.stock_quantity,
   };
@@ -79,68 +143,114 @@ export function map_spec_parts_product_to_table_product(
 export function map_spec_parts_categories_to_sidebar(
   categories: SpecPartsCategoryTerm[]
 ): SidebarCategory[] {
-  return categories
-    .filter((parent) => parent.slug !== "uncategorized")
+  return filter_spec_parts_categories_for_sidebar(categories)
     .map((parent) => ({
       id: parent.slug,
       label: decodeHtmlEntities(parent.name).toUpperCase(),
-      groups: parent.children.map((child) => ({
-        id: child.slug,
-        label: decodeHtmlEntities(child.name),
-        href: `/product-category/${child.slug}`,
-        series: (child.series ?? []).map((series) => ({
-          id: series.slug,
-          label: decodeHtmlEntities(series.name).toUpperCase(),
-          href: `/product-category/${child.slug}?series=${encodeURIComponent(series.slug)}`,
+      groups: parent.children
+        // WooCommerce-style hide_empty: only categories with actual products
+        // (or assigned series) belong in the sidebar.
+        .filter(
+          (child) => (child.count ?? 0) > 0 || (child.series ?? []).length > 0
+        )
+        .map((child) => ({
+          id: child.slug,
+          label: decodeHtmlEntities(child.name),
+          href: build_product_category_path(parent.slug, child.slug),
+          // hide_empty: a series with zero published products is dead weight
+          // in the nav — clicking it could only show an empty table.
+          series: (child.series ?? [])
+            .filter((series) => (series.count ?? 0) > 0)
+            .map((series) => ({
+            id: series.slug,
+            label: decodeHtmlEntities(series.name).toUpperCase(),
+            href: build_product_category_series_path(
+              parent.slug,
+              child.slug,
+              series.slug
+            ),
+          })),
         })),
-      })),
-    }));
+    }))
+    .filter((parent) => parent.groups.length > 0);
 }
 
 /**
- * @deprecated Series are now returned directly from /categories API.
+ * Build sidebar navigation with part-series from taxonomy=product-series.
  */
-export function attach_series_to_sidebar(
-  sidebar_categories: SidebarCategory[],
-  products: SpecPartsProduct[],
-  active_category_slug?: string
-): SidebarCategory[] {
-  const series_by_category = new Map<string, Map<string, { id: string; label: string; href: string }>>();
+export async function build_sidebar_categories(
+  categories: SpecPartsCategoryTerm[]
+): Promise<SidebarCategory[]> {
+  const normalized = filter_spec_parts_categories_for_sidebar(categories);
+  const sidebar = map_spec_parts_categories_to_sidebar(normalized);
 
-  products.forEach((product) => {
-    product.categories.forEach((category) => {
-      if (active_category_slug && category.slug !== active_category_slug) {
-        return;
-      }
+  // The categories API already returns series per child term. Only run the
+  // expensive per-category taxonomy sweep for groups it left empty — this
+  // turns dozens of WP round-trips per page load into zero on the happy path.
+  const groups_needing_series = normalized.flatMap((parent) =>
+    parent.children
+      .filter((child) => (child.series ?? []).length === 0)
+      .map((child) => child.slug)
+  );
 
-      if (!series_by_category.has(category.slug)) {
-        series_by_category.set(category.slug, new Map());
-      }
+  const taxonomy_series_batches = await Promise.all(
+    groups_needing_series.map((group_slug) =>
+      get_cached_category_series_for_sidebar(group_slug)
+    )
+  );
 
-      const category_series = series_by_category.get(category.slug);
-
-      product.product_series.forEach((series) => {
-        category_series?.set(series.slug, {
-          id: series.slug,
-          label: series.name.toUpperCase(),
-          href: `/product-category/${category.slug}?series=${encodeURIComponent(series.slug)}`,
-        });
-      });
-    });
-  });
-
-  return sidebar_categories.map((parent) => ({
+  return sidebar.map((parent) => ({
     ...parent,
     groups: parent.groups.map((group) => {
-      if (group.series.length > 0) {
-        return group;
-      }
+      const group_index = groups_needing_series.indexOf(group.id);
+      const taxonomy_series =
+        group_index >= 0 ? taxonomy_series_batches[group_index] : [];
+
+      const taxonomy_links = map_series_terms_to_sidebar_links(
+        parent.id,
+        group.id,
+        taxonomy_series
+      );
+
+      const merged = new Map(
+        group.series.map((series) => [series.id, series] as const)
+      );
+
+      taxonomy_links.forEach((series) => merged.set(series.id, series));
 
       return {
         ...group,
-        series: Array.from(series_by_category.get(group.id)?.values() ?? []),
+        series: Array.from(merged.values()).sort((a, b) =>
+          a.label.localeCompare(b.label)
+        ),
       };
     }),
+  }));
+}
+
+/**
+ * Single cached sidebar tree — shared by cart, shop, category, and product pages.
+ */
+export const get_cached_sidebar_categories = cache(
+  async (): Promise<SidebarCategory[]> => {
+    const categories = await get_cached_spec_parts_categories();
+    return build_sidebar_categories(categories);
+  }
+);
+
+export function warm_sidebar_categories_cache(): void {
+  void get_cached_sidebar_categories().catch(() => undefined);
+}
+
+function map_series_terms_to_sidebar_links(
+  parent_slug: string,
+  group_id: string,
+  terms: SpecPartsSeriesTerm[]
+): Array<{ id: string; label: string; href: string }> {
+  return terms.map((term) => ({
+    id: term.slug,
+    label: decodeHtmlEntities(term.name).toUpperCase(),
+    href: build_product_category_series_path(parent_slug, group_id, term.slug),
   }));
 }
 

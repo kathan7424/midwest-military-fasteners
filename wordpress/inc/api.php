@@ -1,6 +1,104 @@
 <?php
 define( 'MMF_HOME_PAGE_SLUG', 'home-page' );
 
+// ── Cache-Control for all custom/v1 endpoints ─────────────────────────────
+// Prevents Pantheon Varnish from caching ACF/WP managed content indefinitely.
+// On-demand revalidation (save_post hook below) keeps Next.js ISR pages fresh.
+add_filter( 'rest_post_dispatch', 'mmf_set_custom_api_cache_headers', 10, 3 );
+
+function mmf_set_custom_api_cache_headers( $response, $server, $request ) {
+	$route = (string) $request->get_route();
+
+	if ( strpos( $route, '/custom/v1/' ) !== 0 ) {
+		return $response;
+	}
+
+	// Auth + tax-exemption are user-specific — must never hit shared cache.
+	if ( strpos( $route, '/custom/v1/auth' ) === 0
+		|| strpos( $route, '/custom/v1/tax-exemption' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, private' );
+		return $response;
+	}
+
+	// Search results are query-specific — skip Varnish.
+	if ( strpos( $route, '/custom/v1/search' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache' );
+		return $response;
+	}
+
+	// ACF home-page content — always fresh from WP. Next.js ISR (60s + webhook)
+	// is the caching layer; Varnish must never serve a stale admin edit.
+	if ( strpos( $route, '/custom/v1/home-page' ) === 0
+		|| strpos( $route, '/custom/v1/product-catalog' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate' );
+		return $response;
+	}
+
+	// Menu + site-settings change rarely — cache for 5 min.
+	$response->header( 'Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' );
+
+	return $response;
+}
+
+// ── Next.js on-demand revalidation ────────────────────────────────────────
+// When the home-page is saved in WP Admin, fire a non-blocking request to the
+// Next.js revalidation endpoint so the ISR cache refreshes within a second.
+//
+// Configuration (add to wp-config.php):
+//   define( 'MMF_NEXTJS_URL', 'https://your-nextjs-site.com' );
+//   define( 'MMF_NEXTJS_REVALIDATION_SECRET', 'a-long-random-secret' );
+//
+// The same secret must be set as the REVALIDATION_SECRET env var in Next.js.
+
+// Priority 999: run AFTER ACF has written field meta (ACF saves at priority 10),
+// otherwise Next.js revalidates and refetches the OLD data — a race condition.
+add_action( 'save_post', 'mmf_notify_nextjs_revalidate', 999, 2 );
+
+// ACF quick edits (acf/save_post fires after ACF meta is committed).
+add_action( 'acf/save_post', 'mmf_notify_nextjs_revalidate_acf', 99 );
+
+function mmf_notify_nextjs_revalidate_acf( $post_id ): void {
+	$post = get_post( (int) $post_id );
+
+	if ( $post instanceof WP_Post ) {
+		mmf_notify_nextjs_revalidate( (int) $post_id, $post );
+	}
+}
+
+function mmf_notify_nextjs_revalidate( int $post_id, WP_Post $post ): void {
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+
+	if ( wp_is_post_revision( $post_id ) ) {
+		return;
+	}
+
+	if ( 'publish' !== $post->post_status ) {
+		return;
+	}
+
+	$nextjs_url = defined( 'MMF_NEXTJS_URL' ) ? (string) MMF_NEXTJS_URL : '';
+	$secret     = defined( 'MMF_NEXTJS_REVALIDATION_SECRET' ) ? (string) MMF_NEXTJS_REVALIDATION_SECRET : '';
+
+	if ( empty( $nextjs_url ) || empty( $secret ) ) {
+		return;
+	}
+
+	// Home page ACF content changed — revalidate the "/" route and "home-page" tag.
+	if ( MMF_HOME_PAGE_SLUG === $post->post_name ) {
+		foreach ( array( 'home-page' ) as $tag ) {
+			wp_remote_post(
+				add_query_arg(
+					array( 'secret' => $secret, 'tag' => $tag ),
+					trailingslashit( $nextjs_url ) . 'api/revalidate'
+				),
+				array( 'timeout' => 2, 'blocking' => false )
+			);
+		}
+	}
+}
+
 add_action( 'rest_api_init', function () {
 
 	register_rest_route(
@@ -60,11 +158,79 @@ add_action( 'rest_api_init', function () {
 					'required'          => false,
 					'sanitize_callback' => 'sanitize_text_field',
 				),
+				'scope' => array(
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+				),
 			),
 		)
 	);
 
+	register_rest_route(
+		'custom/v1',
+		'/checkout/locations',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'mmf_get_checkout_locations',
+			'permission_callback' => '__return_true',
+		)
+	);
+
 } );
+
+/**
+ * Allowed countries + states for checkout dropdowns.
+ *
+ * Sourced from WooCommerce settings (selling locations) — same data the
+ * classic WC checkout renders. Endpoint: GET /custom/v1/checkout/locations
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_get_checkout_locations() {
+	if ( ! function_exists( 'WC' ) || ! WC()->countries ) {
+		return new WP_Error( 'wc_unavailable', 'WooCommerce unavailable', array( 'status' => 500 ) );
+	}
+
+	$countries_obj = WC()->countries;
+	$allowed       = $countries_obj->get_allowed_countries();
+	$all_states    = $countries_obj->get_allowed_country_states();
+
+	$countries = array();
+
+	foreach ( $allowed as $code => $name ) {
+		$countries[] = array(
+			'code' => (string) $code,
+			'name' => html_entity_decode( (string) $name ),
+		);
+	}
+
+	$states = array();
+
+	foreach ( $all_states as $country_code => $country_states ) {
+		if ( empty( $country_states ) || ! is_array( $country_states ) ) {
+			continue;
+		}
+
+		$state_list = array();
+
+		foreach ( $country_states as $state_code => $state_name ) {
+			$state_list[] = array(
+				'code' => (string) $state_code,
+				'name' => html_entity_decode( (string) $state_name ),
+			);
+		}
+
+		$states[ (string) $country_code ] = $state_list;
+	}
+
+	return rest_ensure_response(
+		array(
+			'default_country' => (string) $countries_obj->get_base_country(),
+			'countries'       => $countries,
+			'states'          => $states,
+		)
+	);
+}
 
 require_once get_template_directory() . '/inc/cart.php';
 
@@ -169,6 +335,7 @@ function mmf_format_catalog_product( int $post_id ): ?array {
 
 	return array(
 		'id'        => $post_id,
+		'slug'      => sanitize_title( (string) get_post_field( 'post_name', $post_id ) ),
 		'sku'       => $sku,
 		'name'      => sanitize_text_field( get_the_title( $post_id ) ),
 		'permalink' => esc_url_raw( (string) get_permalink( $post_id ) ),
@@ -183,6 +350,13 @@ function mmf_format_catalog_product( int $post_id ): ?array {
  */
 function mmf_build_product_catalog( int $page_id ): array {
 	$rows = get_field( 'product_catalog', $page_id );
+
+	// Fallback: read ACF's raw meta directly. get_field() returns empty when
+	// the field group was re-created (new field keys orphan the saved rows) —
+	// the values are still in post meta and this parser doesn't need keys.
+	if ( empty( $rows ) || ! is_array( $rows ) ) {
+		$rows = mmf_read_product_catalog_raw_meta( $page_id );
+	}
 
 	if ( empty( $rows ) || ! is_array( $rows ) ) {
 		return array();
@@ -258,6 +432,60 @@ function mmf_build_product_catalog( int $page_id ): array {
 	}
 
 	return $catalog;
+}
+
+/**
+ * Read the product_catalog repeater from raw post meta (no ACF key lookups).
+ *
+ * ACF stores repeaters as flat meta:
+ *   product_catalog                                   = row count
+ *   product_catalog_{i}_parent_category               = term ID
+ *   product_catalog_{i}_child_category                = child row count
+ *   product_catalog_{i}_child_category_{j}_child_category = term ID
+ *   product_catalog_{i}_child_category_{j}_product    = array of post IDs
+ *
+ * @param int $page_id Home page ID.
+ * @return array Same row shape get_field() returns.
+ */
+function mmf_read_product_catalog_raw_meta( int $page_id ): array {
+	$row_count = (int) get_post_meta( $page_id, 'product_catalog', true );
+
+	if ( $row_count <= 0 ) {
+		return array();
+	}
+
+	$rows = array();
+
+	for ( $i = 0; $i < $row_count; $i++ ) {
+		$parent      = get_post_meta( $page_id, "product_catalog_{$i}_parent_category", true );
+		$child_count = (int) get_post_meta( $page_id, "product_catalog_{$i}_child_category", true );
+		$child_rows  = array();
+
+		for ( $j = 0; $j < $child_count; $j++ ) {
+			$child_term = get_post_meta(
+				$page_id,
+				"product_catalog_{$i}_child_category_{$j}_child_category",
+				true
+			);
+			$products   = get_post_meta(
+				$page_id,
+				"product_catalog_{$i}_child_category_{$j}_product",
+				true
+			);
+
+			$child_rows[] = array(
+				'child_category' => $child_term,
+				'product'        => is_array( $products ) ? $products : array( $products ),
+			);
+		}
+
+		$rows[] = array(
+			'parent_category' => $parent,
+			'child_category'  => $child_rows,
+		);
+	}
+
+	return $rows;
 }
 
 /**
@@ -344,29 +572,117 @@ function mmf_get_site_settings() {
 	$build_by_link   = get_field( 'build_by_link', 'option' );
 
 	$response = array(
-		'branding' => array(
+		'branding'    => array(
 			'site_title'   => get_bloginfo( 'name' ),
 			'tagline'      => get_bloginfo( 'description' ),
 			'display_text' => (bool) get_theme_mod( 'header_text', true ),
 			'logo'         => mmf_get_attachment_data( $custom_logo_id ),
 			'favicon'      => mmf_get_attachment_data( $site_icon_id ),
 		),
-		'header'   => array(
+		'header'      => array(
 			'email'           => sanitize_email( (string) get_field( 'email', 'option' ) ),
 			'phone'           => sanitize_text_field( (string) get_field( 'phone', 'option' ) ),
 			'register_button' => mmf_format_acf_link( $register_button ),
 			'login_button'    => mmf_format_acf_link( $login_button ),
 		),
-		'footer'   => array(
+		'footer'      => array(
 			'iso_logo'        => mmf_format_acf_image( get_field( 'iso_logo', 'option' ) ),
 			'content_area'    => wp_kses_post( (string) get_field( 'content_area', 'option' ) ),
 			'copy_right_text' => mmf_format_acf_link( $copy_right_text ),
 			'build_by_text'   => sanitize_text_field( (string) get_field( 'build_by_text', 'option' ) ),
 			'build_by_link'   => mmf_format_acf_link( $build_by_link ),
 		),
+		'woocommerce' => mmf_get_woocommerce_settings(),
 	);
 
 	return rest_ensure_response( $response );
+}
+
+/**
+ * Relative frontend path for a WooCommerce system page.
+ *
+ * @param int $page_id WooCommerce page ID.
+ * @return string
+ */
+function mmf_get_wc_page_path( int $page_id ): string {
+	if ( $page_id <= 0 ) {
+		return '';
+	}
+
+	$permalink = get_permalink( $page_id );
+
+	if ( ! $permalink ) {
+		return '';
+	}
+
+	$path = wp_parse_url( $permalink, PHP_URL_PATH );
+
+	return $path ? untrailingslashit( (string) $path ) : '';
+}
+
+/**
+ * Post slug for a WooCommerce system page.
+ *
+ * @param int $page_id WooCommerce page ID.
+ * @return string
+ */
+function mmf_get_wc_page_slug( int $page_id ): string {
+	if ( $page_id <= 0 ) {
+		return '';
+	}
+
+	return sanitize_title( (string) get_post_field( 'post_name', $page_id ) );
+}
+
+/**
+ * WooCommerce page slugs/paths for the headless frontend.
+ *
+ * @return array<string, mixed>
+ */
+function mmf_get_woocommerce_settings(): array {
+	$defaults = array(
+		'shop_page_id'        => 0,
+		'shop_page_slug'      => 'product',
+		'shop_page_path'      => '/product',
+		'cart_page_slug'      => 'cart',
+		'cart_page_path'      => '/cart',
+		'checkout_page_slug'  => 'checkout',
+		'checkout_page_path'    => '/checkout',
+		'myaccount_page_slug' => 'my-account',
+		'myaccount_page_path'   => '/my-account',
+	);
+
+	if ( ! function_exists( 'wc_get_page_id' ) ) {
+		return $defaults;
+	}
+
+	$shop_id      = (int) wc_get_page_id( 'shop' );
+	$cart_id      = (int) wc_get_page_id( 'cart' );
+	$checkout_id  = (int) wc_get_page_id( 'checkout' );
+	$myaccount_id = (int) wc_get_page_id( 'myaccount' );
+
+	if ( $shop_id > 0 ) {
+		$defaults['shop_page_id']   = $shop_id;
+		$defaults['shop_page_slug'] = mmf_get_wc_page_slug( $shop_id ) ?: 'product';
+		$defaults['shop_page_path'] = mmf_get_wc_page_path( $shop_id ) ?: '/product';
+	}
+
+	if ( $cart_id > 0 ) {
+		$defaults['cart_page_slug'] = mmf_get_wc_page_slug( $cart_id ) ?: 'cart';
+		$defaults['cart_page_path'] = mmf_get_wc_page_path( $cart_id ) ?: '/cart';
+	}
+
+	if ( $checkout_id > 0 ) {
+		$defaults['checkout_page_slug'] = mmf_get_wc_page_slug( $checkout_id ) ?: 'checkout';
+		$defaults['checkout_page_path'] = mmf_get_wc_page_path( $checkout_id ) ?: '/checkout';
+	}
+
+	if ( $myaccount_id > 0 ) {
+		$defaults['myaccount_page_slug'] = mmf_get_wc_page_slug( $myaccount_id ) ?: 'my-account';
+		$defaults['myaccount_page_path'] = mmf_get_wc_page_path( $myaccount_id ) ?: '/my-account';
+	}
+
+	return $defaults;
 }
 /**
  * Build attachment response data.
@@ -433,10 +749,23 @@ function mmf_global_search( WP_REST_Request $request ) {
 	$search_term    = trim( (string) $request->get_param( 'q' ) );
 	$limit          = (int) $request->get_param( 'limit' );
 	$requested_type = sanitize_text_field( (string) $request->get_param( 'post_type' ) );
+	$scope          = sanitize_text_field( (string) $request->get_param( 'scope' ) );
 	$allowed_types  = array( 'post', 'page', 'product' );
 	$post_types     = $requested_type && in_array( $requested_type, $allowed_types, true )
 		? array( $requested_type )
 		: $allowed_types;
+
+	// scope=catalog: products + product categories/series only (home hero search).
+	// Default scope: everything (header global search).
+	$term_taxonomies = null;
+
+	if ( 'catalog' === $scope ) {
+		$post_types      = array( 'product' );
+		$series_taxonomy = function_exists( 'specparts_get_series_taxonomy' )
+			? specparts_get_series_taxonomy()
+			: 'product-series';
+		$term_taxonomies = array( 'product_cat', $series_taxonomy );
+	}
 
 	if ( empty( $search_term ) ) {
 		return rest_ensure_response(
@@ -493,7 +822,7 @@ function mmf_global_search( WP_REST_Request $request ) {
 	}
 
 	$results      = array_slice( array_values( $results_by_id ), 0, $limit );
-	$term_results = mmf_search_terms( $search_term, $limit );
+	$term_results = mmf_search_terms( $search_term, $limit, $term_taxonomies );
 
 	return rest_ensure_response(
 		array(
@@ -518,6 +847,10 @@ function mmf_format_search_post( int $post_id ): array {
 	$post_type = get_post_type( $post_id );
 	$image_id  = get_post_thumbnail_id( $post_id );
 	$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : '';
+
+	if ( ! $image_url && 'product' === $post_type && function_exists( 'wc_placeholder_img_src' ) ) {
+		$image_url = wc_placeholder_img_src();
+	}
 	$result    = array(
 		'id'         => $post_id,
 		'type'       => $post_type,
@@ -636,8 +969,10 @@ function mmf_get_post_terms_for_search( int $post_id, string $taxonomy ): array 
  * @param int    $limit       Max results.
  * @return array
  */
-function mmf_search_terms( string $search_term, int $limit ): array {
-	$taxonomies = array( 'category', 'post_tag', 'product_cat', 'product_tag' );
+function mmf_search_terms( string $search_term, int $limit, ?array $taxonomies = null ): array {
+	if ( null === $taxonomies ) {
+		$taxonomies = array( 'category', 'post_tag', 'product_cat', 'product_tag' );
+	}
 	$results    = array();
 	foreach ( $taxonomies as $taxonomy ) {
 		$terms = get_terms(

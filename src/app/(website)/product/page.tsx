@@ -1,16 +1,18 @@
 /**
  * File Name: page.tsx
- * Description: Route for the product listing page (/product).
+ * Description: Product catalog — alias for WooCommerce Shop page (/product).
  * Developer: KP-184
  * Created Date: 2026-07-07
  */
 
-import { ProductPage } from "@/components/pages/Product";
-import { fetch_spec_parts_categories, fetch_spec_parts_products } from "@/services/spec-parts.service";
+import { permanentRedirect } from "next/navigation";
+
+import CatalogListingPage from "@/components/pages/Product/CatalogListingPage";
+import { getWebsiteShellData } from "@/services/shell-data.service";
 import {
-  map_spec_parts_categories_to_sidebar,
-  map_spec_parts_product_to_table_product,
-} from "@/utils/spec-parts.utils";
+  build_catalog_listing_url,
+  get_catalog_listing_path,
+} from "@/utils/catalog-path.utils";
 
 type Props = {
   searchParams: Promise<{
@@ -22,29 +24,18 @@ type Props = {
 
 export default async function Page({ searchParams }: Props) {
   const params = await searchParams;
-  const current_page = Math.max(1, Number(params.page) || 1);
-  const [categories, products_response] = await Promise.all([
-    fetch_spec_parts_categories(),
-    fetch_spec_parts_products({
-      search: params.search,
-      series: params.series,
-      per_page: 10,
-      page: current_page,
-    }),
-  ]);
+  const shell = await getWebsiteShellData();
+  const catalog_path = get_catalog_listing_path(shell.settings?.woocommerce);
 
-  const sidebar_categories = map_spec_parts_categories_to_sidebar(categories);
+  if (catalog_path !== "/product") {
+    permanentRedirect(
+      build_catalog_listing_url(catalog_path, {
+        search: params.search,
+        series: params.series,
+        page: params.page,
+      })
+    );
+  }
 
-  return (
-    <ProductPage
-      title="Product Catalog"
-      products={products_response.products.map(map_spec_parts_product_to_table_product)}
-      sidebarCategories={sidebar_categories}
-      breadcrumb={[{ label: "PRODUCT CATALOG" }]}
-      activeSeriesId={params.series}
-      initialSearch={params.search ?? ""}
-      currentPage={products_response.page}
-      totalPages={products_response.pages}
-    />
-  );
+  return <CatalogListingPage searchParams={params} />;
 }

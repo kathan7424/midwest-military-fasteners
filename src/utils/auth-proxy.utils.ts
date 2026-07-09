@@ -8,11 +8,47 @@
 
 import { NextResponse } from "next/server";
 
+export const WC_STORE_NONCE_COOKIE = "wc_store_nonce";
+export const WC_CART_TOKEN_COOKIE = "wc_cart_token";
+
+/**
+ * Append a Set-Cookie header WITHOUT going through response.cookies.
+ *
+ * NextResponse.cookies.set/delete re-serializes its own cookie jar and
+ * CLOBBERS manually-appended set-cookie headers (e.g. WordPress login/logout
+ * cookies we forward). Raw header appends compose safely.
+ */
+export function appendSetCookie(
+  response: NextResponse,
+  name: string,
+  value: string,
+  options: { expire?: boolean } = {}
+): void {
+  const attributes = options.expire
+    ? "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax"
+    : "Path=/; HttpOnly; SameSite=Lax";
+
+  response.headers.append("set-cookie", `${name}=${value}; ${attributes}`);
+}
+
+/**
+ * Remove the WooCommerce Store API session cookies.
+ *
+ * The cart token identifies a WC session independent of the WP login cookie —
+ * if it survives a logout/login, the next user is served the PREVIOUS user's
+ * cart. Always call this on auth transitions.
+ */
+export function clearWcSessionCookies(response: NextResponse): void {
+  appendSetCookie(response, WC_CART_TOKEN_COOKIE, "", { expire: true });
+  appendSetCookie(response, WC_STORE_NONCE_COOKIE, "", { expire: true });
+}
+
 /**
  * Build a Next.js response from a WordPress fetch, forwarding Set-Cookie headers.
  */
 export async function buildProxiedResponse(
-  wpResponse: Response
+  wpResponse: Response,
+  options: { clearWcSession?: boolean } = {}
 ): Promise<NextResponse> {
   const data = await wpResponse.json().catch(() => ({}));
 
@@ -24,15 +60,24 @@ export async function buildProxiedResponse(
     }
   });
 
+  if (options.clearWcSession) {
+    clearWcSessionCookies(response);
+  }
+
   return response;
 }
 
 /**
  * Forward browser cookies to WordPress for authenticated requests.
+ *
+ * X-MMF-Proxy marks the request as coming from our server-side proxy — WP
+ * uses it to allow cookie auth without an X-WP-Nonce (see
+ * mmf_headless_cookie_auth). Browsers can't forge it cross-origin.
  */
 export function buildWpCookieHeader(cookieHeader: string | null): HeadersInit {
   const headers: Record<string, string> = {
     Accept: "application/json",
+    "X-MMF-Proxy": "1",
   };
 
   if (cookieHeader) {

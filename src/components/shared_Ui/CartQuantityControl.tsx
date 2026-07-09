@@ -10,6 +10,7 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { notifyError } from "@/utils/notifications";
 
 interface CartQuantityControlProps {
   quantity: number;
@@ -73,13 +74,26 @@ export default function CartQuantityControl({
     );
   }
 
+  const notifyMaxExceeded = () => {
+    if (hasMaxLimit) {
+      notifyError(
+        `You cannot add that amount to the cart — we have ${maxQuantity} in stock and you already have ${quantity} in your cart.`
+      );
+    }
+  };
+
   const commitQuantity = () => {
     if (isLocked) {
       setInputValue(String(quantity));
       return;
     }
 
-    const parsed = clampQuantity(Number(inputValue), minQuantity, maxQuantity);
+    const requested = Number(inputValue);
+    const parsed = clampQuantity(requested, minQuantity, maxQuantity);
+
+    if (hasMaxLimit && requested > (maxQuantity ?? 0)) {
+      notifyMaxExceeded();
+    }
 
     setInputValue(String(parsed));
 
@@ -99,7 +113,12 @@ export default function CartQuantityControl({
   };
 
   const handleIncrease = () => {
-    if (isLocked || isAtMax) {
+    if (isLocked) {
+      return;
+    }
+
+    if (isAtMax) {
+      notifyMaxExceeded();
       return;
     }
 

@@ -11,12 +11,44 @@ import Swal from "sweetalert2";
 
 import { formatNoticeMessage } from "@/utils/text.utils";
 
-export function notifySuccess(message: string) {
-  toast.success(formatNoticeMessage(message));
+export interface NotifyAction {
+  label: string;
+  href: string;
+}
+
+/**
+ * Reusing the message as the toast id replaces an existing toast instead of
+ * stacking duplicates (e.g. repeated "Only 4 in stock" on every "+" click).
+ */
+export function notifySuccess(message: string, action?: NotifyAction) {
+  const text = formatNoticeMessage(message);
+
+  toast.success(text, {
+    id: `success:${text}`,
+    action: action
+      ? {
+          label: action.label,
+          onClick: () => {
+            window.location.href = action.href;
+          },
+        }
+      : undefined,
+  });
 }
 
 export function notifyError(message: string) {
-  toast.error(formatNoticeMessage(message));
+  const text = formatNoticeMessage(message);
+  toast.error(text, { id: `error:${text}` });
+}
+
+export function notifyWarning(message: string) {
+  const text = formatNoticeMessage(message);
+  toast.warning(text, { id: `warning:${text}` });
+}
+
+export function notifyInfo(message: string) {
+  const text = formatNoticeMessage(message);
+  toast.info(text, { id: `info:${text}` });
 }
 
 export function notifyLoading(message: string) {

@@ -17,6 +17,8 @@
     "@hookform/resolvers": "^5.4.0",
     "@internationalized/date": "^3.12.2",
     "@react-stately/utils": "^3.12.1",
+    "@stripe/react-stripe-js": "^6.7.0",
+    "@stripe/stripe-js": "^9.9.0",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-table": "^8.21.3",
     "@untitledui/file-icons": "^0.0.9",

@@ -348,3 +348,17 @@
   background-color: var(--color-off-white);
   color: var(--color-navy);
 } 
+/* ── Browser autofill styling override ─────────────────────────────────────
+   Chrome paints autofilled inputs light blue/yellow (:-webkit-autofill).
+   Repaint with an inset shadow so form fields keep the site's white look. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  -webkit-text-fill-color: #1d2327;
+  caret-color: #1d2327;
+  transition: background-color 600000s 0s;
+}

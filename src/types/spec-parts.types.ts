@@ -12,6 +12,7 @@ export interface SpecPartsCategoryTerm {
   count: number;
   parent_id?: number;
   description?: string;
+  image?: string;
   children: SpecPartsCategoryTerm[];
   series?: SpecPartsSeriesTerm[];
 }
@@ -28,6 +29,7 @@ export interface SpecPartsProductCategory {
   name: string;
   slug: string;
   parent_id: number;
+  parent_slug?: string;
 }
 
 export interface SpecPartsProductSeries {
@@ -45,6 +47,7 @@ export interface SpecPartsPackagePricingTier {
 
 export interface SpecPartsProduct {
   id: number;
+  slug: string;
   sku: string;
   name: string;
   description: string;
@@ -65,14 +68,13 @@ export interface SpecPartsProduct {
   package_pricing: SpecPartsPackagePricingTier[];
   pkg_qty: number | null;
   spec_file_url: string;
+  spec_files?: Array<{ name: string; url: string }>;
+  certificate_file_url: string;
   mfr_coc: boolean;
   material_certs: boolean;
   process_certs: boolean;
   test_reports: boolean;
   backorder_leadtime: string;
-  reorder_limit: number;
-  lot_in_use: string;
-  cert_location: string;
   piece_weight: number;
 }
 
@@ -82,5 +84,18 @@ export interface SpecPartsProductsResponse {
   page: number;
   per_page: number;
   products: SpecPartsProduct[];
+}
+
+export interface SpecPartsProductsQueryParams {
+  search?: string;
+  sku?: string;
+  slug?: string;
+  category?: string;
+  series?: string;
+  manufacturer?: string;
+  country?: string;
+  dfar?: boolean;
+  per_page?: number;
+  page?: number;
 }
 

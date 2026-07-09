@@ -11,6 +11,7 @@ import { Download } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Product } from "@/components/pages/Product/ProductTable";
+import { has_product_document } from "@/utils/spec-parts.utils";
 
 interface ProductSpecTableProps {
   product: Product;
@@ -49,21 +50,39 @@ export default function ProductSpecTable({ product }: ProductSpecTableProps) {
           </tr>
         ))}
 
-        <tr>
-          <th className={thClass}>Spec Sheet</th>
-          <td className="px-2 sm:px-4 py-3 align-top">
-            <a
-              href={product.specHref}
-              className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
-            >
-              <Download className="size-4" />
-              Download Spec Sheet
-            </a>
-            <p className="mt-2 text-sm italic text-mid-gray">
-              Legacy spec sheet may not match current milspec branding
-            </p>
-          </td>
-        </tr>
+        {has_product_document(product.specHref) ? (
+          <tr>
+            <th className={thClass}>Spec Sheet</th>
+            <td className="px-2 sm:px-4 py-3 align-top">
+              <a
+                href={product.specHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
+              >
+                <Download className="size-4" />
+                Download Spec Sheet
+              </a>
+            </td>
+          </tr>
+        ) : null}
+
+        {has_product_document(product.certHref) ? (
+          <tr>
+            <th className={thClass}>Certificate</th>
+            <td className="px-2 sm:px-4 py-3 align-top">
+              <a
+                href={product.certHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
+              >
+                <Download className="size-4" />
+                Download Certificate
+              </a>
+            </td>
+          </tr>
+        ) : null}
       </tbody>
     </table>
   );

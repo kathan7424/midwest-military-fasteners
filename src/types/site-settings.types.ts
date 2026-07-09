@@ -47,4 +47,17 @@ export interface SiteSettings {
   branding: BrandingSettings;
   header: HeaderSettings;
   footer: FooterSettings;
+  woocommerce?: WooCommerceSettings;
+}
+
+export interface WooCommerceSettings {
+  shop_page_id: number;
+  shop_page_slug: string;
+  shop_page_path: string;
+  cart_page_slug: string;
+  cart_page_path: string;
+  checkout_page_slug: string;
+  checkout_page_path: string;
+  myaccount_page_slug: string;
+  myaccount_page_path: string;
 }

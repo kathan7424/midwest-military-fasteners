@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Import Guide — Midwest Military Fasteners</title>
+<style>
+  :root {
+    --navy: #1a3659; --amber: #c88a00; --green: #3a7d44; --red: #b81c23;
+    --blue: #1a56db; --purple: #6b3fa0;
+    --gray: #f7f6f7; --text: #1d2327; --muted: #50575e; --border: #dcdcde;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); line-height: 1.65; background: #fff; font-size: 14px; }
+
+  /* Header */
+  .hero { background: var(--navy); color: #fff; padding: 48px 32px 36px; text-align: center; }
+  .hero h1 { font-size: 30px; letter-spacing: -.5px; }
+  .hero h1 span { color: #f6c90e; }
+  .hero p { color: #a8bdd4; margin-top: 8px; font-size: 15px; }
+  .hero .badges { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .badge { background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.25); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: #dce8f5; }
+
+  /* Layout */
+  .wrap { max-width: 960px; margin: 0 auto; padding: 40px 28px 60px; }
+
+  /* TOC */
+  .toc { background: #f0f4f9; border: 1px solid #c3d0e0; border-radius: 8px; padding: 20px 24px; margin-bottom: 40px; }
+  .toc h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--navy); margin-bottom: 12px; }
+  .toc ol { margin-left: 18px; }
+  .toc li { margin: 5px 0; }
+  .toc a { color: var(--navy); text-decoration: none; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* Sections */
+  h2 { font-size: 20px; color: var(--navy); margin: 48px 0 14px; display: flex; align-items: center; gap: 12px; border-bottom: 2px solid var(--navy); padding-bottom: 8px; }
+  h2 .num { background: var(--navy); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  h3 { font-size: 15px; color: var(--navy); margin: 24px 0 10px; }
+  p { margin: 10px 0; font-size: 14px; }
+
+  /* Boxes */
+  .box { border: 1px solid var(--border); border-radius: 7px; padding: 14px 18px; margin: 14px 0; background: var(--gray); }
+  .box.green { border-left: 5px solid var(--green); background: #f1f8f2; }
+  .box.amber { border-left: 5px solid var(--amber); background: #fffbeb; }
+  .box.red { border-left: 5px solid var(--red); background: #fef5f5; }
+  .box.blue { border-left: 5px solid var(--blue); background: #f0f5ff; }
+  .box b { display: block; margin-bottom: 6px; font-size: 14px; }
+
+  code { background: #eef0f2; border: 1px solid #d0d5db; padding: 1px 6px; font-size: 12.5px; border-radius: 3px; font-family: monospace; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 14px 0; border-radius: 7px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 480px; }
+  thead th { background: var(--navy); color: #fff; text-align: left; padding: 9px 13px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+  td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  .req { color: var(--red); font-weight: 700; }
+
+  /* Column color bands */
+  .col-ctx td:first-child { background: #f0f5ff; font-weight: 600; color: var(--navy); }
+  .col-req td:first-child { background: #fff0f0; font-weight: 700; color: var(--red); }
+  .col-price td:first-child { background: #f0faf2; font-weight: 600; color: var(--green); }
+  .col-attr td:first-child { background: #fffbeb; font-weight: 600; color: #7a5000; }
+  .col-int td:first-child { background: #f9f0ff; font-weight: 600; color: var(--purple); }
+  .col-media td:first-child { background: #fff8f0; font-weight: 700; color: #7a3800; }
+  .col-ignore td:first-child { background: #f7f6f7; color: #8c8f94; }
+  .col-ignore { opacity: .75; }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 20px; }
+  .leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Steps */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 16px; margin: 18px 0; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--amber); color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step-body { flex: 1; }
+  .step-body b { font-size: 15px; display: block; margin-bottom: 4px; }
+
+  /* Do/Don't */
+  .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+  @media (max-width: 640px) { .do-dont { grid-template-columns: 1fr; } }
+  .do-dont > div { border-radius: 7px; padding: 14px 18px; font-size: 13.5px; }
+  .do-dont .do { background: #f1f8f2; border: 1px solid #a8d5b1; }
+  .do-dont .dont { background: #fef5f5; border: 1px solid #f3b8bb; }
+  .do-dont b { display: block; margin-bottom: 8px; font-size: 14px; }
+  .do-dont .do b { color: var(--green); }
+  .do-dont .dont b { color: var(--red); }
+  ul, ol { margin: 8px 0 8px 22px; }
+  li { margin: 5px 0; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 16px 0; }
+  .flow-step { background: var(--gray); border: 1px solid var(--border); border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--navy); }
+  .flow-arrow { color: var(--amber); font-size: 20px; font-weight: 700; }
+
+  /* Troubleshoot */
+  .error-table td:nth-child(1) { color: var(--red); font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .error-table td:nth-child(2) { color: var(--muted); }
+  .error-table td:nth-child(3) { font-size: 13px; }
+
+  footer { margin-top: 60px; padding: 20px; background: var(--gray); color: var(--muted); font-size: 12px; text-align: center; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>PRODUCT <span>IMPORT GUIDE</span></h1>
+  <p>Complete field reference — categories, images, media, pricing, attributes, and all 36 columns</p>
+  <div class="badges">
+    <span class="badge">36 Columns Documented</span>
+    <span class="badge">CSV Format</span>
+    <span class="badge">Preview Mode Safe</span>
+    <span class="badge">No Technical Knowledge Needed</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#s1">Quick start — 4 steps</a></li>
+    <li><a href="#s2">How category rows work</a></li>
+    <li><a href="#s3">All 36 columns explained</a></li>
+    <li><a href="#s4">Pricing tiers</a></li>
+    <li><a href="#s5">Photos, spec sheets &amp; certificates</a></li>
+    <li><a href="#s6">Compliance &amp; attribute fields</a></li>
+    <li><a href="#s7">Preview, then import</a></li>
+    <li><a href="#s8">Updating products later</a></li>
+    <li><a href="#s9">Troubleshooting</a></li>
+  </ol>
+</div>
+
+<!-- ─── 1. QUICK START ─────────────────────────────────────────── -->
+<h2 id="s1"><span class="num">1</span> Quick Start</h2>
+
+<div class="box green">
+  <b>The 4-step version:</b>
+  <ol style="margin-left:18px;margin-top:6px">
+    <li>Download <code>import-template.csv</code> from <b>WooCommerce → Parts Import</b> and fill it in</li>
+    <li>Upload photos, spec sheets, and certificates to their folders (see Section 5)</li>
+    <li>Click <b>Preview (no changes)</b> — review the report for warnings</li>
+    <li>Click <b>Import CSV</b> when the preview looks good</li>
+  </ol>
+</div>
+
+<div class="do-dont">
+  <div class="do">
+    <b>✓ Do</b>
+    <ul>
+      <li>Keep columns in the exact same order as the template</li>
+      <li>Save as <b>CSV (comma-separated)</b>, not XLSX</li>
+      <li>Add a category context row before each new group of products</li>
+      <li>Use the P/N (Part Number) as your filenames for auto-matching</li>
+      <li>Run <b>Preview</b> before every real import</li>
+    </ul>
+  </div>
+  <div class="dont">
+    <b>✕ Don't</b>
+    <ul>
+      <li>Don't add, remove, or reorder columns</li>
+      <li>Don't leave the P/N column empty on a product row</li>
+      <li>Don't use the same P/N (SKU) more than once in the file</li>
+      <li>Don't import without previewing first</li>
+      <li>Don't include column headers from a second copy of the file</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ─── 2. CATEGORY ROWS ───────────────────────────────────────── -->
+<h2 id="s2"><span class="num">2</span> How Category Rows Work</h2>
+
+<p>A row with an <b>empty P/N column</b> is a <em>category context row</em> — it tells the system: <em>"everything below this line belongs to this category/series until the next context row."</em> You do <b>not</b> need to repeat it on every product row.</p>
+
+<div class="flow">
+  <div class="flow-step">Category row (P/N empty)</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Product row</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Product row</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">New category row</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-step">Product row …</div>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Col 1<br>Category Image</th><th>Col 2<br>Parent Category</th><th>Col 3<br>Sub-Category</th><th>Col 4<br>Series</th><th>Col 5<br>P/N</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>bolt.jpg</td><td><b>SCREWS</b></td><td><b>HEX CAP SCREWS</b></td><td><b>MS35307</b></td><td><i>(empty)</i></td><td>Sets category + uploads thumbnail photo</td></tr>
+    <tr><td></td><td></td><td></td><td></td><td>MS35307-303</td><td>Product → Screws &gt; Hex Cap Screws &gt; MS35307</td></tr>
+    <tr><td></td><td></td><td></td><td></td><td>MS35307-306</td><td>Same category, next product</td></tr>
+    <tr><td></td><td><b>SCREWS</b></td><td><b>HEX CAP SCREWS</b></td><td><b>MS35308</b></td><td><i>(empty)</i></td><td>New series — category context updates</td></tr>
+    <tr><td></td><td></td><td></td><td></td><td>MS35308-020</td><td>Product → same sub-cat, new series</td></tr>
+    <tr><td></td><td><b>NUTS</b></td><td><b>HEX NUTS</b></td><td><b>MS35649</b></td><td><i>(empty)</i></td><td>Entirely new category group</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="box amber">
+  <b>Cascading rule:</b> Values in columns 1–4 <em>stick</em> until you change them. You only need to re-enter a value when it changes — leave the cells empty and the last value keeps applying. Column 1 (category image) can be set once per category and left blank for all other rows.
+</div>
+
+<!-- ─── 3. ALL 36 COLUMNS ──────────────────────────────────────── -->
+<h2 id="s3"><span class="num">3</span> All 36 Columns Explained</h2>
+
+<div class="legend">
+  <span class="leg"><span class="dot" style="background:#d8e5ff"></span> Category / Context</span>
+  <span class="leg"><span class="dot" style="background:#ffe0e0"></span> Required</span>
+  <span class="leg"><span class="dot" style="background:#e0f5e5"></span> Pricing</span>
+  <span class="leg"><span class="dot" style="background:#fff8e0"></span> Attribute / Badge</span>
+  <span class="leg"><span class="dot" style="background:#f5e8ff"></span> Internal only</span>
+  <span class="leg"><span class="dot" style="background:#ffe8cc"></span> Media (photos/PDFs)</span>
+  <span class="leg"><span class="dot" style="background:#f0f0f0"></span> Ignored / Skipped</span>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>Column Name</th><th>Where it goes</th><th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- Context group -->
+    <tr class="col-ctx"><td>1</td><td>CATEGORY IMAGE LOCATION</td><td>WC Category thumbnail photo</td>
+      <td>Filename from <code>product-images/</code> folder, or a full URL. Applied to the current parent &amp; sub-category. Leave empty after the first time.</td></tr>
+    <tr class="col-ctx"><td>2</td><td>PRODCUT CATEGORY <small>(typo in source file)</small></td><td>WC parent category</td>
+      <td>E.g. <code>SCREWS</code>, <code>NUTS</code>, <code>WASHERS</code>. Cascades to all rows below until changed.</td></tr>
+    <tr class="col-ctx"><td>3</td><td>PRODUCT SUB CATEGORY</td><td>WC child category</td>
+      <td>E.g. <code>HEX CAP SCREWS</code>, <code>CAP NUTS</code>, <code>FLAT WASHERS</code>. Products are assigned to the sub-category level.</td></tr>
+    <tr class="col-ctx"><td>4</td><td>PART SERIES</td><td>Product Series taxonomy</td>
+      <td>Series code, e.g. <code>MS35307</code>, <code>NAS1149</code>. Cascades. This powers the sidebar series filter on the website.</td></tr>
+
+    <!-- Required -->
+    <tr class="col-req"><td>5</td><td>P/N <span class="req">★ REQUIRED</span></td><td>WC SKU &amp; Product title</td>
+      <td>The part number. Becomes the SKU <em>and</em> the product name. Empty P/N = category context row (skipped as a product). Duplicate P/Ns in the same file are rejected.</td></tr>
+
+    <!-- Product info -->
+    <tr><td>6</td><td>DESCRIPTION</td><td>WC short description</td>
+      <td>Part description shown in the catalog table and product page. Keep it concise but complete.</td></tr>
+    <tr><td>7</td><td>PACKAGE QTY</td><td>Meta <code>_pkg_qty</code></td>
+      <td>How many pieces are in one package. Used by the cart and the website pricing display.</td></tr>
+
+    <!-- Tier 1 -->
+    <tr class="col-price"><td>8</td><td>SHIPPING DIMENSIONS H×W×L <small>(Tier 1)</small></td><td>WC product dimensions</td>
+      <td>Box size in inches, e.g. <code>2x4x6</code>. Used by Shippo for shipping rate quotes. Only tier-1 dimensions are used.</td></tr>
+    <tr class="col-price"><td>9</td><td>SHIPPING WEIGHT <small>(Tier 1)</small></td><td>WC product weight (lbs)</td>
+      <td>Package weight in pounds. Sets WC weight field for Shippo. Only tier-1 weight is used.</td></tr>
+    <tr class="col-price"><td>10</td><td>1 PKG COST</td><td>WC regular price + pricing tier 1</td>
+      <td>Price per package when ordering 1 package. <b>This sets the displayed website price.</b> Can include a $ sign — it will be stripped automatically.</td></tr>
+
+    <!-- Tier 3 -->
+    <tr class="col-price"><td>11</td><td>3 PKG COST</td><td>Pricing tier 2 (3+ packages)</td>
+      <td>Discounted price when customer orders 3 or more packages. Leave empty if you don't offer this tier.</td></tr>
+    <tr class="col-ignore"><td>12</td><td>SHIPPING DIMENSIONS <small>(Tier 3)</small></td><td><em>Ignored</em></td>
+      <td>This column exists in the source format but is not imported. Only tier-1 shipping dimensions are used.</td></tr>
+    <tr class="col-ignore"><td>13</td><td>SHIPPING WEIGHT <small>(Tier 3)</small></td><td><em>Ignored</em></td>
+      <td>Not imported — same reason as col 12.</td></tr>
+
+    <!-- Tier 5 -->
+    <tr class="col-price"><td>14</td><td>5 PKG COST</td><td>Pricing tier 3 (5+ packages)</td>
+      <td>Discounted price when customer orders 5 or more packages.</td></tr>
+    <tr class="col-ignore"><td>15</td><td>SHIPPING DIMENSIONS <small>(Tier 5)</small></td><td><em>Ignored</em></td><td></td></tr>
+    <tr class="col-ignore"><td>16</td><td>SHIPPING WEIGHT <small>(Tier 5)</small></td><td><em>Ignored</em></td><td></td></tr>
+
+    <!-- Tier 10 -->
+    <tr class="col-price"><td>17</td><td>10 PKG COST</td><td>Pricing tier 4 (10+ packages)</td>
+      <td>Best price when customer orders 10 or more packages.</td></tr>
+    <tr class="col-ignore"><td>18</td><td>SHIPPING DIMENSIONS <small>(Tier 10)</small></td><td><em>Ignored</em></td><td></td></tr>
+    <tr class="col-ignore"><td>19</td><td>SHIPPING WEIGHT <small>(Tier 10)</small></td><td><em>Ignored</em></td><td></td></tr>
+
+    <!-- Stock -->
+    <tr><td>20</td><td>QUANTITY IN STOCK</td><td>WC stock quantity</td>
+      <td>A number (integer). <code>0</code> = out of stock. Leave empty for "always available" (stock tracking off). When filled in, WC stock management turns on automatically.</td></tr>
+    <tr><td>21</td><td>BACKORDER LEADTIME</td><td>Meta <code>_backorder_leadtime</code></td>
+      <td>Shown on the product page when stock is low, e.g. <code>2–3 DAYS</code>.</td></tr>
+    <tr class="col-int"><td>22</td><td>REORDER LIMIT</td><td>Meta <code>_reorder_limit</code></td>
+      <td><b>Internal only.</b> Minimum reorder quantity used by purchasing. Not shown to customers.</td></tr>
+
+    <!-- Attributes / Badges -->
+    <tr class="col-attr"><td>23</td><td>COUNTRY OF ORIGIN</td><td>WC attribute <code>pa_country</code></td>
+      <td>E.g. <code>USA</code>, <code>Germany</code>. Shown in the Additional Information tab and as a "Made in X" badge on the product page.</td></tr>
+    <tr class="col-attr"><td>24</td><td>DFAR?</td><td>WC attribute <code>pa_specs_standard</code></td>
+      <td><code>Y</code> = DFAR-compliant (Defense Federal Acquisition Regulation). Shows a compliance badge on the product page. <code>N</code> or empty = no badge.</td></tr>
+
+    <!-- Compliance fields -->
+    <tr class="col-attr"><td>25</td><td>MFR C OF C</td><td>Meta <code>_mfr_coc</code></td>
+      <td>Manufacturer Certificate of Conformance. <code>Y</code> = available, <code>N</code> = not available. Shown to customer on product page.</td></tr>
+    <tr class="col-attr"><td>26</td><td>MATERIAL CERTS</td><td>Meta <code>_material_certs</code></td>
+      <td><code>Y</code>/<code>N</code> — material certifications available.</td></tr>
+    <tr class="col-attr"><td>27</td><td>PROCESS CERTS</td><td>Meta <code>_process_certs</code></td>
+      <td><code>Y</code>/<code>N</code> — process certifications available.</td></tr>
+    <tr class="col-attr"><td>28</td><td>TEST REPORTS</td><td>Meta <code>_test_reports</code></td>
+      <td><code>Y</code>/<code>N</code> — test reports available.</td></tr>
+
+    <tr class="col-attr"><td>29</td><td>MFR</td><td>WC attribute <code>pa_manufacturer</code></td>
+      <td>Manufacturer name, e.g. <code>Holo-Krome</code>. Shown in the Additional Information tab on the product page.</td></tr>
+
+    <!-- Internal -->
+    <tr class="col-int"><td>30</td><td>LOT IN USE</td><td>Meta <code>_lot_in_use</code></td>
+      <td><b>Internal only.</b> Current lot or batch reference number. Not shown to customers.</td></tr>
+    <tr class="col-int"><td>31</td><td>COST PER EA</td><td>Meta <code>_cost_per_ea</code></td>
+      <td><b>Internal only.</b> Your cost per individual piece. Never shown to customers or in the API.</td></tr>
+    <tr class="col-int"><td>32</td><td>CERT LOCATION</td><td>Meta <code>_cert_location</code></td>
+      <td><b>Internal note</b> for where the physical certificate is stored (filing cabinet reference, etc.). Use column 36 for the public downloadable PDF.</td></tr>
+    <tr><td>33</td><td>PER PIECE WEIGHT</td><td>WC weight fallback + Meta <code>_piece_weight</code></td>
+      <td>Individual piece weight in lbs. Used as a fallback when tier-1 shipping weight (col 9) is blank.</td></tr>
+
+    <!-- Media -->
+    <tr class="col-media"><td>34</td><td>PRODUCT IMAGE</td><td>WC featured image + gallery</td>
+      <td>Filename(s) from the <code>product-images/</code> folder. Comma-separate multiple: <code>MS35307-303.jpg, MS35307-303-side.jpg</code>. First = main photo; rest = gallery. Leave blank to auto-match by P/N.</td></tr>
+    <tr class="col-media"><td>35</td><td>SPEC SHEET</td><td>WC downloadable file (spec sheet)</td>
+      <td>PDF filename from <code>product-specs/</code> folder, or full URL. Leave blank to auto-try <code>{P/N}-spec.pdf</code>. Becomes a downloadable link on the product page.</td></tr>
+    <tr class="col-media"><td>36</td><td>CERTIFICATE</td><td>WC downloadable file (cert) + Meta</td>
+      <td>PDF or image filename from <code>product-certs/</code> folder, or full URL. Leave blank to auto-try <code>{P/N}-cert.pdf</code>. Shown as a downloadable link to approved customers.</td></tr>
+
+  </tbody>
+</table>
+</div>
+
+<!-- ─── 4. PRICING TIERS ───────────────────────────────────────── -->
+<h2 id="s4"><span class="num">4</span> Pricing Tiers</h2>
+
+<p>The website shows tiered pricing: the customer sees a better price per package the more they order. The website handles the logic automatically — you just fill in the prices.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Column</th><th>Tier</th><th>Customer sees this price when ordering…</th><th>Also sets</th></tr></thead>
+  <tbody>
+    <tr><td>10 — 1 PKG COST</td><td>Tier 1</td><td>1–2 packages</td><td>WC regular price (the price shown on the website)</td></tr>
+    <tr><td>11 — 3 PKG COST</td><td>Tier 2</td><td>3–4 packages</td><td>—</td></tr>
+    <tr><td>14 — 5 PKG COST</td><td>Tier 3</td><td>5–9 packages</td><td>—</td></tr>
+    <tr><td>17 — 10 PKG COST</td><td>Tier 4</td><td>10+ packages</td><td>—</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="box amber">
+  <b>At minimum, fill in column 10 (1 PKG COST).</b> The other tiers are optional — leave them blank if you don't offer volume discounts. Prices can include a dollar sign ($) — it is removed automatically.
+</div>
+
+<div class="box red">
+  <b>Import warning:</b> A product imported with no price in column 10 will appear on the website with a $0.00 price. The Preview mode will warn you before this happens.
+</div>
+
+<!-- ─── 5. MEDIA ────────────────────────────────────────────────── -->
+<h2 id="s5"><span class="num">5</span> Photos, Spec Sheets &amp; Certificates</h2>
+
+<h3>Step 1 — Upload your files to the right folders</h3>
+<p>Before importing the CSV, upload your files to these folders in the WordPress Media Library (ask your developer to set up SFTP access or use the Media → Add New screen):</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>File Type</th><th>Folder</th><th>Column</th><th>Auto-name pattern</th></tr></thead>
+  <tbody>
+    <tr><td>Product photos (JPG/PNG/WEBP)</td><td><code>product-images/</code></td><td>34 — PRODUCT IMAGE</td><td><code>{P/N}.jpg</code></td></tr>
+    <tr><td>Spec sheet PDFs</td><td><code>product-specs/</code></td><td>35 — SPEC SHEET</td><td><code>{P/N}-spec.pdf</code></td></tr>
+    <tr><td>Certificate PDFs or images</td><td><code>product-certs/</code></td><td>36 — CERTIFICATE</td><td><code>{P/N}-cert.pdf</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Auto-matching (easiest approach)</h3>
+<p>If you name your files after the part number, you can leave columns 34–36 <b>completely blank</b> in the CSV — the importer finds them automatically:</p>
+<div class="box green">
+  <b>Example:</b> For part number <code>MS35307-303</code>:
+  <ul style="margin-top:8px">
+    <li>Photo: name it <code>MS35307-303.jpg</code> → upload to <code>product-images/</code></li>
+    <li>Spec sheet: name it <code>MS35307-303-spec.pdf</code> → upload to <code>product-specs/</code></li>
+    <li>Certificate: name it <code>MS35307-303-cert.pdf</code> → upload to <code>product-certs/</code></li>
+  </ul>
+  Leave columns 34, 35, 36 blank. The system matches them automatically.
+</div>
+
+<h3>Multiple product photos</h3>
+<p>To add a gallery (more than one photo), list filenames separated by commas in column 34:</p>
+<code>MS35307-303.jpg, MS35307-303-side.jpg, MS35307-303-angle.jpg</code>
+<p>The <b>first</b> image becomes the main product photo. The rest become the gallery.</p>
+
+<h3>Category thumbnail photos</h3>
+<p>Column 1 (<b>CATEGORY IMAGE LOCATION</b>) sets the thumbnail shown on the category/sidebar in the website. You only need to set it once on the category context row. Use a filename from the <code>product-images/</code> folder or a full URL.</p>
+
+<!-- ─── 6. COMPLIANCE & ATTRIBUTES ─────────────────────────────── -->
+<h2 id="s6"><span class="num">6</span> Compliance &amp; Attribute Fields</h2>
+
+<p>These fields power the badges and information shown on each product page. Customers and purchasing teams rely on this data to verify compliance.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Column</th><th>What it shows on the website</th><th>Accepted values</th></tr></thead>
+  <tbody>
+    <tr><td>23 — COUNTRY OF ORIGIN</td><td>"Made in USA" / "Made in Germany" badge + Additional Info tab</td><td>Country name, e.g. <code>USA</code>, <code>Germany</code>, <code>Taiwan</code></td></tr>
+    <tr><td>24 — DFAR?</td><td>DFAR compliance badge (Defense Federal Acquisition Regulation)</td><td><code>Y</code> or <code>N</code> (or blank for No)</td></tr>
+    <tr><td>25 — MFR C OF C</td><td>Manufacturer Certificate of Conformance indicator</td><td><code>Y</code> or <code>N</code></td></tr>
+    <tr><td>26 — MATERIAL CERTS</td><td>Material certifications available indicator</td><td><code>Y</code> or <code>N</code></td></tr>
+    <tr><td>27 — PROCESS CERTS</td><td>Process certifications available indicator</td><td><code>Y</code> or <code>N</code></td></tr>
+    <tr><td>28 — TEST REPORTS</td><td>Test reports available indicator</td><td><code>Y</code> or <code>N</code></td></tr>
+    <tr><td>29 — MFR</td><td>Manufacturer name in Additional Info tab</td><td>Full manufacturer name</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="box blue">
+  <b>DFAR note:</b> Setting column 24 to <code>Y</code> automatically assigns the <code>DFAR</code> value to the <code>pa_specs_standard</code> WooCommerce attribute. This is how the website's DFAR filter and badge work. Only set <code>Y</code> when the part genuinely meets DFAR requirements.
+</div>
+
+<!-- ─── 7. PREVIEW → IMPORT ────────────────────────────────────── -->
+<h2 id="s7"><span class="num">7</span> Preview First, Then Import</h2>
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <b>Go to WooCommerce → Parts Import</b>
+      In your WordPress admin menu.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <b>Upload your CSV file</b>
+      Click "Choose File" and select your completed spreadsheet.
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <b>Click "Preview (no changes)"</b>
+      You'll see a row-by-row report:
+      <ul>
+        <li><b style="color:#1e7e34">CREATE</b> — new product will be added</li>
+        <li><b style="color:#1a56db">UPDATE</b> — existing product will be updated (only if "Update existing" is checked)</li>
+        <li><b style="color:#5f6368">SKIP</b> — product exists, will be left as-is</li>
+        <li><b style="color:#b81c23">WARN</b> — something to review (missing price, photo not found, etc.)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <b>Fix any warnings, then click "Import CSV"</b>
+      Preview is always 100% safe — it never changes anything. Run it as many times as you need.
+    </div>
+  </div>
+</div>
+
+<div class="box green">
+  <b>Preview is always safe.</b> No products are created or changed during a preview run. Use it as many times as you like before committing to the real import.
+</div>
+
+<!-- ─── 8. UPDATING ────────────────────────────────────────────── -->
+<h2 id="s8"><span class="num">8</span> Updating Products Later</h2>
+
+<p>To change prices, descriptions, stock, or any other field:</p>
+<ol>
+  <li>Edit the same CSV file with the updated values</li>
+  <li>Tick <b>"Update existing products"</b> on the import screen</li>
+  <li>Preview first, then import</li>
+</ol>
+
+<p>Products are matched by their <b>P/N (SKU)</b> — existing products are updated and new P/Ns are added. Products not in the file are left untouched.</p>
+
+<div class="box amber">
+  <b>Only the fields you fill in are updated.</b> If you leave a column blank for an existing product, the current value in the database is kept.
+</div>
+
+<!-- ─── 9. TROUBLESHOOTING ─────────────────────────────────────── -->
+<h2 id="s9"><span class="num">9</span> Troubleshooting</h2>
+
+<div class="table-wrap">
+<table class="error-table">
+  <thead><tr><th>What you see</th><th>Likely cause</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>WARN: No price</td><td>Column 10 (1 PKG COST) is empty for this product</td><td>Add at least a 1-package price to column 10</td></tr>
+    <tr><td>WARN: Image not found</td><td>Filename in col 34 doesn't match a file in <code>product-images/</code></td><td>Check spelling (case-sensitive on some servers) and re-upload the image</td></tr>
+    <tr><td>WARN: Spec not found</td><td>Filename in col 35 doesn't match a file in <code>product-specs/</code></td><td>Upload the PDF with the exact filename shown in the warning</td></tr>
+    <tr><td>WARN: Cert not found</td><td>Filename in col 36 doesn't match a file in <code>product-certs/</code></td><td>Upload the certificate PDF with the exact filename</td></tr>
+    <tr><td>Product in wrong category</td><td>Category context row above it in the CSV has the wrong values</td><td>Fix the category row, tick "Update existing", re-import</td></tr>
+    <tr><td>Duplicate P/N warning</td><td>Same SKU appears more than once in the CSV</td><td>Remove the duplicate row — each P/N must be unique per file</td></tr>
+    <tr><td>Registration failed / form error</td><td>Column count mismatch (extra column or deleted column)</td><td>Restore the template columns in the original order; don't add/remove columns</td></tr>
+    <tr><td>Changes not on website</td><td>CDN cache (Varnish) still serving old version</td><td>Wait 60–120 seconds, or ask your developer to clear the Pantheon cache</td></tr>
+    <tr><td>Series not showing in sidebar</td><td>Products imported but "Backfill Series" not run</td><td>Click <b>Backfill Product Series from SKU</b> button on the Import tab</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="box blue">
+  <b>After every import:</b> Click <b>Backfill Product Series from SKU</b> on the Import tab. This ensures the sidebar category &amp; series filter on the website shows all newly imported products in the right groups.
+</div>
+
+</div><!-- .wrap -->
+
+<footer>Midwest Military Fasteners — Product Import Guide &nbsp;|&nbsp; All 36 columns documented &nbsp;|&nbsp; For catalog managers and purchasing staff</footer>
+
+</body>
+</html>

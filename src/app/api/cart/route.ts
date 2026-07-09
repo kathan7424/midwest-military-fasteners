@@ -14,6 +14,7 @@ import {
   buildStoreCartResponse,
   buildWcStoreHeaders,
   fetchStoreCart,
+  fetchStoreCartWithRecovery,
   resolveProductIdBySku,
 } from "@/utils/wc-cart-proxy.utils";
 
@@ -22,8 +23,8 @@ export const fetchCache = "force-no-store";
 
 export async function GET(request: NextRequest) {
   try {
-    const wpResponse = await fetchStoreCart(request);
-    return buildStoreCartResponse(wpResponse);
+    const wpResponse = await fetchStoreCartWithRecovery(request);
+    return buildStoreCartResponse(wpResponse, { allowEmptyOnFailure: true });
   } catch (error) {
     console.error("Cart GET proxy error:", error);
     return Response.json({ message: "Cart fetch failed." }, { status: 500 });

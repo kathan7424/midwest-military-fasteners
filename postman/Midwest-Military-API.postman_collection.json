@@ -1,0 +1,1356 @@
+{
+  "info": {
+    "_postman_id": "mmf-api-collection-2026",
+    "name": "Midwest Military — Full API",
+    "description": "All WordPress + Next.js API endpoints for Midwest Military Fasteners.\n\n## Sidebar category logic — start here\n1. **WP Spec Parts — Categories Tree** — parent (Screws/Nuts/Washers) → children → `series[]`\n2. **WP Spec Parts — Category by Slug** — single sub-category with its series\n3. **WP Spec Parts — Products (by category)** — products in a sub-category\n4. **WP Spec Parts — Products (by category + series)** — filtered listing\n5. **Next.js — Catalog Categories** — same tree via frontend proxy\n\n## Variables\n- `next_base_url` → http://localhost:3000\n- `wp_base_url` → your WordPress site URL\n- `category_slug` → e.g. flat-washers, misc\n- `series_slug` → e.g. ms35308\n\n## Auth\nLogin via **Next.js — Auth Login** or **WP — Auth Login**, then cookies are set automatically for cart routes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "next_base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "wp_base_url",
+      "value": "https://dev-mmf-wp.pantheonsite.io",
+      "type": "string"
+    },
+    {
+      "key": "wp_api",
+      "value": "{{wp_base_url}}/wp-json",
+      "type": "string"
+    },
+    {
+      "key": "category_slug",
+      "value": "flat-washers",
+      "type": "string"
+    },
+    {
+      "key": "series_slug",
+      "value": "ms35308",
+      "type": "string"
+    },
+    {
+      "key": "product_sku",
+      "value": "MS35308-4",
+      "type": "string"
+    },
+    {
+      "key": "product_id",
+      "value": "4129",
+      "type": "string"
+    },
+    {
+      "key": "cart_item_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "category_term_id",
+      "value": "42",
+      "type": "string"
+    },
+    {
+      "key": "wc_nonce",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "wc_cart_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 — Sidebar & Catalog (START HERE)",
+      "description": "Endpoints used to build the product sidebar: Screws / Nuts / Washers → sub-categories → product series.",
+      "item": [
+        {
+          "name": "WP — Categories Tree (sidebar source)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/categories",
+            "description": "Returns normalized tree:\n```\n[\n  {\n    \"slug\": \"washers\",\n    \"children\": [\n      {\n        \"slug\": \"flat-washers\",\n        \"series\": [\n          { \"id\": 1, \"name\": \"MS35308\", \"slug\": \"ms35308\", \"count\": 5 }\n        ]\n      }\n    ]\n  }\n]\n```\nCheck `children[].series` for each sub-category."
+          }
+        },
+        {
+          "name": "WP — Category by Slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/categories/slug/{{category_slug}}",
+            "description": "Single category term with `series[]` — used for category hero + breadcrumb."
+          }
+        },
+        {
+          "name": "WP — All Series Terms",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/series",
+            "description": "All product-series taxonomy terms."
+          }
+        },
+        {
+          "name": "WP — Products by Category",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/spec-parts/v1/products?category={{category_slug}}&per_page=10&page=1",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "spec-parts",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "{{category_slug}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Products in a sub-category. Each product has `product_series[]`."
+          }
+        },
+        {
+          "name": "WP — Products by Category + Series",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/spec-parts/v1/products?category={{category_slug}}&series={{series_slug}}&per_page=10&page=1",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "spec-parts",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "{{category_slug}}"
+                },
+                {
+                  "key": "series",
+                  "value": "{{series_slug}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Filtered product listing when user clicks a series link in sidebar."
+          }
+        },
+        {
+          "name": "WP — Product Series Taxonomy (wp/v2)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/wp/v2/product-series?per_page=100&orderby=name&order=asc",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "wp",
+                "v2",
+                "product-series"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "100"
+                },
+                {
+                  "key": "orderby",
+                  "value": "name"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Fallback series list used by frontend sidebar builder."
+          }
+        },
+        {
+          "name": "WP — Products in Category (series field)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/wp/v2/product?product_cat={{category_term_id}}&per_page=100&_fields=id,product-series&orderby=id&order=asc",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "wp",
+                "v2",
+                "product"
+              ],
+              "query": [
+                {
+                  "key": "product_cat",
+                  "value": "{{category_term_id}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "100"
+                },
+                {
+                  "key": "_fields",
+                  "value": "id,product-series"
+                },
+                {
+                  "key": "orderby",
+                  "value": "id"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            },
+            "description": "Used by frontend to infer which series belong to a category when `series[]` is empty in categories API. Set `category_term_id` from categories tree response."
+          }
+        },
+        {
+          "name": "Next.js — Catalog Categories Proxy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/catalog/categories",
+            "description": "Next.js proxy — same data as WP categories tree, used by sidebar cache."
+          }
+        },
+        {
+          "name": "Next.js — Catalog Products Proxy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{next_base_url}}/api/catalog/products?category={{category_slug}}&series={{series_slug}}&per_page=10&page=1",
+              "host": [
+                "{{next_base_url}}"
+              ],
+              "path": [
+                "api",
+                "catalog",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "{{category_slug}}"
+                },
+                {
+                  "key": "series",
+                  "value": "{{series_slug}}"
+                },
+                {
+                  "key": "per_page",
+                  "value": "10"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Spec Parts Products",
+      "item": [
+        {
+          "name": "WP — Products List (all filters)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/spec-parts/v1/products?search=&sku=&category=&series=&manufacturer=&country=&dfar=0&per_page=50&page=1",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "spec-parts",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": ""
+                },
+                {
+                  "key": "sku",
+                  "value": ""
+                },
+                {
+                  "key": "category",
+                  "value": ""
+                },
+                {
+                  "key": "series",
+                  "value": ""
+                },
+                {
+                  "key": "manufacturer",
+                  "value": ""
+                },
+                {
+                  "key": "country",
+                  "value": ""
+                },
+                {
+                  "key": "dfar",
+                  "value": "0"
+                },
+                {
+                  "key": "per_page",
+                  "value": "50"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "WP — Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/products/{{product_id}}"
+          }
+        },
+        {
+          "name": "WP — Product by Slug",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/products/slug/{{product_sku}}"
+          }
+        },
+        {
+          "name": "WP — Product by SKU",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/spec-parts/v1/products/sku/{{product_sku}}"
+          }
+        },
+        {
+          "name": "WP — Products Search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/spec-parts/v1/products?search=MS353&per_page=20&page=1",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "spec-parts",
+                "v1",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "MS353"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Site & Content",
+      "item": [
+        {
+          "name": "WP — Site Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/site-settings"
+          }
+        },
+        {
+          "name": "WP — Menu by Location",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/menu/primary"
+          }
+        },
+        {
+          "name": "WP — Home Page",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/home-page"
+          }
+        },
+        {
+          "name": "WP — Product Catalog (legacy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/product-catalog"
+          }
+        },
+        {
+          "name": "WP — Global Search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/custom/v1/search?q=MS353&limit=10",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "custom",
+                "v1",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "MS353"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Next.js — Menu",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/menu"
+          }
+        },
+        {
+          "name": "Next.js — Search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{next_base_url}}/api/search?q=MS353",
+              "host": [
+                "{{next_base_url}}"
+              ],
+              "path": [
+                "api",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "MS353"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Auth",
+      "item": [
+        {
+          "name": "WP — Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Cookies are set by WordPress — enable cookie jar in Postman settings"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your@email.com\",\n  \"password\": \"your-password\",\n  \"remember\": true\n}"
+            },
+            "url": "{{wp_api}}/custom/v1/auth/login"
+          }
+        },
+        {
+          "name": "WP — Me (current user)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/auth/me"
+          }
+        },
+        {
+          "name": "WP — Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/auth/logout"
+          }
+        },
+        {
+          "name": "WP — Register Meta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/auth/register/meta"
+          }
+        },
+        {
+          "name": "WP — Register Check Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/custom/v1/auth/register/check-email?email=test@example.com",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "custom",
+                "v1",
+                "auth",
+                "register",
+                "check-email"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "test@example.com"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "WP — Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your@email.com\"\n}"
+            },
+            "url": "{{wp_api}}/custom/v1/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Next.js — Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your@email.com\",\n  \"password\": \"your-password\",\n  \"remember\": true\n}"
+            },
+            "url": "{{next_base_url}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Next.js — Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/auth/me"
+          }
+        },
+        {
+          "name": "Next.js — Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/auth/logout"
+          }
+        },
+        {
+          "name": "Next.js — Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"company\": \"ACME\",\n  \"email\": \"john@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": "{{next_base_url}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Next.js — Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"your@email.com\"\n}"
+            },
+            "url": "{{next_base_url}}/api/auth/forgot-password"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Cart",
+      "item": [
+        {
+          "name": "WP — Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/cart",
+            "description": "Requires login (WordPress session cookie)."
+          }
+        },
+        {
+          "name": "WP — Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": {{product_id}},\n  \"sku\": \"{{product_sku}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": "{{wp_api}}/custom/v1/cart"
+          }
+        },
+        {
+          "name": "WP — Remove from Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_item_key\": \"{{cart_item_key}}\"\n}"
+            },
+            "url": "{{wp_api}}/custom/v1/cart/remove"
+          }
+        },
+        {
+          "name": "Next.js — Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/cart"
+          }
+        },
+        {
+          "name": "Next.js — Add to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": {{product_id}},\n  \"sku\": \"{{product_sku}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": "{{next_base_url}}/api/cart"
+          }
+        },
+        {
+          "name": "Next.js — Update Cart Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_item_key\": \"{{cart_item_key}}\",\n  \"quantity\": 2\n}"
+            },
+            "url": "{{next_base_url}}/api/cart/update"
+          }
+        },
+        {
+          "name": "Next.js — Remove Cart Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cart_item_key\": \"{{cart_item_key}}\"\n}"
+            },
+            "url": "{{next_base_url}}/api/cart/remove"
+          }
+        },
+        {
+          "name": "WC Store — Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/wc/store/v1/cart"
+          }
+        },
+        {
+          "name": "WC Store — Add Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{product_id}},\n  \"quantity\": 1\n}"
+            },
+            "url": "{{wp_api}}/wc/store/v1/cart/add-item"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Tax Exemption & Orders",
+      "item": [
+        {
+          "name": "WP — Tax Exemption (GET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/tax-exemption"
+          }
+        },
+        {
+          "name": "WP — Tax Exemption Upload (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "certificate",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "expiry_date",
+                  "value": "2027-12-31",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{wp_api}}/custom/v1/tax-exemption"
+          }
+        },
+        {
+          "name": "WP — Tax Certificates List (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{wp_api}}/custom/v1/tax-exemption/certificates?status=pending",
+              "host": [
+                "{{wp_api}}"
+              ],
+              "path": [
+                "custom",
+                "v1",
+                "tax-exemption",
+                "certificates"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "WP — Tax Certificate by User (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/tax-exemption/certificates/1"
+          }
+        },
+        {
+          "name": "WP — Update Tax Certificate (admin PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"expiry_date\": \"2027-12-31\"\n}"
+            },
+            "url": "{{wp_api}}/custom/v1/tax-exemption/certificates/1"
+          }
+        },
+        {
+          "name": "WP — Order Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_api}}/custom/v1/orders/documents"
+          }
+        },
+        {
+          "name": "Next.js — Tax Exemption (GET)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/tax-exemption"
+          }
+        },
+        {
+          "name": "Next.js — Order Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/orders/documents"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 — Checkout & Tax (WC Store API)",
+      "description": "TAX TEST FLOW — run top to bottom:\n\n1. **Store Cart (get session)** — captures Nonce + Cart-Token into variables automatically\n2. **Add Item** — puts a product in the cart\n3. **Update Customer (MI address)** — THE TAX TEST: response `totals.total_tax` must be > 0 (e.g. \"863\" = $8.63 for 6% MI). Amounts are in minor units (cents).\n4. **Cart Totals (verify)** — re-check totals any time\n5. **Checkout Locations** — country/state dropdown data (requires latest api.php deployed)\n\nTax comes from TaxJar via WooCommerce — it is calculated only AFTER a customer address with a correct 2-letter state code (MI, not Michigan) is set.",
+      "item": [
+        {
+          "name": "1 — Store Cart (get session: nonce + cart token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const nonce = pm.response.headers.get('Nonce');",
+                  "const token = pm.response.headers.get('Cart-Token');",
+                  "if (nonce) pm.collectionVariables.set('wc_nonce', nonce);",
+                  "if (token) pm.collectionVariables.set('wc_cart_token', token);",
+                  "console.log('nonce:', nonce, '| cart-token saved:', Boolean(token));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_base_url}}/wp-json/wc/store/v1/cart",
+            "description": "First call — captures `Nonce` and `Cart-Token` response headers into collection variables (see Tests tab). All later Store API calls send them back."
+          }
+        },
+        {
+          "name": "2 — Add Item to Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const nonce = pm.response.headers.get('Nonce');",
+                  "const token = pm.response.headers.get('Cart-Token');",
+                  "if (nonce) pm.collectionVariables.set('wc_nonce', nonce);",
+                  "if (token) pm.collectionVariables.set('wc_cart_token', token);",
+                  "console.log('nonce:', nonce, '| cart-token saved:', Boolean(token));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Nonce",
+                "value": "{{wc_nonce}}"
+              },
+              {
+                "key": "Cart-Token",
+                "value": "{{wc_cart_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{product_id}},\n  \"quantity\": 1\n}"
+            },
+            "url": "{{wp_base_url}}/wp-json/wc/store/v1/cart/add-item",
+            "description": "Set `product_id` variable first (use WP — Product by SKU to resolve). 201 = added."
+          }
+        },
+        {
+          "name": "3 — Update Customer (MI address) ⇒ TAX TEST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "const tax = d.totals && d.totals.total_tax;",
+                  "pm.test('total_tax is present', () => pm.expect(tax).to.exist);",
+                  "pm.test('total_tax > 0 (TaxJar applied)', () => pm.expect(Number(tax)).to.be.above(0));",
+                  "console.log('TAX =', tax, 'minor units → $' + (Number(tax)/100).toFixed(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Nonce",
+                "value": "{{wc_nonce}}"
+              },
+              {
+                "key": "Cart-Token",
+                "value": "{{wc_cart_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipping_address\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"address_1\": \"100 Main St\",\n    \"city\": \"Detroit\",\n    \"state\": \"MI\",\n    \"postcode\": \"48226\",\n    \"country\": \"US\"\n  },\n  \"billing_address\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"address_1\": \"100 Main St\",\n    \"city\": \"Detroit\",\n    \"state\": \"MI\",\n    \"postcode\": \"48226\",\n    \"country\": \"US\",\n    \"email\": \"test@example.com\"\n  }\n}"
+            },
+            "url": "{{wp_base_url}}/wp-json/wc/store/v1/cart/update-customer",
+            "description": "THE TAX TEST. Response `totals.total_tax` should be > 0 (\"863\" = $8.63 at 6% MI on $143.75). State MUST be the 2-letter code. Tests tab asserts it automatically — green = tax working."
+          }
+        },
+        {
+          "name": "4 — Cart Totals (verify)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const nonce = pm.response.headers.get('Nonce');",
+                  "const token = pm.response.headers.get('Cart-Token');",
+                  "if (nonce) pm.collectionVariables.set('wc_nonce', nonce);",
+                  "if (token) pm.collectionVariables.set('wc_cart_token', token);",
+                  "console.log('nonce:', nonce, '| cart-token saved:', Boolean(token));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Nonce",
+                "value": "{{wc_nonce}}"
+              },
+              {
+                "key": "Cart-Token",
+                "value": "{{wc_cart_token}}"
+              }
+            ],
+            "url": "{{wp_base_url}}/wp-json/wc/store/v1/cart",
+            "description": "Full cart with `totals.total_tax`, `totals.total_price`, `shipping_rates[]`."
+          }
+        },
+        {
+          "name": "5 — Checkout Locations (country/state dropdowns)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{wp_base_url}}/wp-json/custom/v1/checkout/locations",
+            "description": "WC allowed countries + states (dropdown data). 404 = latest api.php NOT deployed yet."
+          }
+        },
+        {
+          "name": "Next.js — Checkout State (proxy)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{next_base_url}}/api/checkout",
+            "description": "Frontend proxy: `{ cart, checkout }` — checkout.totals.tax_total is the formatted tax. Requires login cookies (login via Next.js — Auth Login first)."
+          }
+        },
+        {
+          "name": "Next.js — Update Address (proxy) ⇒ tax via frontend",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipping_address\": {\n    \"first_name\": \"Test\",\n    \"last_name\": \"User\",\n    \"address_1\": \"100 Main St\",\n    \"city\": \"Detroit\",\n    \"state\": \"MI\",\n    \"postcode\": \"48226\",\n    \"country\": \"US\",\n    \"email\": \"test@example.com\"\n  }\n}"
+            },
+            "url": "{{next_base_url}}/api/cart/customer",
+            "description": "Same tax test through the Next.js proxy the checkout page uses. Response `checkout.totals.tax_total` should be \"$8.63\"."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -6,9 +6,4 @@
  * Last Modified: 2026-07-06
  */
 
-export const HERO_TITLE =
-  "Genuine, certified fasteners for your demanding needs.";
-
-export const HERO_FALLBACK_IMAGE = "/images/hero-bg-banner.webp";
-
 export const SEARCH_PLACEHOLDER = "Search by part # or keywords";

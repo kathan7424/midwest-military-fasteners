@@ -1,14 +1,15 @@
 /**
  * File Name: page.tsx
- * Description: My Account page — protected route.
+ * Description: My Account page — profile, tax exemption, purchased documents.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import OrderDocumentsPanel from "@/components/pages/Account/OrderDocumentsPanel";
 import LogoutButton from "@/components/pages/Auth/LogoutButton";
 import { getCurrentUser, requireAuth } from "@/services/auth.service";
 
@@ -23,11 +24,11 @@ export default async function MyAccountPage() {
   const user = await getCurrentUser();
 
   return (
-    <div className="mx-auto max-w-4xl px-5 py-12">
-      <h1 className="mb-6 text-3xl font-bold text-near-black">My Account</h1>
+    <div className="mx-auto max-w-5xl px-5 py-12">
+      <h1 className="mb-6 text-h2 font-bold uppercase text-near-black">My Account</h1>
 
       {user ? (
-        <div className="space-y-3 text-lg text-dark-gray">
+        <div className="space-y-3 text-link text-dark-gray">
           <p>
             <span className="font-semibold text-near-black">Name:</span>{" "}
             {user.display_name || `${user.first_name} ${user.last_name}`.trim()}
@@ -44,6 +45,16 @@ export default async function MyAccountPage() {
           ) : null}
         </div>
       ) : null}
+
+      <section className="mt-10 border-t border-light-gray pt-8">
+        <h2 className="mb-2 text-h5 font-bold uppercase text-near-black">
+          Purchased Product Documents
+        </h2>
+        <p className="mb-6 max-w-2xl text-link text-dark-gray">
+          Download spec sheets and product certificates for items you have purchased.
+        </p>
+        <OrderDocumentsPanel />
+      </section>
 
       <div className="mt-8">
         <LogoutButton />

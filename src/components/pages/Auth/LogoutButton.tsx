@@ -14,6 +14,7 @@ import { useState } from "react";
 import { Button } from "@/components/base/buttons/button";
 import { PUBLIC_ROUTES } from "@/config/routes";
 import { logout_user } from "@/services/auth-client.service";
+import { useCartStore } from "@/stores/cart.store";
 import { notifyError, notifySuccess } from "@/utils/notifications";
 
 export default function LogoutButton() {
@@ -29,6 +30,11 @@ export default function LogoutButton() {
       if (!response.ok) {
         throw new Error("Logout failed.");
       }
+
+      // WooCommerce standard: the session cart belongs to the logged-in user.
+      // Clear client cart state immediately — the user's cart stays saved
+      // server-side and comes back on their next login.
+      useCartStore.getState().setCart(null);
 
       notifySuccess("Logged out successfully.");
       router.push(PUBLIC_ROUTES.home);

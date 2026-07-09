@@ -18,9 +18,9 @@ import {
 } from "react-icons/fa6";
 
 import { getCartItemCount, useCartStore } from "@/stores/cart.store";
-import CartQuantityControl from "@/components/shared_Ui/CartQuantityControl";
-import CartStockNotice from "@/components/shared_Ui/CartStockNotice";
-import { getCartItemQuantityControlProps } from "@/utils/cart-stock.utils";
+import CartCountBadge from "@/components/shared_Ui/CartCountBadge";
+import CartLineItem from "@/components/shared_Ui/CartLineItem";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { normalizeWpUrl } from "@/utils/url.utils";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,7 @@ export default function HeaderCartDropdown({
   const removeItem = useCartStore((state) => state.removeItem);
   const itemCount = getCartItemCount(cart);
   const hasItems = itemCount > 0;
+  const { catalogListingPath } = useSiteConfig();
 
   useEffect(() => {
     if (!isOpen) {
@@ -122,16 +123,16 @@ export default function HeaderCartDropdown({
         {variant === "compact" ? (
           <>
             {triggerIcon || <FaCartShopping size={17} />}
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-white">
-              {itemCount}
-            </span>
+            <CartCountBadge
+              count={itemCount}
+              size="sm"
+              className="absolute -right-1 -top-1"
+            />
           </>
         ) : (
           triggerContent || (
             <>
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber text-sm font-bold text-white">
-                {itemCount}
-              </span>
+              <CartCountBadge count={itemCount} size="lg" />
               <FaCartShopping size={14} className="text-amber" />
             </>
           )
@@ -192,57 +193,17 @@ export default function HeaderCartDropdown({
 
             {hasItems && cart?.items.length ? (
               <div className="max-h-64 divide-y divide-light-gray overflow-y-auto">
-                {cart.items.map((item) => {
-                  const quantityProps = getCartItemQuantityControlProps(item);
-
-                  return (
-                  <div
+                {cart.items.map((item) => (
+                  <CartLineItem
                     key={item.key}
-                    className="flex items-center justify-between py-2.5 text-link"
-                  >
-                    <div className="w-32 shrink-0 sm:w-44">
-                      <Link
-                        href={normalizeWpUrl(item.url)}
-                        prefetch={false}
-                        onClick={() => setIsOpen(false)}
-                        className="block truncate text-blue hover:underline"
-                      >
-                        {item.sku || item.name}
-                      </Link>
-                      <CartStockNotice item={item} className="mt-1" />
-                    </div>
-
-                    <CartQuantityControl
-                      quantity={item.quantity}
-                      minQuantity={quantityProps.minQuantity}
-                      maxQuantity={quantityProps.maxQuantity}
-                      editable={quantityProps.editable}
-                      disabled={quantityProps.disabled}
-                      isUpdating={updatingItemKey === item.key}
-                      onChange={(nextQuantity) =>
-                        handleQuantityChange(item.key, nextQuantity)
-                      }
-                    />
-
-                    <div className="flex items-center gap-2 text-right sm:gap-2.5">
-                      <span className="text-mid-gray">Price</span>
-                      <span
-                        className="text-near-black"
-                        dangerouslySetInnerHTML={{ __html: item.price_html }}
-                      />
-                      <button
-                        type="button"
-                        disabled={isMutating}
-                        aria-label={`Remove ${item.sku || item.name}`}
-                        onClick={() => void handleRemove(item.key)}
-                        className="ml-2.5 text-red-500 transition-colors hover:text-red-600 disabled:opacity-50"
-                      >
-                        <FaXmark size={18} />
-                      </button>
-                    </div>
-                  </div>
-                  );
-                })}
+                    item={item}
+                    isMutating={isMutating}
+                    isUpdating={updatingItemKey === item.key}
+                    onClose={() => setIsOpen(false)}
+                    onRemove={handleRemove}
+                    onQuantityChange={handleQuantityChange}
+                  />
+                ))}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-mid-gray">
@@ -253,7 +214,6 @@ export default function HeaderCartDropdown({
             <div className="mt-5 flex items-center justify-between gap-4 xl:mt-[28px]">
               <Link
                 href="/cart"
-                prefetch={false}
                 onClick={() => setIsOpen(false)}
                 className="flex items-center gap-2 text-link text-blue transition-colors hover:text-amber"
               >
@@ -273,10 +233,9 @@ export default function HeaderCartDropdown({
                 View Cart
               </Link>
 
-              {hasItems && cart?.checkout_url ? (
+              {hasItems ? (
                 <Link
-                  href={normalizeWpUrl(cart.checkout_url)}
-                  prefetch={false}
+                  href="/checkout"
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
                 >
@@ -297,8 +256,7 @@ export default function HeaderCartDropdown({
                 </Link>
               ) : (
                 <Link
-                  href="/product"
-                  prefetch={false}
+                  href={catalogListingPath}
                   onClick={() => setIsOpen(false)}
                   className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
                 >

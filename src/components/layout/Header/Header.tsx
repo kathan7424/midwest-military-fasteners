@@ -18,15 +18,15 @@ import Navbar from "../Navbar/Navbar";
 import HeaderCartDropdown from "../HeaderCartDropdown/HeaderCartDropdown";
 import HeaderSearch from "../HeaderSearch/HeaderSearch";
 import HeaderCart from "../HeaderCart/HeaderCart";
-import { fetchMenu } from "@/services/menu.service";
-import { fetchSiteSettings } from "@/services/site-settings.service";
-import { isUserLoggedIn } from "@/services/auth.service";
 import { MenuItem } from "@/types/menu.types";
-import { LinkField } from "@/types/site-settings.types";
+import { LinkField, SiteSettings } from "@/types/site-settings.types";
 import { normalizeTel, normalizeWpUrl, resolveLinkUrl } from "@/utils/url.utils";
 
-const DEFAULT_PHONE = "313.608.8280";
-const DEFAULT_EMAIL = "sales@mwmilitary.com";
+interface HeaderProps {
+  menu: MenuItem[];
+  settings: SiteSettings | null;
+  isLoggedIn: boolean;
+}
 
 function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
   return {
@@ -36,26 +36,13 @@ function getLinkProps(link: LinkField | null | undefined, fallbackUrl: string) {
   };
 }
 
-export default async function Header() {
-  const [menuResult, settingsResult, loggedIn] = await Promise.all([
-    fetchMenu().catch((error) => {
-      console.error("Menu Error:", error);
-      return [] as MenuItem[];
-    }),
-    fetchSiteSettings().catch((error) => {
-      console.error("Site Settings Error:", error);
-      return null;
-    }),
-    isUserLoggedIn(),
-  ]);
+export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
+  const is_logged_in = isLoggedIn;
+  const branding = settings?.branding;
+  const header_settings = settings?.header;
 
-  const is_logged_in = loggedIn;
-  const menu = menuResult;
-  const branding = settingsResult?.branding;
-  const header_settings = settingsResult?.header;
-
-  const phone = header_settings?.phone || DEFAULT_PHONE;
-  const email = header_settings?.email || DEFAULT_EMAIL;
+  const phone = header_settings?.phone || "";
+  const email = header_settings?.email || "";
   const register_link = getLinkProps(header_settings?.register_button, "/register");
   const login_link = getLinkProps(header_settings?.login_button, "/login");
   const show_search_bar =
@@ -76,7 +63,6 @@ export default async function Header() {
                   <li key={item.id}>
                     <Link
                       href={normalizeWpUrl(item.url)}
-                      prefetch={false}
                       className="text-near-black font-normal text-link uppercase tracking-wide hover:text-blue transition-colors"
                     >
                       {item.title}
@@ -88,20 +74,24 @@ export default async function Header() {
           )}
 
           <div className="flex items-center gap-10">
-            <a
-              href={`tel:${normalizeTel(phone)}`}
-              className="flex items-center gap-2.5 text-link text-blue hover:text-navy transition-colors"
-            >
-              <FaPhone size={13} />
-              {phone}
-            </a>
+            {phone ? (
+              <a
+                href={`tel:${normalizeTel(phone)}`}
+                className="flex items-center gap-2.5 text-link text-blue hover:text-navy transition-colors"
+              >
+                <FaPhone size={13} />
+                {phone}
+              </a>
+            ) : null}
 
-            <a
-              href={`mailto:${email}`}
-              className="text-link text-blue uppercase tracking-wide hover:text-navy transition-colors"
-            >
-              {email}
-            </a>
+            {email ? (
+              <a
+                href={`mailto:${email}`}
+                className="text-link text-blue uppercase tracking-wide hover:text-navy transition-colors"
+              >
+                {email}
+              </a>
+            ) : null}
 
             {is_logged_in ? (
               <Link
@@ -140,7 +130,7 @@ export default async function Header() {
           is_logged_in ? "w-full max-w-full" : "max-w-8xl"
         }`}
       >
-        <Link href="/" prefetch={false} className="shrink-0 block">
+        <Link href="/" className="shrink-0 block">
           <Image
             src={branding?.logo?.url ?? "/images/midwest-logo.svg"}
             alt={

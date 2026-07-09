@@ -8,28 +8,88 @@
  *                   pa_country, pa_specs_standard), featured + gallery images
  *   Custom Tax    : product_series
  *   ACF ONLY      : package_pricing_tiers repeater (qty + price per tier)
- *   Post Meta     : _package_pricing (cart/Shippo mirror with dims+weight),
+ *   Post Meta     : _package_pricing (qty + price tiers for cart/API),
  *                   _backorder_leadtime, _reorder_limit, _mfr_coc,
  *                   _material_certs, _process_certs, _test_reports,
  *                   _lot_in_use, _cert_location (internal note),
- *                   _spec_file_url (public download URL for cert/spec PDF),
+ *                   _spec_file_url, _certificate_file_url
  *                   _cost_per_ea, _piece_weight, _pkg_qty
  *
  * FILE FOLDERS (configure in Settings tab):
  *   product-images/   → product photos  → named {SKU}.jpg  → col 34 PRODUCT IMAGE
- *   product-certs/    → cert/spec PDFs  → named {SKU}.pdf  → col 31 CERT LOCATION
+ *   product-specs/    → spec sheet PDFs → named {SKU}-spec.pdf → col 35 SPEC SHEET
+ *   product-certs/    → certificate PDFs → named {SKU}-cert.pdf → col 36 CERTIFICATE
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
+
+/**
+ * Assign a WooCommerce product_cat thumbnail from a CSV image value.
+ *
+ * @param int    $term_id Term ID.
+ * @param string $value   URL or filename from product-images folder.
+ */
+function specparts_assign_category_thumbnail_from_csv( $term_id, $value ) {
+    $term_id = (int) $term_id;
+    $value   = trim( (string) $value );
+
+    if ( $term_id <= 0 || $value === '' ) {
+        return;
+    }
+
+    if ( filter_var( $value, FILTER_VALIDATE_URL ) ) {
+        $attachment_id = attachment_url_to_postid( $value );
+        if ( $attachment_id ) {
+            update_term_meta( $term_id, 'thumbnail_id', (int) $attachment_id );
+        }
+        return;
+    }
+
+    $image_ids = specparts_resolve_product_images( $value, '' );
+    if ( ! empty( $image_ids[0] ) ) {
+        update_term_meta( $term_id, 'thumbnail_id', (int) $image_ids[0] );
+    }
+}
+
+// ============================================================
+// SHIPPING HELPERS — WC native fields for Shippo
+// ============================================================
+
+function specparts_apply_wc_shipping_dims( $product, $dims_raw ) {
+    $dims_raw = trim( (string) $dims_raw );
+    if ( $dims_raw === '' || ! is_object( $product ) ) {
+        return;
+    }
+
+    $normalized = preg_replace( '/[×xX\*]/u', 'x', $dims_raw );
+    $parts      = array_map( 'trim', explode( 'x', $normalized ) );
+    if ( count( $parts ) !== 3 ) {
+        return;
+    }
+
+    $height = floatval( $parts[0] );
+    $width  = floatval( $parts[1] );
+    $length = floatval( $parts[2] );
+
+    if ( $height > 0 ) {
+        $product->set_height( (string) $height );
+    }
+    if ( $width > 0 ) {
+        $product->set_width( (string) $width );
+    }
+    if ( $length > 0 ) {
+        $product->set_length( (string) $length );
+    }
+}
 
 // ============================================================
 // IMAGE HELPERS
 // ============================================================
 
 function specparts_get_images_dir() {
-    $folder = get_option( 'specparts_images_folder', '' );
-    if ( $folder && is_dir( $folder ) ) {
-        return rtrim( $folder, '/\\' );
+    $folder = specparts_validate_import_folder( get_option( 'specparts_images_folder', '' ) );
+    if ( $folder ) {
+        return $folder;
     }
     return rtrim( wp_upload_dir()['basedir'], '/\\' ) . '/product-images';
 }
@@ -114,7 +174,7 @@ function specparts_resolve_product_images( $csv_value, $sku ) {
         if ( $existing ) {
             $ids[] = $existing;
         } else {
-            $id = specparts_sideload_local_image( $dir . '/' . ltrim( $fname, '/\\' ) );
+            $id = specparts_sideload_local_image( $dir . '/' . sanitize_file_name( basename( $fname ) ) );
             if ( $id ) $ids[] = $id;
         }
     }
@@ -126,71 +186,111 @@ function specparts_resolve_product_images( $csv_value, $sku ) {
 // CERT / SPEC FILE HELPERS
 // ============================================================
 
+/**
+ * A configured import folder is only honored when it resolves inside the
+ * uploads directory — anything else could read arbitrary server paths.
+ */
+function specparts_validate_import_folder( $folder ) {
+    if ( ! $folder || ! is_dir( $folder ) ) {
+        return '';
+    }
+
+    $real    = realpath( $folder );
+    $basedir = realpath( wp_upload_dir()['basedir'] );
+
+    if ( ! $real || ! $basedir || 0 !== strpos( $real, $basedir ) ) {
+        return '';
+    }
+
+    return rtrim( $real, '/\\' );
+}
+
 function specparts_get_certs_dir() {
-    $folder = get_option( 'specparts_certs_folder', '' );
-    if ( $folder && is_dir( $folder ) ) {
-        return rtrim( $folder, '/\\' );
+    $folder = specparts_validate_import_folder( get_option( 'specparts_certs_folder', '' ) );
+    if ( $folder ) {
+        return $folder;
     }
     return rtrim( wp_upload_dir()['basedir'], '/\\' ) . '/product-certs';
 }
 
-/**
- * Resolve a cert/spec file value from CSV col 31 (CERT LOCATION).
- * - Full URL  → return as-is
- * - Filename  → sideload from certs folder → return public URL
- * - SKU.pdf fallback when col 31 is blank
- * Returns URL string or '' if not found.
- */
-function specparts_resolve_cert_file( $cert_loc, $sku ) {
-    $cert_loc = trim( $cert_loc );
+function specparts_get_specs_dir() {
+    $folder = specparts_validate_import_folder( get_option( 'specparts_specs_folder', '' ) );
+    if ( $folder ) {
+        return $folder;
+    }
+    return rtrim( wp_upload_dir()['basedir'], '/\\' ) . '/product-specs';
+}
 
-    // Already a URL
-    if ( filter_var( $cert_loc, FILTER_VALIDATE_URL ) ) {
-        return $cert_loc;
+/**
+ * Resolve a product document from CSV value or local import folder.
+ *
+ * @param string   $value               Filename, relative path, or full URL.
+ * @param string   $sku                 Product SKU for fallback filenames.
+ * @param string   $directory           Local folder to sideload from.
+ * @param string[] $fallback_filenames  Tried in order when $value is blank.
+ * @return string Public URL or empty string.
+ */
+function specparts_resolve_product_document_file( $value, $sku, $directory, $fallback_filenames = [] ) {
+    $value = trim( (string) $value );
+
+    if ( filter_var( $value, FILTER_VALIDATE_URL ) ) {
+        return $value;
     }
 
-    $dir = specparts_get_certs_dir();
+    $filename = $value;
 
-    // Explicit filename in col 31
-    $filename = $cert_loc;
-
-    // Fallback: try {SKU}.pdf when col 31 is blank
     if ( $filename === '' && ! empty( $sku ) ) {
-        foreach ( [ '.pdf', '.PDF' ] as $ext ) {
-            if ( file_exists( $dir . '/' . $sku . $ext ) ) {
-                $filename = $sku . $ext;
-                break;
+        foreach ( $fallback_filenames as $candidate ) {
+            $candidate = str_replace( '{SKU}', $sku, $candidate );
+            foreach ( [ $candidate, strtoupper( $candidate ) ] as $name ) {
+                if ( file_exists( rtrim( $directory, '/\\' ) . '/' . $name ) ) {
+                    $filename = $name;
+                    break 2;
+                }
             }
         }
     }
 
-    if ( $filename === '' ) return '';
+    if ( $filename === '' ) {
+        return '';
+    }
 
-    // Check if already in media library
     $existing_id = specparts_get_attachment_by_filename( $filename );
     if ( $existing_id ) {
         return wp_get_attachment_url( $existing_id ) ?: '';
     }
 
-    // Sideload from certs folder
-    $filepath = $dir . '/' . ltrim( $filename, '/\\' );
-    if ( ! file_exists( $filepath ) ) return '';
+    $filename = sanitize_file_name( basename( $filename ) );
+    $filepath = rtrim( $directory, '/\\' ) . '/' . $filename;
+    if ( ! file_exists( $filepath ) ) {
+        return '';
+    }
 
     $file_type = wp_check_filetype( $filename, null );
-    if ( empty( $file_type['type'] ) ) return '';
+    if ( empty( $file_type['type'] ) ) {
+        return '';
+    }
 
     $upload_dir = wp_upload_dir();
     $dest       = $upload_dir['path'] . '/' . wp_unique_filename( $upload_dir['path'], $filename );
-    if ( ! @copy( $filepath, $dest ) ) return '';
+    if ( ! @copy( $filepath, $dest ) ) {
+        return '';
+    }
 
-    $att_id = wp_insert_attachment( [
-        'post_mime_type' => $file_type['type'],
-        'post_title'     => pathinfo( $filename, PATHINFO_FILENAME ),
-        'post_content'   => '',
-        'post_status'    => 'inherit',
-    ], $dest );
+    $att_id = wp_insert_attachment(
+        [
+            'post_mime_type' => $file_type['type'],
+            'post_title'     => pathinfo( $filename, PATHINFO_FILENAME ),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ],
+        $dest
+    );
 
-    if ( is_wp_error( $att_id ) ) { @unlink( $dest ); return ''; }
+    if ( is_wp_error( $att_id ) ) {
+        @unlink( $dest );
+        return '';
+    }
 
     require_once ABSPATH . 'wp-admin/includes/image.php';
     wp_update_attachment_metadata( $att_id, wp_generate_attachment_metadata( $att_id, $dest ) );
@@ -198,24 +298,107 @@ function specparts_resolve_cert_file( $cert_loc, $sku ) {
     return wp_get_attachment_url( $att_id ) ?: '';
 }
 
+/**
+ * @deprecated Use specparts_resolve_product_document_file().
+ */
+function specparts_resolve_cert_file( $cert_loc, $sku ) {
+    return specparts_resolve_product_document_file(
+        $cert_loc,
+        $sku,
+        specparts_get_certs_dir(),
+        [ '{SKU}.pdf', '{SKU}-cert.pdf' ]
+    );
+}
+
+/**
+ * Resolve spec sheet + certificate URLs for a product row.
+ *
+ * @return array{spec_url:string,cert_url:string,cert_location:string}
+ */
+function specparts_resolve_product_documents( $row, $sku, $col_map, $idx ) {
+    $cert_loc = trim( $idx( $row, 31 ) );
+
+    $spec_sheet = trim( $idx( $row, 34 ) );
+    if ( $spec_sheet === '' && isset( $col_map['SPEC SHEET'] ) ) {
+        $spec_sheet = trim( $row[ $col_map['SPEC SHEET'] ] ?? '' );
+    }
+
+    $certificate = trim( $idx( $row, 35 ) );
+    if ( $certificate === '' && isset( $col_map['CERTIFICATE'] ) ) {
+        $certificate = trim( $row[ $col_map['CERTIFICATE'] ] ?? '' );
+    }
+
+    $internal_cert_loc = $cert_loc;
+    if (
+        $certificate === ''
+        && $cert_loc !== ''
+        && ( filter_var( $cert_loc, FILTER_VALIDATE_URL ) || preg_match( '/\.pdf$/i', $cert_loc ) )
+    ) {
+        $certificate       = $cert_loc;
+        $internal_cert_loc = '';
+    }
+
+    $spec_url = specparts_resolve_product_document_file(
+        $spec_sheet,
+        $sku,
+        specparts_get_specs_dir(),
+        [ '{SKU}-spec.pdf', '{SKU}.pdf' ]
+    );
+
+    $cert_url = specparts_resolve_product_document_file(
+        $certificate,
+        $sku,
+        specparts_get_certs_dir(),
+        [ '{SKU}-cert.pdf', '{SKU}.pdf' ]
+    );
+
+    return [
+        'spec_url'      => $spec_url,
+        'cert_url'      => $cert_url,
+        'cert_location' => $internal_cert_loc,
+    ];
+}
+
 // ============================================================
 // TAXONOMY / CATEGORY / ATTRIBUTE HELPERS
 // ============================================================
 
 function specparts_ensure_product_category( $name, $parent_id = 0 ) {
-    if ( empty( $name ) ) return 0;
+    if ( empty( $name ) ) {
+        return 0;
+    }
+
     $slug = sanitize_title( $name );
 
     $existing = term_exists( $slug, 'product_cat', $parent_id );
-    if ( $existing ) return intval( $existing['term_id'] );
+    if ( $existing ) {
+        return intval( $existing['term_id'] );
+    }
 
     $by_name = get_term_by( 'name', $name, 'product_cat' );
-    if ( $by_name && ( $parent_id === 0 || intval( $by_name->parent ) === $parent_id ) ) {
+    if ( ! $by_name ) {
+        $by_name = get_term_by( 'slug', $slug, 'product_cat' );
+    }
+
+    if ( $by_name ) {
+        if ( intval( $by_name->parent ) !== intval( $parent_id ) ) {
+            wp_update_term(
+                (int) $by_name->term_id,
+                'product_cat',
+                [
+                    'parent' => (int) $parent_id,
+                ]
+            );
+        }
+
         return intval( $by_name->term_id );
     }
 
     $result = wp_insert_term( $name, 'product_cat', [ 'slug' => $slug, 'parent' => $parent_id ] );
-    if ( is_wp_error( $result ) ) return 0;
+    if ( is_wp_error( $result ) ) {
+        return 0;
+    }
+
     return intval( $result['term_id'] );
 }
 
@@ -227,6 +410,153 @@ function specparts_ensure_series_term( $name ) {
     if ( $existing ) return intval( $existing['term_id'] );
     $result = wp_insert_term( $name, $taxonomy, [ 'slug' => $slug ] );
     return is_wp_error( $result ) ? 0 : intval( $result['term_id'] );
+}
+
+/**
+ * Sync category + series taxonomies for an existing product during import.
+ *
+ * @param int    $product_id Product post ID.
+ * @param int    $sub_cat_id Child product_cat term ID.
+ * @param string $series_name Product series label from import context.
+ */
+function specparts_sync_product_taxonomies( $product_id, $sub_cat_id, $series_name = '' ) {
+    if ( $sub_cat_id ) {
+        wp_set_object_terms( (int) $product_id, [ (int) $sub_cat_id ], 'product_cat', false );
+    }
+
+    if ( $series_name ) {
+        $series_id = specparts_ensure_series_term( $series_name );
+        if ( $series_id ) {
+            wp_set_object_terms( (int) $product_id, [ (int) $series_id ], specparts_get_series_taxonomy(), false );
+        }
+        return;
+    }
+
+    specparts_assign_inferred_series_to_product( (int) $product_id );
+}
+
+/**
+ * Write pricing tiers to the ACF repeater using field KEYS.
+ *
+ * Field keys resolve even when writing by name fails (e.g. rows imported
+ * before the field group existed). Keys match acf-export-package-pricing.json.
+ *
+ * @param int   $product_id Product post ID.
+ * @param array $tiers      Array of ['qty' => int, 'price' => float] rows.
+ * @return bool True when ACF rows were written.
+ */
+function specparts_write_acf_pricing_tiers( $product_id, $tiers ) {
+    if ( ! function_exists( 'update_field' ) || empty( $tiers ) || ! is_array( $tiers ) ) {
+        return false;
+    }
+
+    $acf_rows = array_map(
+        static function ( $tier ) {
+            return [
+                'field_spp_tier_qty'   => $tier['qty'] ?? $tier['package_quantity'] ?? 0,
+                'field_spp_tier_price' => $tier['price'] ?? 0,
+            ];
+        },
+        array_values( $tiers )
+    );
+
+    return false !== update_field( 'field_spp_pricing_tiers', $acf_rows, $product_id );
+}
+
+/**
+ * Backfill the ACF pricing repeater from _package_pricing meta for all products.
+ *
+ * Fixes products imported before the ACF field group existed: the raw meta is
+ * there (cart/API work) but the repeater shows empty on the product edit screen.
+ *
+ * @return array{success:bool,message:string}
+ */
+function specparts_backfill_acf_pricing() {
+    if ( ! function_exists( 'update_field' ) ) {
+        return [
+            'success' => false,
+            'message' => '<p class="notice notice-error" style="padding:8px 12px">ACF is not active — cannot write repeater fields.</p>',
+        ];
+    }
+
+    $product_ids = get_posts(
+        [
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+        ]
+    );
+
+    $synced  = 0;
+    $skipped = 0;
+
+    foreach ( $product_ids as $product_id ) {
+        $pricing = get_post_meta( (int) $product_id, '_package_pricing', true );
+
+        if ( empty( $pricing ) || ! is_array( $pricing ) ) {
+            $skipped++;
+            continue;
+        }
+
+        if ( specparts_write_acf_pricing_tiers( (int) $product_id, $pricing ) ) {
+            $synced++;
+        } else {
+            $skipped++;
+        }
+    }
+
+    return [
+        'success' => true,
+        'message' => sprintf(
+            '<p class="notice notice-success" style="padding:8px 12px">ACF pricing backfill complete. Synced: %d. Skipped (no pricing meta): %d.</p>',
+            $synced,
+            $skipped
+        ),
+    ];
+}
+
+/**
+ * Backfill product-series taxonomy for published products missing a series term.
+ *
+ * @return array{success:bool,message:string}
+ */
+function specparts_backfill_product_series() {
+    if ( ! function_exists( 'specparts_assign_inferred_series_to_product' ) ) {
+        return [
+            'success' => false,
+            'message' => '<p class="notice notice-error" style="padding:8px 12px">Catalog API helpers are unavailable.</p>',
+        ];
+    }
+
+    $product_ids = get_posts(
+        [
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+        ]
+    );
+
+    $assigned = 0;
+    $skipped  = 0;
+
+    foreach ( $product_ids as $product_id ) {
+        if ( specparts_assign_inferred_series_to_product( (int) $product_id ) ) {
+            $assigned++;
+        } else {
+            $skipped++;
+        }
+    }
+
+    return [
+        'success' => true,
+        'message' => sprintf(
+            '<p class="notice notice-success" style="padding:8px 12px">Product series backfill complete. Assigned: %d. Skipped: %d.</p>',
+            $assigned,
+            $skipped
+        ),
+    ];
 }
 
 /**
@@ -291,6 +621,58 @@ add_action( 'admin_menu', function () {
     );
 } );
 
+/**
+ * Serve the sample import CSV through WP admin (reliable download headers).
+ */
+add_action( 'admin_init', 'specparts_handle_template_csv_download' );
+
+function specparts_handle_template_csv_download() {
+    if ( ! isset( $_GET['page'], $_GET['specparts_download'] ) ) {
+        return;
+    }
+
+    if ( 'specparts-import' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+        return;
+    }
+
+    if ( 'template' !== sanitize_key( wp_unslash( $_GET['specparts_download'] ) ) ) {
+        return;
+    }
+
+    if ( ! current_user_can( 'manage_woocommerce' ) ) {
+        wp_die( esc_html__( 'You do not have permission to download this file.', 'midwest-military' ), 403 );
+    }
+
+    check_admin_referer( 'specparts_download_template' );
+
+    $filepath = get_template_directory() . '/import-template.csv';
+
+    if ( ! is_readable( $filepath ) ) {
+        wp_die( esc_html__( 'Import template CSV was not found in the theme folder.', 'midwest-military' ), 404 );
+    }
+
+    nocache_headers();
+    header( 'Content-Type: text/csv; charset=utf-8' );
+    header( 'Content-Disposition: attachment; filename="import-template.csv"' );
+    header( 'Content-Length: ' . (string) filesize( $filepath ) );
+
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
+    readfile( $filepath );
+    exit;
+}
+
+/**
+ * Admin URL for downloading the sample import CSV.
+ *
+ * @return string
+ */
+function specparts_get_template_csv_download_url() {
+    return wp_nonce_url(
+        admin_url( 'admin.php?page=specparts-import&specparts_download=template' ),
+        'specparts_download_template'
+    );
+}
+
 // ============================================================
 // ADMIN PAGE ROUTER
 // ============================================================
@@ -323,12 +705,17 @@ function specparts_import_page() {
 function specparts_render_import_tab() {
     $msg = '';
 
-    if ( isset( $_POST['specparts_import_csv'] ) && check_admin_referer( 'specparts_import_action' ) ) {
+    if ( ( isset( $_POST['specparts_import_csv'] ) || isset( $_POST['specparts_preview_csv'] ) ) && check_admin_referer( 'specparts_import_action' ) ) {
         if ( ! empty( $_FILES['import_file']['tmp_name'] ) ) {
-            $result = specparts_import_csv(
-                $_FILES['import_file']['tmp_name'],
-                ! empty( $_POST['update_existing'] )
-            );
+            $result = isset( $_POST['specparts_preview_csv'] )
+                ? specparts_preview_csv(
+                    $_FILES['import_file']['tmp_name'],
+                    ! empty( $_POST['update_existing'] )
+                )
+                : specparts_import_csv(
+                    $_FILES['import_file']['tmp_name'],
+                    ! empty( $_POST['update_existing'] )
+                );
             $msg = $result['message'];
         } else {
             $msg = '<p class="notice notice-error" style="padding:8px 12px">No file selected.</p>';
@@ -338,6 +725,15 @@ function specparts_render_import_tab() {
         $msg    = $result['message'];
     } elseif ( isset( $_POST['specparts_cleanup'] ) && check_admin_referer( 'specparts_import_action' ) ) {
         $result = specparts_clean_demo_data();
+        $msg    = $result['message'];
+    } elseif ( isset( $_POST['specparts_backfill_series'] ) && check_admin_referer( 'specparts_import_action' ) ) {
+        $result = specparts_backfill_product_series();
+        $msg    = $result['message'];
+    } elseif ( isset( $_POST['specparts_backfill_acf_pricing'] ) && check_admin_referer( 'specparts_import_action' ) ) {
+        $result = specparts_backfill_acf_pricing();
+        $msg    = $result['message'];
+    } elseif ( isset( $_POST['specparts_repair_categories'] ) && check_admin_referer( 'specparts_import_action' ) ) {
+        $result = specparts_repair_category_hierarchy();
         $msg    = $result['message'];
     }
 
@@ -349,7 +745,7 @@ function specparts_render_import_tab() {
         <p style="color:#666;margin:0 0 16px">
             Upload the client catalog CSV (INFO MOCKUP format, 33+ columns, positional).
             Category and series context is inherited from header rows.
-            <br><a href="<?php echo esc_url( get_template_directory_uri() . '/import-template.csv' ); ?>">Download template CSV</a>
+            <br><a href="<?php echo esc_url( specparts_get_template_csv_download_url() ); ?>" class="button button-secondary" style="margin-top:8px">Download sample CSV</a>
         </p>
         <form method="post" enctype="multipart/form-data" style="margin-bottom:32px">
             <?php wp_nonce_field( 'specparts_import_action' ); ?>
@@ -358,9 +754,40 @@ function specparts_render_import_tab() {
                 <input type="checkbox" name="update_existing" value="1">
                 Update existing products (match by SKU — unchecked = skip duplicates)
             </label>
+            <button type="submit" name="specparts_preview_csv" class="button button-secondary">
+                Preview (no changes)
+            </button>
             <button type="submit" name="specparts_import_csv" class="button button-primary">
                 Import CSV
             </button>
+            <p style="color:#666;font-size:.85em;margin-top:8px">
+                Tip: run <strong>Preview</strong> first — it checks every row and reports missing prices, images, and documents without importing anything.
+            </p>
+        </form>
+
+        <form method="post" style="margin-bottom:16px">
+            <?php wp_nonce_field( 'specparts_import_action' ); ?>
+            <button type="submit" name="specparts_repair_categories" class="button">
+                Repair Category Parents (Screws / Nuts / Washers)
+            </button>
+        </form>
+
+        <form method="post" style="margin-bottom:16px">
+            <?php wp_nonce_field( 'specparts_import_action' ); ?>
+            <button type="submit" name="specparts_backfill_series" class="button">
+                Backfill Product Series from SKU
+            </button>
+        </form>
+
+        <form method="post" style="margin-bottom:32px">
+            <?php wp_nonce_field( 'specparts_import_action' ); ?>
+            <button type="submit" name="specparts_backfill_acf_pricing" class="button">
+                Sync Pricing Tiers to ACF (fix empty repeater)
+            </button>
+            <p style="color:#666;font-size:.85em;margin-top:6px">
+                Run once after importing the ACF field group — fills the Package Pricing
+                repeater on every product from existing import data.
+            </p>
         </form>
 
         <h2 style="font-size:1.1em;margin:0 0 6px">Demo Data</h2>
@@ -386,12 +813,15 @@ function specparts_render_import_tab() {
 function specparts_render_settings_tab() {
     $upload_base  = wp_upload_dir()['basedir'];
     $img_folder   = get_option( 'specparts_images_folder', $upload_base . '/product-images' );
+    $specs_folder = get_option( 'specparts_specs_folder', $upload_base . '/product-specs' );
     $cert_folder  = get_option( 'specparts_certs_folder',  $upload_base . '/product-certs' );
 
     if ( isset( $_POST['save_specparts_settings'] ) && check_admin_referer( 'specparts_settings_action' ) ) {
-        $img_folder  = sanitize_text_field( $_POST['specparts_images_folder'] ?? '' );
-        $cert_folder = sanitize_text_field( $_POST['specparts_certs_folder']  ?? '' );
+        $img_folder   = sanitize_text_field( $_POST['specparts_images_folder'] ?? '' );
+        $specs_folder = sanitize_text_field( $_POST['specparts_specs_folder'] ?? '' );
+        $cert_folder  = sanitize_text_field( $_POST['specparts_certs_folder']  ?? '' );
         update_option( 'specparts_images_folder', $img_folder );
+        update_option( 'specparts_specs_folder', $specs_folder );
         update_option( 'specparts_certs_folder',  $cert_folder );
         echo '<div class="notice notice-success" style="margin:8px 0;padding:8px 12px"><p>Settings saved.</p></div>';
     }
@@ -412,12 +842,23 @@ function specparts_render_settings_tab() {
                     </td>
                 </tr>
                 <tr>
-                    <th><label for="sp_cert_folder">Cert / Spec Files Folder</label></th>
+                    <th><label for="sp_specs_folder">Spec Sheet Files Folder</label></th>
+                    <td>
+                        <input type="text" id="sp_specs_folder" name="specparts_specs_folder"
+                               value="<?php echo esc_attr( $specs_folder ); ?>" class="regular-text code">
+                        <p class="description">
+                            Folder with <strong>.pdf</strong> product spec sheets.<br>
+                            Default: <code><?php echo esc_html( $upload_base . '/product-specs' ); ?></code>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="sp_cert_folder">Certificate Files Folder</label></th>
                     <td>
                         <input type="text" id="sp_cert_folder" name="specparts_certs_folder"
                                value="<?php echo esc_attr( $cert_folder ); ?>" class="regular-text code">
                         <p class="description">
-                            Folder with <strong>.pdf</strong> spec sheets &amp; certificates.<br>
+                            Folder with <strong>.pdf</strong> product certificates.<br>
                             Default: <code><?php echo esc_html( $upload_base . '/product-certs' ); ?></code>
                         </p>
                     </td>
@@ -448,23 +889,32 @@ function specparts_render_settings_tab() {
                     <td>Col 34<br><code>PRODUCT IMAGE</code><br><small>(optional — blank = SKU fallback)</small></td>
                 </tr>
                 <tr>
-                    <td><strong>Cert / Spec PDFs</strong><br><small>.pdf</small></td>
+                    <td><strong>Spec Sheets</strong><br><small>.pdf</small></td>
+                    <td><code>product-specs/</code></td>
+                    <td>
+                        <strong>Option A (auto):</strong> <code>{SKU}-spec.pdf</code><br>
+                        <strong>Option B (manual):</strong> filename in CSV col 35<br>
+                        <code>MS35307-303-spec.pdf</code>
+                    </td>
+                    <td>Col 35<br><code>SPEC SHEET</code></td>
+                </tr>
+                <tr>
+                    <td><strong>Certificates</strong><br><small>.pdf</small></td>
                     <td><code>product-certs/</code></td>
                     <td>
-                        <strong>Option A (auto):</strong> Name file same as SKU<br>
-                        <code>MS35307-303.pdf</code><br><br>
-                        <strong>Option B (manual):</strong> Any name, put in CSV col 31<br>
-                        <code>cert-ms35307-303.pdf</code>
+                        <strong>Option A (auto):</strong> <code>{SKU}-cert.pdf</code> or <code>{SKU}.pdf</code><br>
+                        <strong>Option B (manual):</strong> filename in CSV col 36<br>
+                        <code>MS35307-303-cert.pdf</code>
                     </td>
-                    <td>Col 31<br><code>CERT LOCATION</code><br><small>(optional — blank = SKU fallback)</small></td>
+                    <td>Col 36<br><code>CERTIFICATE</code></td>
                 </tr>
             </tbody>
         </table>
 
         <div style="background:#fff8e1;border:1px solid #ffe082;padding:12px 16px;border-radius:4px;margin-top:12px;font-size:.875em">
-            <strong>How cert/spec PDFs become Download buttons</strong><br>
-            Import reads col 31 (CERT LOCATION). If it's a <code>.pdf</code> filename → copies from cert folder → WP media library → sets <code>_spec_file_url</code> → Download button appears on product page.<br>
-            If col 31 is blank → auto-tries <code>{SKU}.pdf</code> from cert folder.
+            <strong>How spec sheets &amp; certificates become download links</strong><br>
+            Import reads <code>SPEC SHEET</code> and <code>CERTIFICATE</code> columns. PDF filenames are copied from the configured folders into the WP media library and saved as <code>_spec_file_url</code> and <code>_certificate_file_url</code>.<br>
+            Blank columns auto-try <code>{SKU}-spec.pdf</code> and <code>{SKU}-cert.pdf</code>. Legacy CSV files may still use col 32 <code>CERT LOCATION</code> with a <code>.pdf</code> filename for certificates.
         </div>
     </div>
     <?php
@@ -479,10 +929,13 @@ function specparts_render_guide_tab() {
     <div style="max-width:960px;font-size:.875em">
         <h2 style="font-size:1.3em;margin-bottom:4px">CSV Column Reference</h2>
         <p style="color:#666;margin-bottom:16px">
-            Columns are read <strong>positionally</strong> (by index, not header name) to handle the duplicate
+            Columns are read <strong>positionally</strong> (by index, not by header name) to handle the duplicate
             "SHIPPING DIMENSIONS" and "SHIPPING WEIGHT" headers in the INFO MOCKUP format.
             The optional <strong>PRODUCT IMAGE</strong> column can be at index 33 or named.
             Category, sub-category, and series values <strong>cascade</strong> from header rows to all following product rows until changed.
+        </p>
+        <p style="margin-bottom:16px">
+            <a href="<?php echo esc_url( specparts_get_template_csv_download_url() ); ?>" class="button button-primary">Download sample CSV</a>
         </p>
 
         <table class="widefat striped fixed" style="margin-bottom:32px">
@@ -496,8 +949,8 @@ function specparts_render_guide_tab() {
                 <tr><th>#</th><th>Column Name</th><th>Stored As</th><th>Notes</th></tr>
             </thead>
             <tbody>
-                <tr><td>1</td><td>CATEGORY IMAGE LOCATION</td><td><em>Context only</em></td>
-                    <td>Image URL/filename for category header rows. Not stored on products.</td></tr>
+                <tr><td>1</td><td>CATEGORY IMAGE LOCATION</td><td>WC category <code>thumbnail_id</code></td>
+                    <td>Image URL or filename from <code>product-images/</code>. Applied to the current parent/sub-category context row.</td></tr>
                 <tr><td>2</td><td>PRODCUT CATEGORY <small>(typo in client file)</small></td><td>WC <code>product_cat</code> — parent</td>
                     <td>Sets parent category context. Cascades. When it changes, sub-category resets.</td></tr>
                 <tr><td>3</td><td>PRODUCT SUB CATEGORY</td><td>WC <code>product_cat</code> — child</td>
@@ -508,33 +961,33 @@ function specparts_render_guide_tab() {
                     <td><strong>Required.</strong> Becomes the WC product title <em>and</em> SKU. Rows with blank P/N are treated as context/header rows and skipped.</td></tr>
                 <tr><td>6</td><td>DESCRIPTION</td><td>WC short description</td>
                     <td>Long-form part description. Shown in the Description column of the catalog table and on the product page.</td></tr>
-                <tr><td>7</td><td>PACKAGE QTY</td><td>ACF <code>pkg_qty</code> + meta <code>_pkg_qty</code></td>
-                    <td>Pieces per package. ACF for admin UI; meta for cart logic (no ACF needed at runtime).</td></tr>
+                <tr><td>7</td><td>PACKAGE QTY</td><td>Meta <code>_pkg_qty</code></td>
+                    <td>Pieces per package. Read by cart logic and the REST API.</td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 1 — single-package order</strong></td></tr>
                 <tr><td>8</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td>
-                    <td>ACF repeater <code>tier[0].shipping_dims</code></td><td>Box dimensions for 1-pkg order.</td></tr>
+                    <td>WC product dimensions (L/W/H)</td><td>Tier-1 box size for Shippo. Format: HxWxL inches. Not stored in ACF.</td></tr>
                 <tr><td>9</td><td>SHIPPING WEIGHT</td>
-                    <td>ACF repeater <code>tier[0].shipping_weight</code> + WC weight</td>
-                    <td>Ship weight for 1-pkg order. Also sets WC product weight.</td></tr>
+                    <td>WC product weight</td>
+                    <td>Tier-1 ship weight in lbs. Sets WC weight for Shippo rate quotes.</td></tr>
                 <tr><td>10</td><td>1 PKG COST</td>
-                    <td>WC <code>_regular_price</code> + ACF repeater <code>tier[0].price</code></td>
+                    <td>WC <code>_regular_price</code> + <code>_package_pricing</code> tier[0]</td>
                     <td>Price per package at qty 1. Sets WC regular and current price.</td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 3 — 3+ packages</strong></td></tr>
-                <tr><td>11</td><td>3 PKG COST</td><td>ACF <code>tier[1].price</code> + <code>_package_pricing</code></td><td></td></tr>
-                <tr><td>12</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td>ACF <code>tier[1].shipping_dims</code></td><td></td></tr>
-                <tr><td>13</td><td>SHIPPING WEIGHT</td><td>ACF <code>tier[1].shipping_weight</code></td><td></td></tr>
+                <tr><td>11</td><td>3 PKG COST</td><td><code>_package_pricing</code> tier[1]</td><td>Cart tier price only.</td></tr>
+                <tr><td>12</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td>Shippo uses WC product dimensions from tier 1.</td></tr>
+                <tr><td>13</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td>Shippo uses WC product weight from tier 1.</td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 5 — 5+ packages</strong></td></tr>
-                <tr><td>14</td><td>5 PKG COST</td><td>ACF <code>tier[2].price</code> + <code>_package_pricing</code></td><td></td></tr>
-                <tr><td>15</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td>ACF <code>tier[2].shipping_dims</code></td><td></td></tr>
-                <tr><td>16</td><td>SHIPPING WEIGHT</td><td>ACF <code>tier[2].shipping_weight</code></td><td></td></tr>
+                <tr><td>14</td><td>5 PKG COST</td><td><code>_package_pricing</code> tier[2]</td><td>Cart tier price only.</td></tr>
+                <tr><td>15</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td></td></tr>
+                <tr><td>16</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td></td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 10 — 10+ packages</strong></td></tr>
-                <tr><td>17</td><td>10 PKG COST</td><td>ACF <code>tier[3].price</code> + <code>_package_pricing</code></td><td></td></tr>
-                <tr><td>18</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td>ACF <code>tier[3].shipping_dims</code></td><td></td></tr>
-                <tr><td>19</td><td>SHIPPING WEIGHT</td><td>ACF <code>tier[3].shipping_weight</code></td><td></td></tr>
+                <tr><td>17</td><td>10 PKG COST</td><td><code>_package_pricing</code> tier[3]</td><td>Cart tier price only.</td></tr>
+                <tr><td>18</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td></td></tr>
+                <tr><td>19</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td></td></tr>
 
                 <tr><td>20</td><td>QUANTITY IN STOCK</td>
                     <td>WC <code>_stock</code>, <code>_stock_status</code>, <code>manage_stock=yes</code></td>
@@ -559,19 +1012,25 @@ function specparts_render_guide_tab() {
                 <tr><td>31</td><td>COST PER EA</td><td>Post meta <code>_cost_per_ea</code></td>
                     <td>Internal cost per piece. Not shown to customers.</td></tr>
                 <tr><td>32</td><td>CERT LOCATION</td><td>Post meta <code>_cert_location</code></td>
-                    <td>Where physical certificates are stored.</td></tr>
+                    <td>Internal note for where physical certificates are stored. Use <code>CERTIFICATE</code> column for the public PDF.</td></tr>
                 <tr><td>33</td><td>PER PIECE WEIGHT</td>
-                    <td>WC weight <code>_weight</code> + meta <code>_piece_weight</code></td>
-                    <td>Individual piece weight in lbs. Sets WC product weight if no shipping weight set.</td></tr>
+                    <td>WC weight fallback + meta <code>_piece_weight</code></td>
+                    <td>Individual piece weight in lbs. Used when tier-1 ship weight is blank.</td></tr>
                 <tr style="background:#fffde7">
                     <td>34</td>
                     <td><strong>PRODUCT IMAGE</strong> <small>(optional)</small></td>
                     <td>WC featured image + product gallery</td>
-                    <td>Comma-separated filenames from the configured images folder.<br>
-                        Example: <code>MS35307-303.jpg</code> or <code>MS35307-303.jpg, MS35307-303-side.jpg</code><br>
-                        First filename = featured image. Rest = gallery.<br>
-                        If blank, importer auto-tries <code>{SKU}.jpg / .jpeg / .png / .webp / .gif</code>.</td>
-                </tr>
+                    <td>Comma-separated filenames from the configured images folder.</td></tr>
+                <tr style="background:#fffde7">
+                    <td>35</td>
+                    <td><strong>SPEC SHEET</strong> <small>(optional)</small></td>
+                    <td>Post meta <code>_spec_file_url</code></td>
+                    <td>PDF filename from <code>product-specs/</code> or full URL. Blank = auto <code>{SKU}-spec.pdf</code>.</td></tr>
+                <tr style="background:#fffde7">
+                    <td>36</td>
+                    <td><strong>CERTIFICATE</strong> <small>(optional)</small></td>
+                    <td>Post meta <code>_certificate_file_url</code></td>
+                    <td>PDF filename from <code>product-certs/</code> or full URL. Blank = auto <code>{SKU}-cert.pdf</code> / <code>{SKU}.pdf</code>.</td></tr>
             </tbody>
         </table>
 
@@ -604,7 +1063,7 @@ function specparts_render_guide_tab() {
                 <tr><td>Package Pricing Tiers</td>
                     <td>ACF repeater <code>package_pricing_tiers</code> + raw meta <code>_package_pricing</code></td>
                     <td>ACF for admin UI editing. Raw meta mirror so cart pricing hook and REST API work without ACF active at runtime.</td></tr>
-                <tr><td>pkg_qty</td><td>ACF <code>pkg_qty</code> + meta <code>_pkg_qty</code></td>
+                <tr><td>pkg_qty</td><td>Meta <code>_pkg_qty</code></td>
                     <td>Same dual-storage pattern as pricing tiers.</td></tr>
                 <tr><td>Compliance flags, internal fields</td>
                     <td>Post meta (<code>_mfr_coc</code>, <code>_material_certs</code>, etc.)</td>
@@ -693,6 +1152,14 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
             $ctx_series = $row_series;
         }
 
+        $row_cat_image = trim( $idx( $row, 0 ) );
+        if ( $row_cat_image !== '' ) {
+            $target_term_id = $ctx_sub_id ?: $ctx_parent_id;
+            if ( $target_term_id ) {
+                specparts_assign_category_thumbnail_from_csv( $target_term_id, $row_cat_image );
+            }
+        }
+
         // Skip header rows (no SKU = no product)
         $sku = strtoupper( trim( $idx( $row, 4 ) ) );
         if ( $sku === '' ) {
@@ -703,35 +1170,37 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         // Check existing product
         $existing_id = wc_get_product_id_by_sku( $sku );
         if ( $existing_id && ! $update_existing ) {
+            specparts_sync_product_taxonomies( $existing_id, $ctx_sub_id, $ctx_series );
             $skipped++;
             continue;
         }
 
         // ── Pricing tiers (positional — fixed in INFO MOCKUP format) ──
-        // Tier 1:  cost=[9],  dims=[7],  weight=[8]
-        // Tier 3:  cost=[10], dims=[11], weight=[12]
-        // Tier 5:  cost=[13], dims=[14], weight=[15]
-        // Tier 10: cost=[16], dims=[17], weight=[18]
+        // Tier costs: 1=[9], 3=[10], 5=[13], 10=[16]
+        // Tier-1 shipping: dims=[7], weight=[8] → WC native fields for Shippo
+        $ship_dims_tier1   = trim( $idx( $row, 7 ) );
+        $ship_weight_tier1 = floatval( $idx( $row, 8 ) );
         $tier_defs = [
-            [ 'qty' => 1,  'ci' => 9,  'di' => 7,  'wi' => 8  ],
-            [ 'qty' => 3,  'ci' => 10, 'di' => 11, 'wi' => 12 ],
-            [ 'qty' => 5,  'ci' => 13, 'di' => 14, 'wi' => 15 ],
-            [ 'qty' => 10, 'ci' => 16, 'di' => 17, 'wi' => 18 ],
+            [ 'qty' => 1,  'ci' => 9  ],
+            [ 'qty' => 3,  'ci' => 10 ],
+            [ 'qty' => 5,  'ci' => 13 ],
+            [ 'qty' => 10, 'ci' => 16 ],
         ];
         $tiers = [];
         foreach ( $tier_defs as $td ) {
             $cost = specparts_parse_price( $idx( $row, $td['ci'] ) );
             if ( $cost <= 0 ) continue;
             $tiers[] = [
-                'qty'             => $td['qty'],
-                'price'           => $cost,
-                'shipping_dims'   => $idx( $row, $td['di'] ),
-                'shipping_weight' => floatval( $idx( $row, $td['wi'] ) ),
+                'qty'   => $td['qty'],
+                'price' => $cost,
             ];
         }
 
         $regular_price = ! empty( $tiers ) ? $tiers[0]['price'] : 0.0;
-        $ship_weight   = ! empty( $tiers ) ? $tiers[0]['shipping_weight'] : 0.0;
+
+        if ( empty( $tiers ) ) {
+            $errors[] = "Row {$row_num}: {$sku} imported without any prices — check the PKG COST columns.";
+        }
 
         // Other columns
         $description  = trim( $idx( $row, 5 ) );
@@ -749,7 +1218,6 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         $manufacturer = trim( $idx( $row, 28 ) );
         $lot_in_use   = trim( $idx( $row, 29 ) );
         $cost_per_ea  = specparts_parse_price( $idx( $row, 30 ) );
-        $cert_loc     = trim( $idx( $row, 31 ) );
         $piece_wt     = trim( $idx( $row, 32 ) );
 
         // Optional PRODUCT IMAGE column — index 33, or by header name
@@ -779,12 +1247,13 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
             $product->set_stock_status( 'instock' );
         }
 
-        // Weight: tier-1 shipping weight, fallback to piece weight
-        if ( $ship_weight > 0 ) {
-            $product->set_weight( $ship_weight );
+        // Weight + dimensions: tier-1 CSV shipping data → WC native for Shippo
+        if ( $ship_weight_tier1 > 0 ) {
+            $product->set_weight( $ship_weight_tier1 );
         } elseif ( $piece_wt !== '' && floatval( $piece_wt ) > 0 ) {
             $product->set_weight( floatval( $piece_wt ) );
         }
+        specparts_apply_wc_shipping_dims( $product, $ship_dims_tier1 );
 
         // Categories — assign to deepest available level
         if ( $ctx_sub_id ) {
@@ -852,7 +1321,11 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         // Product Series
         if ( $ctx_series ) {
             $series_id = specparts_ensure_series_term( $ctx_series );
-            if ( $series_id ) wp_set_object_terms( $pid, $series_id, specparts_get_series_taxonomy() );
+            if ( $series_id ) {
+                wp_set_object_terms( $pid, $series_id, specparts_get_series_taxonomy() );
+            }
+        } else {
+            specparts_assign_inferred_series_to_product( $pid );
         }
 
         // Post meta
@@ -863,11 +1336,24 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         update_post_meta( $pid, '_process_certs',      specparts_bool_meta( $proc_certs ) );
         update_post_meta( $pid, '_test_reports',       specparts_bool_meta( $test_rpts ) );
         update_post_meta( $pid, '_lot_in_use',    $lot_in_use );
-        update_post_meta( $pid, '_cert_location', $cert_loc );
+        $documents = specparts_resolve_product_documents( $row, $sku, $col_map, $idx );
+        update_post_meta( $pid, '_cert_location', $documents['cert_location'] );
 
-        // Cert / spec PDF → resolve to WP media URL → powers Download button
-        $spec_url = specparts_resolve_cert_file( $cert_loc, $sku );
-        if ( $spec_url ) update_post_meta( $pid, '_spec_file_url', $spec_url );
+        if ( $documents['spec_url'] ) {
+            update_post_meta( $pid, '_spec_file_url', $documents['spec_url'] );
+            // WC-native: spec sheets live in the Downloadable files list.
+            if ( function_exists( 'specparts_set_product_spec_download' ) ) {
+                specparts_set_product_spec_download( $pid, $documents['spec_url'] );
+            }
+        } else {
+            delete_post_meta( $pid, '_spec_file_url' );
+        }
+
+        if ( $documents['cert_url'] ) {
+            update_post_meta( $pid, '_certificate_file_url', $documents['cert_url'] );
+        } else {
+            delete_post_meta( $pid, '_certificate_file_url' );
+        }
 
         if ( $cost_per_ea > 0 )  update_post_meta( $pid, '_cost_per_ea',  $cost_per_ea );
         if ( $piece_wt !== '' )  update_post_meta( $pid, '_piece_weight', floatval( $piece_wt ) );
@@ -879,16 +1365,8 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         }
 
         // ACF repeater: package_pricing_tiers + pkg_qty (only if ACF active)
-        if ( function_exists( 'update_field' ) && ! empty( $tiers ) ) {
-            $acf_rows = [];
-            foreach ( $tiers as $t ) {
-                // ACF shows qty+price only; shipping dims/weight stay in _package_pricing meta for Shippo
-                $acf_rows[] = [
-                    'qty'   => $t['qty'],
-                    'price' => $t['price'],
-                ];
-            }
-            update_field( 'package_pricing_tiers', $acf_rows, $pid );
+        if ( ! empty( $tiers ) ) {
+            specparts_write_acf_pricing_tiers( $pid, $tiers );
         }
 
         // Images (WC standard: featured + gallery)
@@ -929,6 +1407,209 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
 }
 
 // ============================================================
+// PREVIEW (DRY RUN) — validates the CSV without changing anything
+// ============================================================
+
+/**
+ * Parse the CSV exactly like the importer but write NOTHING.
+ * Returns a per-row report so the client can verify before importing.
+ *
+ * @param string $filepath        Uploaded CSV temp path.
+ * @param bool   $update_existing Whether existing SKUs would be updated.
+ * @return array{success:bool,message:string}
+ */
+function specparts_preview_csv( $filepath, $update_existing = false ) {
+    if ( ! is_file( $filepath ) || ! is_readable( $filepath ) ) {
+        return [ 'success' => false, 'message' => '<p class="notice notice-error" style="padding:8px 12px">Cannot read uploaded file.</p>' ];
+    }
+
+    $handle = @fopen( $filepath, 'r' );
+    if ( ! $handle ) {
+        return [ 'success' => false, 'message' => '<p class="notice notice-error" style="padding:8px 12px">Cannot open file.</p>' ];
+    }
+
+    $headers = fgetcsv( $handle );
+    if ( empty( $headers ) ) {
+        fclose( $handle );
+        return [ 'success' => false, 'message' => '<p class="notice notice-error" style="padding:8px 12px">Empty CSV.</p>' ];
+    }
+
+    if ( count( $headers ) < 30 ) {
+        fclose( $handle );
+        return [
+            'success' => false,
+            'message' => '<p class="notice notice-error" style="padding:8px 12px">This file has only ' . count( $headers ) . ' columns — the catalog format needs 36. Are you uploading the right file? Download the sample CSV to compare.</p>',
+        ];
+    }
+
+    $idx = function ( $row, $i ) {
+        return isset( $row[ $i ] ) ? trim( $row[ $i ] ) : '';
+    };
+
+    $images_dir = specparts_get_images_dir();
+    $specs_dir  = specparts_get_specs_dir();
+    $certs_dir  = specparts_get_certs_dir();
+
+    $ctx_parent = '';
+    $ctx_sub    = '';
+    $ctx_series = '';
+
+    $rows      = [];
+    $counts    = [ 'create' => 0, 'update' => 0, 'skip' => 0, 'context' => 0 ];
+    $row_num   = 1;
+    $max_rows  = 500; // keep the report readable
+
+    while ( ( $row = fgetcsv( $handle ) ) !== false ) {
+        $row_num++;
+
+        if ( empty( array_filter( $row, function ( $v ) { return trim( $v ) !== ''; } ) ) ) {
+            continue;
+        }
+
+        $row_parent = strtoupper( trim( $idx( $row, 1 ) ) );
+        $row_sub    = trim( $idx( $row, 2 ) );
+        $row_series = trim( $idx( $row, 3 ) );
+
+        if ( $row_parent && $row_parent !== $ctx_parent ) {
+            $ctx_parent = $row_parent;
+            $ctx_sub    = '';
+        }
+        if ( $row_sub && $row_sub !== $ctx_sub ) {
+            $ctx_sub = $row_sub;
+        }
+        if ( $row_series ) {
+            $ctx_series = $row_series;
+        }
+
+        $sku = strtoupper( trim( $idx( $row, 4 ) ) );
+
+        if ( $sku === '' ) {
+            $counts['context']++;
+            continue;
+        }
+
+        $warnings = [];
+
+        // Pricing tiers
+        $tier_count = 0;
+        foreach ( [ 9, 10, 13, 16 ] as $ci ) {
+            if ( specparts_parse_price( $idx( $row, $ci ) ) > 0 ) {
+                $tier_count++;
+            }
+        }
+        if ( 0 === $tier_count ) {
+            $warnings[] = 'No prices — product would have no price';
+        }
+
+        if ( '' === $ctx_parent ) {
+            $warnings[] = 'No category context above this row';
+        }
+        if ( '' === $ctx_series ) {
+            $warnings[] = 'No series — will be inferred from SKU';
+        }
+
+        // Shipping data (WC native fields — Shippo needs both to quote rates)
+        $ship_dims   = trim( $idx( $row, 7 ) );
+        $ship_weight = floatval( $idx( $row, 8 ) );
+        $piece_wt    = floatval( $idx( $row, 32 ) );
+
+        if ( '' === $ship_dims ) {
+            $warnings[] = 'No shipping dimensions — Shippo cannot quote without box size';
+        } elseif ( count( array_filter( array_map( 'trim', explode( 'x', preg_replace( '/[×xX\*]/u', 'x', $ship_dims ) ) ) ) ) !== 3 ) {
+            $warnings[] = "Invalid dimensions \"{$ship_dims}\" — use HxWxL (e.g. 2x4x6)";
+        }
+
+        if ( $ship_weight <= 0 && $piece_wt <= 0 ) {
+            $warnings[] = 'No shipping weight (col 9) or piece weight (col 33) — Shippo cannot quote';
+        }
+
+        // Media files (first image only, spec, cert) — existence check
+        $img_first = trim( explode( ',', $idx( $row, 33 ) )[0] ?? '' );
+        if ( $img_first !== '' && ! filter_var( $img_first, FILTER_VALIDATE_URL )
+            && ! file_exists( $images_dir . '/' . sanitize_file_name( basename( $img_first ) ) )
+            && ! specparts_get_attachment_by_filename( $img_first ) ) {
+            $warnings[] = "Image not found: {$img_first}";
+        }
+
+        $spec_file = trim( $idx( $row, 34 ) );
+        if ( $spec_file !== '' && ! filter_var( $spec_file, FILTER_VALIDATE_URL )
+            && ! file_exists( $specs_dir . '/' . sanitize_file_name( basename( $spec_file ) ) )
+            && ! specparts_get_attachment_by_filename( $spec_file ) ) {
+            $warnings[] = "Spec sheet not found: {$spec_file}";
+        }
+
+        $cert_file = trim( $idx( $row, 35 ) );
+        if ( $cert_file !== '' && ! filter_var( $cert_file, FILTER_VALIDATE_URL )
+            && ! file_exists( $certs_dir . '/' . sanitize_file_name( basename( $cert_file ) ) )
+            && ! specparts_get_attachment_by_filename( $cert_file ) ) {
+            $warnings[] = "Certificate not found: {$cert_file}";
+        }
+
+        $existing_id = wc_get_product_id_by_sku( $sku );
+
+        if ( $existing_id && ! $update_existing ) {
+            $action = 'skip';
+        } elseif ( $existing_id ) {
+            $action = 'update';
+        } else {
+            $action = 'create';
+        }
+        $counts[ $action ]++;
+
+        if ( count( $rows ) < $max_rows ) {
+            $rows[] = [
+                'row'      => $row_num,
+                'sku'      => $sku,
+                'action'   => $action,
+                'path'     => trim( $ctx_parent . ' › ' . $ctx_sub . ' › ' . $ctx_series, ' ›' ),
+                'tiers'    => $tier_count,
+                'warnings' => $warnings,
+            ];
+        }
+    }
+
+    fclose( $handle );
+
+    $badge = [
+        'create' => '<span style="background:#e6f4ea;color:#1e7e34;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700">CREATE</span>',
+        'update' => '<span style="background:#e8f0fe;color:#1a56db;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700">UPDATE</span>',
+        'skip'   => '<span style="background:#f1f3f4;color:#5f6368;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700">SKIP</span>',
+    ];
+
+    $msg = sprintf(
+        '<div class="notice notice-info" style="padding:10px 14px"><strong>Preview — nothing was imported.</strong><br>Would create: <b>%d</b> &nbsp;·&nbsp; Would update: <b>%d</b> &nbsp;·&nbsp; Would skip (already exist): <b>%d</b> &nbsp;·&nbsp; Category rows: %d</div>',
+        $counts['create'], $counts['update'], $counts['skip'], $counts['context']
+    );
+
+    $msg .= '<table class="widefat striped" style="max-width:900px;margin-top:10px"><thead><tr>'
+        . '<th style="width:50px">Row</th><th>Part #</th><th style="width:80px">Action</th><th>Category › Series</th><th style="width:50px">Tiers</th><th>Warnings</th>'
+        . '</tr></thead><tbody>';
+
+    foreach ( $rows as $r ) {
+        $warn_html = $r['warnings']
+            ? '<span style="color:#b45309">' . esc_html( implode( ' · ', $r['warnings'] ) ) . '</span>'
+            : '<span style="color:#1e7e34">✓ OK</span>';
+
+        $msg .= '<tr>'
+            . '<td>' . (int) $r['row'] . '</td>'
+            . '<td><code>' . esc_html( $r['sku'] ) . '</code></td>'
+            . '<td>' . $badge[ $r['action'] ] . '</td>'
+            . '<td>' . esc_html( $r['path'] ) . '</td>'
+            . '<td>' . (int) $r['tiers'] . '</td>'
+            . '<td>' . $warn_html . '</td>'
+            . '</tr>';
+    }
+
+    $msg .= '</tbody></table>';
+
+    if ( ( $counts['create'] + $counts['update'] + $counts['skip'] ) > $max_rows ) {
+        $msg .= '<p style="color:#666">Showing the first ' . $max_rows . ' product rows.</p>';
+    }
+
+    return [ 'success' => true, 'message' => $msg ];
+}
+
+// ============================================================
 // DEMO DATA
 // ============================================================
 
@@ -951,12 +1632,15 @@ function specparts_import_demo() {
             'sub'       => 'HEX CAP SCREWS',
             'series'    => 'MS35307',
             'pkg_qty'   => 50,
+            'ship_weight' => 0.65,
+            'spec_sheet' => 'DEMO-MS35307-303-spec.pdf',
+            'certificate' => 'DEMO-MS35307-303-cert.pdf',
             'mfr_coc'   => '1', 'mat_certs' => '1', 'proc_certs' => '1', 'test_rpts' => '1',
             'tiers' => [
-                [ 'qty' => 1,  'price' => 57.78, 'shipping_dims' => '', 'shipping_weight' => 0.65 ],
-                [ 'qty' => 3,  'price' => 48.25, 'shipping_dims' => '', 'shipping_weight' => 1.95 ],
-                [ 'qty' => 5,  'price' => 42.15, 'shipping_dims' => '', 'shipping_weight' => 3.25 ],
-                [ 'qty' => 10, 'price' => 39.90, 'shipping_dims' => '', 'shipping_weight' => 6.50 ],
+                [ 'qty' => 1,  'price' => 57.78 ],
+                [ 'qty' => 3,  'price' => 48.25 ],
+                [ 'qty' => 5,  'price' => 42.15 ],
+                [ 'qty' => 10, 'price' => 39.90 ],
             ],
         ],
         [
@@ -972,12 +1656,15 @@ function specparts_import_demo() {
             'sub'       => 'HEX NUTS',
             'series'    => 'MS21045',
             'pkg_qty'   => 100,
+            'ship_weight' => 0.30,
+            'spec_sheet' => 'DEMO-MS21045-04-spec.pdf',
+            'certificate' => 'DEMO-MS21045-04-cert.pdf',
             'mfr_coc'   => '1', 'mat_certs' => '1', 'proc_certs' => '', 'test_rpts' => '',
             'tiers' => [
-                [ 'qty' => 1,  'price' => 18.50, 'shipping_dims' => '', 'shipping_weight' => 0.30 ],
-                [ 'qty' => 3,  'price' => 16.20, 'shipping_dims' => '', 'shipping_weight' => 0.90 ],
-                [ 'qty' => 5,  'price' => 14.80, 'shipping_dims' => '', 'shipping_weight' => 1.50 ],
-                [ 'qty' => 10, 'price' => 13.90, 'shipping_dims' => '', 'shipping_weight' => 3.00 ],
+                [ 'qty' => 1,  'price' => 18.50 ],
+                [ 'qty' => 3,  'price' => 16.20 ],
+                [ 'qty' => 5,  'price' => 14.80 ],
+                [ 'qty' => 10, 'price' => 13.90 ],
             ],
         ],
     ];
@@ -995,6 +1682,9 @@ function specparts_import_demo() {
         $product->set_manage_stock( true );
         $product->set_stock_quantity( $d['stock'] );
         $product->set_stock_status( 'instock' );
+        if ( ! empty( $d['ship_weight'] ) ) {
+            $product->set_weight( (string) $d['ship_weight'] );
+        }
 
         $parent_id = specparts_ensure_product_category( $d['category'], 0 );
         $sub_id    = specparts_ensure_product_category( $d['sub'], $parent_id );
@@ -1047,12 +1737,26 @@ function specparts_import_demo() {
         update_post_meta( $pid, '_pkg_qty',          $d['pkg_qty'] );
         update_post_meta( $pid, '_package_pricing',  $d['tiers'] );
 
-        if ( function_exists( 'update_field' ) ) {
-            $acf_rows = array_map( function ( $t ) {
-                return [ 'qty' => $t['qty'], 'price' => $t['price'] ];
-            }, $d['tiers'] );
-            update_field( 'package_pricing_tiers', $acf_rows, $pid );
+        $spec_url = specparts_resolve_product_document_file(
+            $d['spec_sheet'] ?? '',
+            $d['sku'],
+            specparts_get_specs_dir(),
+            [ '{SKU}-spec.pdf', '{SKU}.pdf' ]
+        );
+        $cert_url = specparts_resolve_product_document_file(
+            $d['certificate'] ?? '',
+            $d['sku'],
+            specparts_get_certs_dir(),
+            [ '{SKU}-cert.pdf', '{SKU}.pdf' ]
+        );
+        if ( $spec_url ) {
+            update_post_meta( $pid, '_spec_file_url', $spec_url );
         }
+        if ( $cert_url ) {
+            update_post_meta( $pid, '_certificate_file_url', $cert_url );
+        }
+
+        specparts_write_acf_pricing_tiers( $pid, $d['tiers'] );
 
         update_post_meta( $pid, '_specparts_import_source', 'demo' );
         $created++;

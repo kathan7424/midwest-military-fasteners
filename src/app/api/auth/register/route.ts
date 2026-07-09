@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    return buildProxiedResponse(wpResponse);
+    // Registration auto-logs-in — drop any guest WC cart session token.
+    return buildProxiedResponse(wpResponse, { clearWcSession: true });
   } catch (error) {
     console.error("Register proxy error:", error);
 

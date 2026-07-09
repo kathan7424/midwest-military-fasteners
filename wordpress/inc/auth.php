@@ -23,6 +23,46 @@ define( 'MMF_GF_FIELD_CERTIFICATE', '6' );
 define( 'MMF_GF_FIELD_EXPIRY', '7' );
 
 add_action( 'rest_api_init', 'mmf_register_auth_routes' );
+add_filter( 'rest_authentication_errors', 'mmf_headless_cookie_auth', 200 );
+
+/**
+ * Restore cookie-authenticated users for headless proxy REST requests.
+ *
+ * WP core zeroes the current user on cookie-auth REST calls without an
+ * X-WP-Nonce (rest_cookie_check_errors). The Next.js server proxy can't get
+ * a nonce (it's rendered into wp-admin pages), so logged-in endpoints like
+ * /custom/v1/tax-exemption always returned 401 and Store API orders were
+ * created as guests.
+ *
+ * CSRF-safe: only applies when the X-MMF-Proxy header is present — browsers
+ * cannot send custom headers cross-origin without a CORS preflight, so forged
+ * cross-site requests never carry it. The header is added exclusively by the
+ * Next.js server-side proxy.
+ *
+ * @param WP_Error|true|null $result Current authentication result.
+ * @return WP_Error|true|null
+ */
+function mmf_headless_cookie_auth( $result ) {
+	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+
+	if ( empty( $_SERVER['HTTP_X_MMF_PROXY'] ) ) {
+		return $result;
+	}
+
+	if ( get_current_user_id() > 0 ) {
+		return $result;
+	}
+
+	$user_id = (int) wp_validate_auth_cookie( '', 'logged_in' );
+
+	if ( $user_id > 0 ) {
+		wp_set_current_user( $user_id );
+	}
+
+	return $result;
+}
 add_action( 'gform_after_submission_' . MMF_REGISTRATION_FORM_ID, 'mmf_create_customer_from_gravity_entry', 10, 2 );
 
 /**
@@ -200,6 +240,44 @@ function mmf_auth_logout(): WP_REST_Response {
 	);
 }
 
+// ── Gravity Forms merge tags for the tax-cert review email ────────────────
+// {mmf_approve_url} / {mmf_reject_url} — one-click action links. Resolves the
+// WP user by the entry's email; falls back to the Tax Certificates dashboard
+// when the user doesn't exist yet.
+add_filter( 'gform_replace_merge_tags', 'mmf_gf_tax_cert_merge_tags', 10, 3 );
+
+/**
+ * @param string $text  Notification text.
+ * @param array  $form  Form.
+ * @param array  $entry Entry.
+ * @return string
+ */
+function mmf_gf_tax_cert_merge_tags( $text, $form, $entry ) {
+	if ( ! is_string( $text ) || strpos( $text, '{mmf_' ) === false ) {
+		return $text;
+	}
+
+	$dashboard = admin_url( 'admin.php?page=mmf-tax-certificates' );
+	$approve   = $dashboard;
+	$reject    = $dashboard;
+
+	if ( is_array( $entry ) && function_exists( 'mmf_build_tax_cert_action_url' ) ) {
+		$email = sanitize_email( (string) rgar( $entry, MMF_GF_FIELD_EMAIL ) );
+		$user  = $email ? get_user_by( 'email', $email ) : false;
+
+		if ( $user instanceof WP_User ) {
+			$approve = mmf_build_tax_cert_action_url( (int) $user->ID, 'approve' );
+			$reject  = mmf_build_tax_cert_action_url( (int) $user->ID, 'reject' );
+		}
+	}
+
+	return str_replace(
+		array( '{mmf_approve_url}', '{mmf_reject_url}' ),
+		array( esc_url( $approve ), esc_url( $reject ) ),
+		$text
+	);
+}
+
 /**
  * Return the currently logged-in user.
  *
@@ -370,28 +448,16 @@ function mmf_auth_forgot_password( WP_REST_Request $request ) {
 		? get_user_by( 'email', $email_or_login )
 		: get_user_by( 'login', $email_or_login );
 
-	if ( ! $user instanceof WP_User ) {
-		return new WP_Error(
-			'user_not_found',
-			'We could not find an account with that email address.',
-			array( 'status' => 404 )
-		);
-	}
-
-	$sent = retrieve_password( $user->user_login );
-
-	if ( is_wp_error( $sent ) ) {
-		return new WP_Error(
-			'forgot_password_failed',
-			$sent->get_error_message(),
-			array( 'status' => 400 )
-		);
+	// Always return the same response so the endpoint can't be used to
+	// enumerate which email addresses have accounts.
+	if ( $user instanceof WP_User ) {
+		retrieve_password( $user->user_login );
 	}
 
 	return rest_ensure_response(
 		array(
 			'success' => true,
-			'message' => 'Password reset instructions have been sent to your email.',
+			'message' => 'If an account exists for that email address, password reset instructions have been sent.',
 		)
 	);
 }
@@ -483,7 +549,14 @@ function mmf_auth_register( WP_REST_Request $request ) {
 		$files['input_6'] = $_FILES['certificate'];
 	}
 
+	// Suppress GF notification emails during the headless API call.
+	// Emails would block the HTTP response while waiting for SMTP — skip them.
+	$disable_notifications = static function (): bool { return true; };
+	add_filter( 'gform_disable_notification', $disable_notifications );
+
 	$result = GFAPI::submit_form( MMF_REGISTRATION_FORM_ID, $field_values, null, $files );
+
+	remove_filter( 'gform_disable_notification', $disable_notifications );
 
 	if ( is_wp_error( $result ) ) {
 		return new WP_Error(
@@ -508,6 +581,40 @@ function mmf_auth_register( WP_REST_Request $request ) {
 		);
 	}
 
+	// GF's programmatic file handling (via $files) is unreliable in headless REST
+	// context. After GF creates the entry + WC user, we handle the certificate
+	// upload directly so user meta is always populated.
+	$new_user = get_user_by( 'email', $email );
+
+	if ( $new_user instanceof WP_User ) {
+		$uid = (int) $new_user->ID;
+
+		if ( $expiry ) {
+			update_user_meta( $uid, 'mmf_tax_exemption_expiry', mmf_normalize_tax_exemption_expiry( $expiry ) );
+		}
+
+		if ( ! empty( $_FILES['certificate'] ) && ! empty( $_FILES['certificate']['name'] ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			require_once ABSPATH . 'wp-admin/includes/media.php';
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+
+			$attachment_id = media_handle_upload( 'certificate', 0 );
+
+			if ( ! is_wp_error( $attachment_id ) ) {
+				$cert_url = wp_get_attachment_url( $attachment_id );
+				update_user_meta( $uid, 'mmf_tax_exemption_cert', esc_url_raw( (string) $cert_url ) );
+				update_user_meta( $uid, 'mmf_tax_exemption_status', MMF_TAX_STATUS_PENDING );
+				update_user_meta( $uid, 'mmf_tax_exemption_submitted_at', current_time( 'mysql' ) );
+
+				// Admin review email with one-click Approve / Reject buttons
+				// (queued — inline SMTP would slow the registration response).
+				if ( function_exists( 'mmf_queue_tax_cert_admin_email' ) ) {
+					mmf_queue_tax_cert_admin_email( $uid );
+				}
+			}
+		}
+	}
+
 	return rest_ensure_response(
 		array(
 			'success'  => true,
@@ -515,6 +622,32 @@ function mmf_auth_register( WP_REST_Request $request ) {
 			'message'  => 'Registration successful. You can now log in.',
 		)
 	);
+}
+
+/**
+ * Extract a file URL from a Gravity Forms upload field value.
+ * Multi-file upload fields store a JSON array of URLs; single-file
+ * fields store the URL directly. Returns the first URL either way.
+ *
+ * @param string $raw Raw entry value.
+ * @return string
+ */
+function mmf_extract_gf_file_url( string $raw ): string {
+	$raw = trim( $raw );
+
+	if ( $raw === '' ) {
+		return '';
+	}
+
+	if ( str_starts_with( $raw, '[' ) ) {
+		$decoded = json_decode( $raw, true );
+
+		if ( is_array( $decoded ) && ! empty( $decoded[0] ) ) {
+			$raw = (string) $decoded[0];
+		}
+	}
+
+	return esc_url_raw( $raw );
 }
 
 /**
@@ -542,7 +675,7 @@ function mmf_create_customer_from_gravity_entry( array $entry, array $form ): vo
 	$last_name  = sanitize_text_field( (string) rgar( $entry, MMF_GF_FIELD_LAST_NAME ) );
 	$company    = sanitize_text_field( (string) rgar( $entry, MMF_GF_FIELD_COMPANY ) );
 	$expiry     = sanitize_text_field( (string) rgar( $entry, MMF_GF_FIELD_EXPIRY ) );
-	$cert_url   = esc_url_raw( (string) rgar( $entry, MMF_GF_FIELD_CERTIFICATE ) );
+	$cert_url   = mmf_extract_gf_file_url( (string) rgar( $entry, MMF_GF_FIELD_CERTIFICATE ) );
 	$password   = mmf_get_entry_password( $entry );
 
 	if ( empty( $password ) ) {
@@ -566,11 +699,18 @@ function mmf_create_customer_from_gravity_entry( array $entry, array $form ): vo
 	}
 
 	if ( $expiry ) {
-		update_user_meta( $user_id, 'mmf_tax_exemption_expiry', $expiry );
+		update_user_meta( $user_id, 'mmf_tax_exemption_expiry', mmf_normalize_tax_exemption_expiry( $expiry ) );
 	}
 
 	if ( $cert_url ) {
 		update_user_meta( $user_id, 'mmf_tax_exemption_cert', $cert_url );
+	}
+
+	if ( function_exists( 'mmf_mark_tax_exemption_pending' ) ) {
+		mmf_mark_tax_exemption_pending( (int) $user_id );
+	} elseif ( $cert_url ) {
+		update_user_meta( $user_id, 'mmf_tax_exemption_status', 'pending' );
+		update_user_meta( $user_id, 'mmf_tax_exemption_submitted_at', current_time( 'mysql' ) );
 	}
 
 	if ( $first_name || $last_name ) {

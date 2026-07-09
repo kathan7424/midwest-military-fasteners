@@ -6,16 +6,22 @@
  * Last Modified: 2026-06-25
  */
 
+import { cache } from "react";
+
 import { FooterMenuItem, MenuItem } from "@/types/menu.types";
 import { fetchWpJson } from "@/services/wp-api.service";
 import { normalizeFooterMenu, normalizeMenu } from "@/utils/menu.utils";
 
-export async function fetchMenu(): Promise<MenuItem[]> {
-  const items = await fetchWpJson<MenuItem[]>("/custom/v1/menu/primary");
+export const fetchMenu = cache(async (): Promise<MenuItem[]> => {
+  const items = await fetchWpJson<MenuItem[]>("/custom/v1/menu/primary", {
+    mode: "static",
+  });
   return await normalizeMenu(items);
-}
+});
 
-export async function fetchFooterMenu(): Promise<FooterMenuItem[]> {
-  const items = await fetchWpJson<FooterMenuItem[]>("/custom/v1/menu/footer");
+export const fetchFooterMenu = cache(async (): Promise<FooterMenuItem[]> => {
+  const items = await fetchWpJson<FooterMenuItem[]>("/custom/v1/menu/footer", {
+    mode: "static",
+  });
   return normalizeFooterMenu(items);
-}
+});

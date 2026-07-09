@@ -27,7 +27,7 @@ export default function SidebarItem({ series, active = false }: SidebarItemProps
         className={cn(
           "block py-2.5 text-link transition-opacity hover:opacity-75",
           active
-            ? "font-bold text-dark-gray no-underline"
+            ? "font-bold text-amber no-underline"
             : "text-amber underline underline-offset-1"
         )}
       >

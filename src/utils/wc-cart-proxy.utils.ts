@@ -10,15 +10,25 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { ENV } from "@/config/env";
 import { CartData, CartItem, CartItemQuantityLimits } from "@/types/cart.types";
-import { buildProxiedResponse, buildWpCookieHeader } from "@/utils/auth-proxy.utils";
+import type {
+  CheckoutAddress,
+  CheckoutCartState,
+  ShippingPackage,
+} from "@/types/checkout.types";
+import {
+  appendSetCookie,
+  buildProxiedResponse,
+  buildWpCookieHeader,
+  WC_CART_TOKEN_COOKIE,
+  WC_STORE_NONCE_COOKIE,
+} from "@/utils/auth-proxy.utils";
+
+export { WC_CART_TOKEN_COOKIE, WC_STORE_NONCE_COOKIE };
 import {
   mapStoreQuantityLimits,
   normalizeWcMaxQuantity,
 } from "@/utils/cart-stock.utils";
 import { decodeHtmlEntities, formatNoticeMessage } from "@/utils/text.utils";
-
-export const WC_STORE_NONCE_COOKIE = "wc_store_nonce";
-export const WC_CART_TOKEN_COOKIE = "wc_cart_token";
 
 interface StoreCartPrice {
   price: string;
@@ -51,13 +61,36 @@ interface StoreCartItem {
 interface StoreCartTotals {
   total_items: string;
   total_price: string;
+  total_shipping?: string;
+  total_tax?: string;
+  currency_code?: string;
   currency_minor_unit?: number;
+}
+
+interface StoreShippingRate {
+  rate_id: string;
+  name: string;
+  description?: string;
+  price: string;
+  currency_minor_unit?: number;
+  method_id: string;
+  selected: boolean;
+}
+
+interface StoreShippingPackage {
+  package_id: number | string;
+  name: string;
+  shipping_rates: StoreShippingRate[];
 }
 
 export interface StoreCartResponse {
   items: StoreCartItem[];
   items_count: number;
   totals: StoreCartTotals;
+  needs_shipping?: boolean;
+  shipping_rates?: StoreShippingPackage[];
+  shipping_address?: Partial<CheckoutAddress>;
+  billing_address?: Partial<CheckoutAddress>;
 }
 
 function getHeaderValue(response: Response, name: string): string | null {
@@ -115,11 +148,14 @@ function mapIsInStock(item: StoreCartItem): boolean {
 
 export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
   const minorUnit = storeCart.totals.currency_minor_unit ?? 2;
+  // Currency comes from WooCommerce settings via the Store API — never assume USD.
+  const currency = storeCart.totals.currency_code || "USD";
 
   const items: CartItem[] = storeCart.items.map((item) => {
     const lineTotal = formatMinorUnits(
       item.totals.line_total,
-      item.prices.currency_minor_unit ?? minorUnit
+      item.prices.currency_minor_unit ?? minorUnit,
+      currency
     );
     const sku = decodeHtmlEntities(item.sku || item.name);
     const name = decodeHtmlEntities(item.name);
@@ -148,36 +184,134 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
   return {
     items,
     item_count: storeCart.items_count,
-    subtotal: formatMinorUnits(storeCart.totals.total_items, minorUnit),
-    total: formatMinorUnits(storeCart.totals.total_price, minorUnit),
+    subtotal: formatMinorUnits(storeCart.totals.total_items, minorUnit, currency),
+    shipping_total: formatMinorUnits(storeCart.totals.total_shipping ?? "0", minorUnit, currency),
+    tax_total: formatMinorUnits(storeCart.totals.total_tax ?? "0", minorUnit, currency),
+    total: formatMinorUnits(storeCart.totals.total_price, minorUnit, currency),
     checkout_url: `${ENV.WP_SITE_URL}/checkout`,
     cart_url: `${ENV.WP_SITE_URL}/cart`,
   };
 }
 
+/**
+ * Map the raw Store API cart to the checkout-page state shape
+ * (totals summary, shipping packages/rates, saved addresses).
+ */
+export function mapStoreCartToCheckoutState(
+  storeCart: StoreCartResponse
+): CheckoutCartState {
+  const minorUnit = storeCart.totals.currency_minor_unit ?? 2;
+  const currency = storeCart.totals.currency_code || "USD";
+
+  const shipping_packages: ShippingPackage[] = (storeCart.shipping_rates ?? []).map(
+    (pkg) => ({
+      package_id: pkg.package_id,
+      name: pkg.name,
+      shipping_rates: pkg.shipping_rates.map((rate) => ({
+        rate_id: rate.rate_id,
+        name: decodeHtmlEntities(rate.name),
+        description: decodeHtmlEntities(rate.description || ""),
+        price: formatMinorUnits(rate.price, rate.currency_minor_unit ?? minorUnit, currency),
+        currency_minor_unit: rate.currency_minor_unit ?? minorUnit,
+        method_id: rate.method_id,
+        selected: Boolean(rate.selected),
+      })),
+    })
+  );
+
+  return {
+    totals: {
+      subtotal: formatMinorUnits(storeCart.totals.total_items, minorUnit, currency),
+      shipping_total: formatMinorUnits(storeCart.totals.total_shipping ?? "0", minorUnit, currency),
+      tax_total: formatMinorUnits(storeCart.totals.total_tax ?? "0", minorUnit, currency),
+      total: formatMinorUnits(storeCart.totals.total_price, minorUnit, currency),
+    },
+    shipping_packages,
+    needs_shipping: Boolean(storeCart.needs_shipping ?? shipping_packages.length > 0),
+    shipping_address: storeCart.shipping_address ?? {},
+    billing_address: storeCart.billing_address ?? {},
+  };
+}
+
+/**
+ * Build a proxy response carrying both the mapped cart and checkout state,
+ * persisting the Store API session cookies (nonce + cart token).
+ */
+export async function buildCheckoutCartStateResponse(
+  wpResponse: Response
+): Promise<NextResponse> {
+  const raw = (await wpResponse.json().catch(() => null)) as
+    | StoreCartResponse
+    | { code?: string; message?: string }
+    | null;
+
+  if ( ! wpResponse.ok || ! raw || ! ( "items" in raw ) ) {
+    const message = formatNoticeMessage(
+      raw && "message" in raw && raw.message ? raw.message : "Cart request failed."
+    );
+
+    return NextResponse.json(
+      { message, code: raw && "code" in raw ? raw.code : undefined },
+      { status: wpResponse.status || 500 }
+    );
+  }
+
+  const response = NextResponse.json(
+    {
+      cart: mapStoreCartToCartData(raw),
+      checkout: mapStoreCartToCheckoutState(raw),
+    },
+    { status: wpResponse.status }
+  );
+  response.headers.set("Cache-Control", "no-store, private");
+  persistStoreSessionCookies(wpResponse, response);
+
+  return response;
+}
+
+function persistStoreSessionCookies(
+  wpResponse: Response,
+  response: NextResponse
+): void {
+  const nonce = getHeaderValue(wpResponse, "nonce");
+  const cartToken = getHeaderValue(wpResponse, "cart-token");
+
+  // Raw appends — response.cookies.set would clobber forwarded WP cookies.
+  if (nonce) {
+    appendSetCookie(response, WC_STORE_NONCE_COOKIE, nonce);
+  }
+
+  if (cartToken) {
+    appendSetCookie(response, WC_CART_TOKEN_COOKIE, cartToken);
+  }
+}
+
 export function buildWcStoreHeaders(
   request: NextRequest,
   includeJson = false,
-  bootstrapResponse?: Response
+  bootstrapResponse?: Response,
+  options: { skipSessionCookies?: boolean } = {}
 ): HeadersInit {
   const headers: Record<string, string> = {
     Accept: "application/json",
     ...(buildWpCookieHeader(request.headers.get("cookie")) as Record<string, string>),
   };
 
-  const nonce =
-    request.cookies.get(WC_STORE_NONCE_COOKIE)?.value ||
-    (bootstrapResponse ? getHeaderValue(bootstrapResponse, "nonce") : null);
-  const cartToken =
-    request.cookies.get(WC_CART_TOKEN_COOKIE)?.value ||
-    (bootstrapResponse ? getHeaderValue(bootstrapResponse, "cart-token") : null);
+  if (!options.skipSessionCookies) {
+    const nonce =
+      request.cookies.get(WC_STORE_NONCE_COOKIE)?.value ||
+      (bootstrapResponse ? getHeaderValue(bootstrapResponse, "nonce") : null);
+    const cartToken =
+      request.cookies.get(WC_CART_TOKEN_COOKIE)?.value ||
+      (bootstrapResponse ? getHeaderValue(bootstrapResponse, "cart-token") : null);
 
-  if (nonce) {
-    headers.Nonce = nonce;
-  }
+    if (nonce) {
+      headers.Nonce = nonce;
+    }
 
-  if (cartToken) {
-    headers["Cart-Token"] = cartToken;
+    if (cartToken) {
+      headers["Cart-Token"] = cartToken;
+    }
   }
 
   if (includeJson) {
@@ -188,7 +322,8 @@ export function buildWcStoreHeaders(
 }
 
 export async function buildStoreCartResponse(
-  wpResponse: Response
+  wpResponse: Response,
+  options: { allowEmptyOnFailure?: boolean } = {}
 ): Promise<NextResponse> {
   const raw = (await wpResponse.json().catch(() => null)) as
     | StoreCartResponse
@@ -196,6 +331,10 @@ export async function buildStoreCartResponse(
     | null;
 
   if (!wpResponse.ok || !raw || !("items" in raw)) {
+    if (options.allowEmptyOnFailure) {
+      return buildEmptyCartResponse();
+    }
+
     const message = formatNoticeMessage(
       raw && "message" in raw && raw.message
         ? raw.message
@@ -213,6 +352,7 @@ export async function buildStoreCartResponse(
 
   const cart = mapStoreCartToCartData(raw);
   const response = NextResponse.json(cart, { status: wpResponse.status });
+  response.headers.set("Cache-Control", "no-store, private");
 
   wpResponse.headers.forEach((value, key) => {
     if (key.toLowerCase() === "set-cookie") {
@@ -220,24 +360,7 @@ export async function buildStoreCartResponse(
     }
   });
 
-  const nonce = getHeaderValue(wpResponse, "nonce");
-  const cartToken = getHeaderValue(wpResponse, "cart-token");
-
-  if (nonce) {
-    response.cookies.set(WC_STORE_NONCE_COOKIE, nonce, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
-
-  if (cartToken) {
-    response.cookies.set(WC_CART_TOKEN_COOKIE, cartToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
+  persistStoreSessionCookies(wpResponse, response);
 
   return response;
 }
@@ -275,25 +398,9 @@ export async function buildStoreCartMutationResponse(
     },
     { status: wpResponse.status }
   );
+  response.headers.set("Cache-Control", "no-store, private");
 
-  const nonce = getHeaderValue(wpResponse, "nonce");
-  const cartToken = getHeaderValue(wpResponse, "cart-token");
-
-  if (nonce) {
-    response.cookies.set(WC_STORE_NONCE_COOKIE, nonce, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
-
-  if (cartToken) {
-    response.cookies.set(WC_CART_TOKEN_COOKIE, cartToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-    });
-  }
+  persistStoreSessionCookies(wpResponse, response);
 
   return response;
 }
@@ -318,12 +425,65 @@ export async function resolveProductIdBySku(sku: string): Promise<number | null>
   }
 }
 
-export async function fetchStoreCart(request: NextRequest): Promise<Response> {
+export async function fetchStoreCart(
+  request: NextRequest,
+  options: { skipSessionCookies?: boolean } = {}
+): Promise<Response> {
   return fetch(`${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart`, {
     method: "GET",
-    headers: buildWcStoreHeaders(request),
+    headers: buildWcStoreHeaders(request, false, undefined, options),
     cache: "no-store",
   });
+}
+
+/**
+ * Fetch cart and recover from stale WooCommerce session cookies.
+ */
+export async function fetchStoreCartWithRecovery(
+  request: NextRequest
+): Promise<Response> {
+  const response = await fetchStoreCart(request);
+
+  if (response.ok) {
+    return response;
+  }
+
+  const hadSessionCookie = Boolean(
+    request.cookies.get(WC_CART_TOKEN_COOKIE)?.value ||
+      request.cookies.get(WC_STORE_NONCE_COOKIE)?.value
+  );
+
+  if (
+    hadSessionCookie &&
+    (response.status === 400 ||
+      response.status === 401 ||
+      response.status === 403)
+  ) {
+    return fetchStoreCart(request, { skipSessionCookies: true });
+  }
+
+  return response;
+}
+
+function buildEmptyCartResponse(): NextResponse {
+  const emptyCart: CartData = {
+    items: [],
+    item_count: 0,
+    subtotal: "",
+    shipping_total: "",
+    tax_total: "",
+    total: "",
+    checkout_url: `${ENV.WP_SITE_URL}/checkout`,
+    cart_url: `${ENV.WP_SITE_URL}/cart`,
+  };
+
+  const response = NextResponse.json(emptyCart, { status: 200 });
+  response.headers.set("Cache-Control", "no-store, private");
+
+  appendSetCookie(response, WC_CART_TOKEN_COOKIE, "", { expire: true });
+  appendSetCookie(response, WC_STORE_NONCE_COOKIE, "", { expire: true });
+
+  return response;
 }
 
 export { buildProxiedResponse };

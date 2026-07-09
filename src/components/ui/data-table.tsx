@@ -36,6 +36,9 @@ interface DataTableProps<TData, TValue> {
   enableSorting?: boolean;
   /** Message shown when there are no rows. */
   emptyMessage?: string;
+  /** Show a loading row instead of the empty state. */
+  isLoading?: boolean;
+  loadingMessage?: string;
   /** Optional className passed to the wrapping container. */
   className?: string;
 }
@@ -45,6 +48,8 @@ export function DataTable<TData, TValue>({
   data,
   enableSorting = false,
   emptyMessage = "No results.",
+  isLoading = false,
+  loadingMessage = "Loading...",
   className,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -101,7 +106,7 @@ export function DataTable<TData, TValue>({
                 colSpan={columns.length}
                 className="h-24 text-center"
               >
-                {emptyMessage}
+                {isLoading ? loadingMessage : emptyMessage}
               </TableCell>
             </TableRow>
           )}

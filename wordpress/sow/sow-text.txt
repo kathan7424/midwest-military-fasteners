@@ -1,0 +1,610 @@
+Midwest
+Military
+Fasteners
+Ecommerce
+Website -
+16673
+2026-06-15
+_____
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 1 of 60
+
+-- 1 of 23 --
+
+Table of Contents
+Project Authorization 	3
+Project Background 	4
+Project Objectives 	5
+Design 	6
+Scope of Work 	8
+Project Inclusions 	15
+Project Deliverables 	18
+Project Assumptions 	20
+Out of Scope 	21
+Change Order 	22
+Your Investment 	23
+Your Investment Plan 	24
+Please Sign Electronically to Accept 	25
+Acceptance 	25
+Terms & Conditions 	26
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 2 of 60
+
+-- 2 of 23 --
+
+Project Authorization
+This agreement for professional services (this “Agreement”) is made and entered into as of this
+(today's date), (the “Effective Date”), by and between build/create studios or "Client", located at
+3055 Miller Rd, Ann Arbor, MI 48103, USA and White Label IQ or "Developer", a Colorado-based
+Digital Services Company (“White Label IQ” or “we”), 6853 N. Franklin, Ave., Loveland, CO 80538.
+The tasks required to complete this project will follow the outlined timelines and deliver the
+components at the agreed price listed below.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 3 of 60
+
+-- 3 of 23 --
+
+Project Background
+White Label IQ will develop a B2B ecommerce website for Midwest Military Fasteners
+http://www.mwmilitary.com/, a supplier of military-grade fasteners and hardware products. The
+platform will provide existing customers with a fast and efficient way to search for products, place
+orders, manage accounts, and access product-related documentation.
+Unlike a traditional ecommerce website focused on product browsing, this solution will function as
+a streamlined digital catalog and ordering system where customers can quickly locate products by
+part number, review product information, and complete purchases with minimal steps. The
+platform will also support customer-specific purchasing workflows, including quantity-based
+pricing, tax-exempt accounts, compliance certifications, and approved Purchase Order (PO) / Net
+30 payment options.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 4 of 60
+
+-- 4 of 23 --
+
+Project Objectives
+The primary objectives of this project are to:
+• Develop a modern B2B ecommerce platform that allows customers to quickly search for and
+purchase military fasteners and related products online.
+• Create a streamlined ordering experience focused on fast product discovery and efficient
+purchasing workflows for existing business customers.
+• Enable customers to search products by part number, product name, and other relevant
+criteria to quickly locate required items.
+• Support quantity-based pricing structures and customer-specific purchasing requirements.
+• Provide approved customers with access to specialized purchasing options, including
+Purchase Order (PO) and Net 30 payment methods.
+• Implement tax-exempt account management, including document uploads, approval
+workflows, and expiration tracking.
+• Provide customers with access to product-related specifications and certifications
+associated with their purchases.
+• Improve operational efficiency by reducing manual processes related to order management,
+customer documentation, and compliance-related requirements.
+• Deliver a scalable platform capable of supporting future business growth, expanded product
+catalogs, and additional functionality enhancements.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 5 of 60
+
+-- 5 of 23 --
+
+Design
+Design Responsibility
+• The visual design for this project is the responsibility of build/create studios.
+• build/create studios will deliver approved Figma design files — including all page templates,
+component states, responsive layouts, and interaction specifications — prior to WLIQ
+beginning frontend development.
+• WLIQ's responsibility is the pixel-accurate implementation of those approved designs as a
+production-ready Next.js (React) application.
+• WLIQ will not produce original design concepts or make independent visual design
+decisions.
+• Any design changes identified during development will be flagged to build/create studios
+for resolution before implementation proceeds.
+Page Templates to Be Implemented
+WLIQ will implement the following page templates as provided in the approved Figma files from
+build/create studios. Each template will be developed as a reusable Next.js component and applied
+across all relevant pages.
+1. Homepage
+2. Part Category / Series Listing (table view)
+3. Single Product Page
+4. Cart (flyout + full cart page)
+5. Checkout
+6. Login / Create Account
+7. My Account Pages
+8. About
+9. Quality
+10. Contact Us
+Note: The cart and checkout process pages will be created using the standard Woocommerce templates.
+Responsive Design
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 6 of 60
+
+-- 6 of 23 --
+
+All approved designs will be created with responsive behavior in mind to ensure an optimized
+viewing experience across desktop, tablet, and mobile devices.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 7 of 60
+
+-- 7 of 23 --
+
+NOT included
+• 3D renders - The creation of new 3D renders if needed, will be provided through a separate
+agreement.
+• Photo manipulation, composing, and modifications are not included.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 8 of 60
+
+-- 8 of 23 --
+
+Scope of Work
+Development
+The development environment will be set up on Pantheon (client's provided), configured for a
+headless WordPress/WooCommerce + Next.js architecture. WordPress serves exclusively as the
+backend — managing the product catalog, orders, customer accounts, and WooCommerce
+checkout logic. All customer-facing pages are built in Next.js (React), which consumes the
+WooCommerce REST API. This replaces the WordPress theme entirely and delivers the fast,
+performance-first experience required for MMF's industrial B2B audience.
+Additionally, necessary plugins will be added to enhance the site's security and performance. This
+will involve installing a security plugin to protect against malware and other potential threats, as
+well as plugins to improve the site's speed, such as a caching plugin to enhance page load times.
+CMS Pages Development:
+Based on the project, here are the CMS-managed pages:
+• Homepage
+• About
+• Quality
+• Terms & Return Policy
+• FAQs
+• Contact Us
+All remaining pages — including cart, checkout, and customer account pages — will use
+WooCommerce's default page templates, styled to match the approved design. No custom
+development will be done for these pages from scratch.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 9 of 60
+
+-- 9 of 23 --
+
+Features & Functionality
+Product Catalog Management
+• White Label IQ will configure and develop a centralized product catalog management
+system that allows administrators to efficiently manage product information through the
+website's administrative interface.
+• The product catalog will support:
+◦ Product categories and subcategories
+◦ Product detail pages
+◦ Product names and descriptions
+◦ Product SKUs and part numbers
+◦ Product pricing
+◦ Inventory quantities
+◦ Product specification documents and PDF attachments
+• As part of the initial implementation, White Label IQ will import approximately 2,500
+products using a client-provided spreadsheet. The catalog is expected to scale to 5,000–
+10,000 products over time.
+• The spreadsheet must contain all required product information, including product names,
+descriptions, pricing, inventory levels, images, and supporting documentation where
+applicable.
+• A tooltip will be displayed on the package quantity column in the part series table, clarifying
+that the quantity value represents the number of units per package, not the available
+inventory count.
+Product Search
+• Search functionality is a critical component of this platform and will be developed to support
+the needs of business customers who typically know the products they need before visiting
+the website.
+• A full-catalog search bar will be prominently displayed in the header and accessible from
+every page on the site.
+• As the user types, autocomplete suggestions will appear in a dropdown. Results are
+structured in two levels: the first result will be the matching part series, linking to the catalog
+or series listing page; individual part number matches follow below, each linking directly to
+the corresponding product page.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 10 of 60
+
+-- 10 of 23 --
+
+• Selecting a result navigates the user directly to the relevant part series listing or product
+page. Search functionality will include:
+◦ Product keyword search
+◦ Product name search
+◦ Search results
+• An inline table filter allows users to narrow results within the current part series without
+leaving the page. Pagination or load-more functionality will be implemented to handle large
+result sets
+Customer Account Management
+• The website will provide customer account functionality that allows users to create and
+manage their accounts, access order information, and streamline future purchases.
+• Registered users will have access to a customer account dashboard where they can manage
+account information and review previous transactions.
+• This functionality is intended to improve the overall customer experience while supporting
+repeat purchases and long-term customer relationships.
+Ecommerce & Checkout Functionality
+• The platform will provide complete ecommerce functionality to support online purchasing
+and order management. Customers will be able to add products to a shopping cart, review
+their selections, and complete purchases through a secure checkout process.
+• The ecommerce functionality will include:
+◦ Shopping cart management
+◦ Secure checkout process
+◦ Order review and confirmation
+◦ Customer order history
+◦ Automated order confirmation notifications
+◦ Transactional email communications
+• Login is required to place any order. Guest checkout is not supported.
+• Product pricing is hidden from unauthenticated users. Customers must be logged in to view
+pricing information.
+• The checkout process will be designed to minimize friction while maintaining the
+information required to process customer orders accurately.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 11 of 60
+
+-- 11 of 23 --
+
+Quantity-Based Pricing
+• The website will support package-quantity-based pricing structures for products.
+• Pricing will automatically adjust based on predefined package quantity thresholds
+configured for each product.
+• The pricing model will support:
+◦ Standard package quantity pricing
+◦ Multi-tier quantity pricing
+◦ Automatic pricing adjustments based on purchasing quantity
+• Current pricing tiers are anticipated to include:
+◦ 1 Package
+◦ 3 Packages
+◦ 5 Packages
+◦ 10 Packages
+• Final pricing rules and product-specific pricing structures will be provided by the Client.
+Purchase Order & Net 30 Payment Terms
+• The website will support Net 30 purchasing for approved customer accounts.
+• Administrative users will be able to designate specific customer accounts as eligible for Net
+30 purchasing. Only approved customers will have access to this payment option during
+checkout.
+• This functionality will include:
+◦ Administrative customer approval
+◦ Customer-specific Net 30 access
+◦ Restricted payment method visibility
+◦ Net 30 checkout option for approved accounts
+• The Net 30 functionality will be implemented using the ecommerce platform's payment
+configuration and customer permission controls.
+• The Net 30 payment method will be implemented by repurposing WooCommerce's native
+Cash on Delivery (COD) payment option, renamed to Net 30.
+• Visibility of this payment method at checkout will be restricted to customer accounts that
+have been manually flagged as eligible by an administrator.
+• Customers without this flag will not see the Net 30 option.
+Product Spec Sheets vs. Certifications
+• Spec Sheets
+◦ Each product may have an associated spec sheet uploaded as a PDF meta field on the
+product.
+◦ Spec sheets are freely available for download directly from the product page.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 12 of 60
+
+-- 12 of 23 --
+
+Product Certifications
+• Certifications (including MFR C of C, Material Certs, Process Certs, and Test Reports) are
+available as a free digital add-on at the time of purchase only.
+• During checkout, customers may opt in to receive certifications for each eligible product.
+When opted in, the certification is automatically added to the cart at $0.00 as a
+WooCommerce digital product.
+• Upon order completion, the certification files are delivered to the customer via email.
+• Customers who opted in at the time of purchase may re-download their certifications from
+their order history.
+• Certification requests for past orders where the customer did not opt in at the time of
+purchase are out of scope for this project.
+Shipping & Order Fulfillment
+• The website will integrate with Shippo to support shipping calculations, label generation,
+shipment tracking, and fulfillment workflows.
+• Shipping functionality will include:
+◦ Real-time shipping estimates
+◦ Shipping carrier integrations
+◦ Shipping label generation
+◦ Shipment tracking functionality
+Payment Processing
+• Stripe will be integrated to support secure online payment processing. Payment
+functionality will include:
+◦ Credit card payment processing
+◦ Secure checkout
+◦ SSL-protected transactions
+◦ Payment testing prior to launch
+• Merchant account setup and payment processing fees remain the responsibility of the
+Client.
+Tax Exemption Management
+• The platform will support tax exemption management for qualifying business customers.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 13 of 60
+
+-- 13 of 23 --
+
+• Customers will be able to submit and manage tax exemption documentation through their
+account area. Submitted documentation will require administrative review and approval
+before tax-exempt purchasing privileges become active.
+• Tax exemption functionality will include:
+◦ Tax exemption certificate upload at registration
+◦ Certificate expiration date entry
+◦ Administrative approval workflow
+◦ Administrative rejection workflow
+◦ Tax exemption status management
+◦ Automated expiration reminder emails
+• During the administrative review period, the customer's account remains fully active. The
+customer may browse and place orders but will be charged applicable sales tax until their
+exemption is approved.
+• A notice will be displayed at checkout informing the customer of their pending exemption
+status.
+• Approved customers will have sales tax excluded from checkout calculations based on their
+approved exemption status.
+Email Notifications & Communications
+• The platform will generate automated transactional communications related to customer
+accounts and orders.
+• Email functionality will include:
+◦ Customer registration emails
+◦ Password reset emails
+◦ Order confirmation emails
+◦ Shipping notifications
+◦ Account-related notifications
+◦ Product certificate delivery emails where applicable
+Website Administration & Reporting
+• Administrative users will have access to backend tools for managing products, customers,
+orders, tax exemptions, pricing, and website operations.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 14 of 60
+
+-- 14 of 23 --
+
+• Administrative functionality will include:
+◦ Product management
+◦ Category management
+◦ Customer account management
+◦ Order management
+◦ Inventory updates
+◦ Pricing management
+◦ Basic ecommerce reporting available through the selected platform
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 15 of 60
+
+-- 15 of 23 --
+
+Project Inclusions
+Plugins
+In addition to the theme-required plugins, White Label IQ will use the following plugins as required
+to facilitate various functionality. We will select plugins that are widely supported or determine the
+best selection that meets project requirements. Licensing fees for paid plugins will be the
+responsibility of build/create studios.
+• WooCommerce — ecommerce platform (product catalog, orders, checkout, customer
+accounts) (Free)
+• Stripe — credit card payment gateway
+• TaxJar — automated sales tax calculation
+• Shippo — shipping rates, label printing, carrier integration (UPS, FedEx, USPS)
+• Wordfence (Free Version) – Basic security and firewall protection (Free)
+Additional Notes:
+• build/create studios is responsible for providing valid licenses for all paid plugins before the
+development phase begins. Failure to provide licenses may result in project delays.
+• Plugin updates and compatibility checks are not included in the initial build scope unless
+explicitly agreed upon as part of a maintenance plan.
+Quality Assurance
+Our QA test engineers conduct a functional and Integration assessment to ensure that all
+functionalities are working as required.
+Responsive Testing
+We will test each page for functionality, accessibility, and browser compatibility for mainstream
+browser releases up to 1 year old in major desktop browsers including those made by Apple
+(Safari), Google (Chrome), Microsoft (Edge), and Mozilla (Firefox.) We won’t test in older versions
+unless agreed separately. If you need an enhanced design for an older browser or specific device,
+we will provide a separate estimate. The site will also be tested to ensure its pages function
+properly when viewed on mainstream mobile devices up to 1 year old.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 16 of 60
+
+-- 16 of 23 --
+
+Feedback and Revisions
+build/create studios acknowledges and agrees that the feedback and revision process will consist
+of two structured review rounds. All feedback and proposed amendments shall be communicated
+through our designated collaboration-based feedback platform, primarily BugHerd, in the
+interests of consolidating requests and maintaining transparency. Meetings for the provision of
+additional verbal guidance and direction may be arranged as necessary.
+Revision rounds shall be constituted as follows:
+• We will set up a staging environment and the URL shall be issued for review by the clients.
+• build/create studios's team shall assemble feedback and submit it within a predefined time
+frame.
+• Our team will address the feedback, effectuate the required modifications, and resolve any
+identified issues.
+• A revised review URL shall subsequently be released for review.
+Completion of this review process should result in the refinement of the website into its final form.
+Any additional rounds of review beyond the stipulated round may necessitate a separate
+agreement and may be subject to additional costs.
+Website Security
+Following are the security measures implemented during and post-launch to ensure cohesive
+security of the site:
+• Use the Latest PHP Version
+• Encourage Clever Usernames and Passwords
+• Ensure the Latest Versions or WordPress and plugins at launch
+• HTTPS – SSL Certificate
+• Installation of The Free Version of WordFence
+• Hardening wp-config.php
+• Disable XML-RPC
+• Hide WordPress Version
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 17 of 60
+
+-- 17 of 23 --
+
+Website Administrative Guide
+A digital copy of the website's Administrative guide will be provided if requested prior to launch.
+Support
+Project-related administrative and technical support is included for the duration of the project and
+extends for 30 days after launch. See additional terms described in the Terms & Conditions below.
+Optimization and Performance
+Best practices will be used to ensure the site is optimized for page load speed. No specific speeds
+are guaranteed as choices for images, tracking scripts, plugins and other requirements for the site
+development will affect the site load times and are not controllable by White Label IQ.
+Standard Inclusions:
+• Use a CDN to reduce latency if service is provided within the website hosting or the client.
+• Simplify code to make fewer HTML requests
+• Compression of Image assets
+• Minify JavaScript and CSS by removing unnecessary characters from code to reduce its size
+and improve load time
+• Move stylesheets to the top and scripts to the bottom of the page to speed up download
+and page display.
+• Compress components with gzip
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 18 of 60
+
+-- 18 of 23 --
+
+Project Deliverables
+No. Deliverable Name Provided By 	Scope 	Comments
+1. 	Scope of Work 	White Label IQ 	Scope of Work 	Mentioned in this
+Agreement
+2. 	Website
+Requirements
+White Label IQ 	Details of Website
+Requirements in written
+Provided in this
+Agreement
+3. 	Required
+credentials and
+server access
+build/create
+studios
+Credentials for where the
+website will be hosted
+Must receive prior to
+development
+4. 	Branding
+Guidelines
+build/create
+studios
+Instructions and
+directions to be
+submitted to WLIQ via
+email or via a file transfer
+Must receive prior to
+development
+5. 	Website Design
+mockups/
+Wireframes
+build/create
+studios
+Figma files based on
+supplied theme
+templates
+Received
+6. 	Sitemap 	build/create
+studios
+The sitemap will be
+implemented to facilitate
+the gathering of
+necessary website
+assets.
+Must receive prior to
+development
+7. 	Website Assests 	build/create
+studios
+Images, copy, graphics,
+SEO Meta will be
+submitted.
+Must receive prior to
+development
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 19 of 60
+
+-- 19 of 23 --
+
+8. 	Website deployed
+to Staging
+Environment for
+Client Review and
+Testing
+White Label IQ 	Structured review rounds
+apply here
+9. 	Website Deployed
+on client's
+Selected Server
+White Label IQ 	Completed website
+package delivered to
+build/create studios
+10. Source Code 	White Label IQ 	Source to be handed to
+build/create studios with
+full IPR to use,
+redistribute, modify it
+after fulfilment of
+commercial liabilities.
+11. 	Digital
+Administrative
+Documentation
+White Label IQ 	Online documentation to
+administer the website
+provided to build/create
+studios
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 20 of 60
+
+-- 20 of 23 --
+
+Project Assumptions
+1. The website will be developed using the approved Headless WooCommerce and react
+architecture.
+2. The Client will provide all required content, product information, pricing data, product
+specifications, images, PDF documents, certifications, and other assets required for
+implementation.
+3. White Label IQ will import the initial product catalog using a structured spreadsheet
+provided and approved by the Client.
+4. The product import estimate is based on the current understanding of the data structure as
+provided in the preliminary spreadsheet.
+5. Product data provided by the Client will be complete, accurate, and formatted according to
+the import requirements supplied by White Label IQ.
+6. The Client will provide and maintain active accounts for Stripe, TaxJar, Shippo, Pantheon
+hosting, and any other third-party services required for the project.
+7. Any fees associated with third-party software, plugins, subscriptions, APIs, hosting,
+payment gateways, shipping services, tax services, or email delivery services are the
+responsibility of the Client.
+8. Tax exemption approvals and ongoing certificate management will be performed by the
+Client through the website administration area.
+9. Product certifications and specification documents will be provided by the Client in digital
+format prior to implementation.
+10. The website will support the functionality specifically outlined within this Scope of Work.
+Any additional functionality not explicitly documented will require a separate estimate and
+approval.
+11. The Client will provide timely feedback, approvals, and required assets to maintain the
+agreed project timeline.
+12. Website launch is dependent upon timely receipt of all required content, approvals, third-
+party account access, and testing sign-offs from the Client.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 21 of 60
+
+-- 21 of 23 --
+
+Out of Scope
+1. Custom ERP, CRM, accounting software, inventory management system, or warehouse
+management system integrations.
+2. Integration with proprietary supplier, manufacturer, distributor, or procurement systems.
+3. Product data cleansing, enrichment, restructuring, or manual product data entry beyond
+the agreed product import process.
+4. Post-purchase certification requests for orders where the customer did not opt in to receive
+certifications at the time of purchase. Customers who opted in during purchase may re-
+download their certifications from order history at no additional charge.
+5. Ongoing product management, inventory updates, pricing updates, content updates, or
+catalog maintenance after launch.
+6. Development of custom mobile applications for iOS or Android devices.
+7. Multi-language or multilingual website functionality.
+8. Multi-currency ecommerce functionality.
+9. Large-scale URL migration planning, advanced SEO redirect mapping, or redirect
+implementation beyond standard website launch requirements.
+10. Ongoing security monitoring, vulnerability management, software updates, plugin updates,
+hosting management, or maintenance services after launch unless covered under a
+separate maintenance agreement.
+11. Custom shipping carrier integrations beyond the selected shipping platform integration.
+12. Data migration, implementation, or synchronization with external inventory databases.
+13. Accessibility remediation, ADA certification, or WCAG compliance auditing unless
+specifically stated elsewhere in this Scope of Work.
+14. Any functionality, integration, workflow, automation, report, dashboard, or feature not
+specifically identified within this Scope of Work.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 22 of 60
+
+-- 22 of 23 --
+
+Change Order
+Once the PA is approved, any changes to the scope of work, timeline, or associated costs must be
+formally documented through a written Change Order. This process ensures transparency, mutual
+agreement, and appropriate allocation of resources.
+What Triggers a Change Order?
+The following scenarios will require a formal Change Order during a custom design project:
+• New Page or Layout Requests
+◦ Adding extra pages, screens, or design templates that were not included in the
+original scope.
+◦ Designing alternate versions for other platforms or devices outside the agreed scope.
+• Major Revisions or Design Direction Changes
+◦ Requesting a new design direction after initial concept approval.
+◦ Submitting significant edits that require redesigning core components (e.g.,
+navigation, hero layout, brand visuals).
+• Exceeding the Revision Limit
+◦ If the number of revision rounds exceeds the limit defined in the PA, additional rounds
+will be subject to a Change Order.
+Change Order Process
+• Every Change Order will:
+◦ Clearly describe the requested change and its impact.
+◦ Specify any adjustments to project fees, milestones, or payment terms.
+◦ Require written approval by the client before new work begins.
+Important Notes
+• Verbal requests or informal communication (e.g., email threads, calls) will not be treated as
+approved unless followed by a signed Change Order.
+• Work performed outside the original scope without a documented Change Order may result
+in delays and additional charges.
+• We will not proceed with any new work that deviates from the approved scope without
+formal agreement via Change Order.
+Document Ref: VKGVZ-KHSXJ-BYBNE-Z2FVV Page 23 of 60
+
+-- 23 of 23 --
+

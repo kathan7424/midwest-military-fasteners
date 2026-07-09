@@ -1,0 +1,181 @@
+/**
+ * Tax Certificates admin dashboard.
+ */
+
+.mmf-tax-wrap { max-width: 1240px; }
+
+.mmf-tax-wrap h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+}
+
+/* ── Stat cards ─────────────────────────────────────── */
+.mmf-tax-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+    margin: 18px 0 22px;
+}
+
+.mmf-tax-stat {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 10px;
+    padding: 16px 18px;
+    text-decoration: none;
+    display: block;
+    transition: box-shadow .15s, border-color .15s;
+    position: relative;
+    overflow: hidden;
+}
+
+.mmf-tax-stat::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--mmf-accent, #2271b1);
+}
+
+.mmf-tax-stat:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); border-color: #b5b5b8; }
+.mmf-tax-stat.is-active { border-color: var(--mmf-accent, #2271b1); box-shadow: 0 0 0 1px var(--mmf-accent, #2271b1); }
+
+.mmf-tax-stat .num { font-size: 28px; font-weight: 700; color: #1d2327; line-height: 1.1; }
+.mmf-tax-stat .label { font-size: 12.5px; color: #646970; margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
+
+.mmf-tax-stat--pending  { --mmf-accent: #dba617; }
+.mmf-tax-stat--active   { --mmf-accent: #00a32a; }
+.mmf-tax-stat--expiring { --mmf-accent: #d63638; }
+.mmf-tax-stat--expired  { --mmf-accent: #8c8f94; }
+.mmf-tax-stat--rejected { --mmf-accent: #d63638; }
+
+/* ── Table ──────────────────────────────────────────── */
+.mmf-tax-table {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 10px;
+    overflow: hidden;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.mmf-tax-table th {
+    background: #f6f7f7;
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #50575e;
+    border-bottom: 1px solid #dcdcde;
+}
+
+.mmf-tax-table td {
+    padding: 14px;
+    border-bottom: 1px solid #f0f0f1;
+    vertical-align: top;
+    font-size: 13px;
+}
+
+.mmf-tax-table tr:last-child td { border-bottom: none; }
+.mmf-tax-table tr:hover td { background: #f9fafb; }
+
+.mmf-tax-customer strong a { text-decoration: none; font-size: 14px; }
+.mmf-tax-customer .email { color: #646970; }
+.mmf-tax-customer .company { color: #2271b1; font-weight: 500; }
+
+/* ── Status pills ───────────────────────────────────── */
+.mmf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 11px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    white-space: nowrap;
+}
+
+.mmf-pill::before { content: "●"; font-size: 9px; }
+
+.mmf-pill--active   { background: #e6f4ea; color: #1a7f37; }
+.mmf-pill--pending  { background: #fcf3e0; color: #996800; }
+.mmf-pill--expired  { background: #f0f0f1; color: #50575e; }
+.mmf-pill--expiring { background: #fcf0f1; color: #b32d2e; }
+.mmf-pill--rejected { background: #fcf0f1; color: #b32d2e; }
+.mmf-pill--none     { background: #f0f0f1; color: #8c8f94; }
+
+/* ── Certificate preview ────────────────────────────── */
+.mmf-cert-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.mmf-cert-thumb {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #dcdcde;
+    display: block;
+}
+
+.mmf-cert-pdf {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    border: 1px solid #dcdcde;
+    background: #fcf0f1;
+    color: #b32d2e;
+    font-size: 10px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Row actions ────────────────────────────────────── */
+.mmf-tax-actions { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
+.mmf-tax-actions .row { display: flex; gap: 6px; align-items: center; }
+.mmf-tax-actions input[type="date"], .mmf-tax-actions select { width: 100%; }
+
+.mmf-btn-approve {
+    background: #00a32a !important;
+    border-color: #00a32a !important;
+    color: #fff !important;
+}
+.mmf-btn-approve:hover { background: #008a20 !important; }
+
+.mmf-btn-reject {
+    color: #b32d2e !important;
+    border-color: #b32d2e !important;
+}
+
+.mmf-days-left { font-size: 11.5px; color: #646970; display: block; margin-top: 2px; }
+.mmf-days-left.warn { color: #b45309; font-weight: 600; }
+.mmf-days-left.over { color: #b32d2e; font-weight: 600; }
+
+/* ── WP_List_Table integration ──────────────────────── */
+.mmf-tax-wrap .wp-list-table { border-radius: 8px; overflow: hidden; }
+.mmf-tax-wrap .wp-list-table th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+.mmf-tax-wrap .wp-list-table td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+.mmf-company { color: #2271b1; font-weight: 500; }
+.mmf-email { color: #646970; font-size: 12.5px; }
+.mmf-quick-edit { display: flex; flex-direction: column; gap: 6px; max-width: 190px; }
+.mmf-quick-edit input[type="date"], .mmf-quick-edit select { width: 100%; }
+.mmf-tax-wrap .subsubsub { margin-bottom: 4px; }
+
+/* ── Empty state ────────────────────────────────────── */
+.mmf-tax-empty {
+    text-align: center;
+    padding: 48px 20px !important;
+    color: #646970;
+}
+.mmf-tax-empty .dashicons { font-size: 42px; width: 42px; height: 42px; color: #c3c4c7; }

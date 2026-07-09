@@ -1,74 +1,101 @@
 /**
  * File Name: page.tsx
- * Description:
+ * Description: CMS pages + WooCommerce Shop page at its configured slug.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-06-19
+ * Last Modified: 2026-07-07
  */
 
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 
+import CatalogListingPage from "@/components/pages/Product/CatalogListingPage";
 import WpPageContent from "@/components/pages/WpPageContent/WpPageContent";
 import { fetchMenu } from "@/services/menu.service";
 import { fetchPageBySlug } from "@/services/page.service";
-import { MenuItem } from "@/types/menu.types";
-import { findMenuItemBySlug } from "@/utils/menu.utils";
-import type { Metadata } from "next";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 import { fetchYoastBySlug } from "@/services/seo.service";
+import { MenuItem } from "@/types/menu.types";
+import { is_catalog_listing_slug } from "@/utils/catalog-path.utils";
+import { findMenuItemBySlug } from "@/utils/menu.utils";
 import { buildYoastMetadata } from "@/utils/seo.utils";
 
 type Props = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    search?: string;
+    series?: string;
+    page?: string;
+  }>;
 };
 
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
-
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { slug } = await params;
-  const normalizedSlug = slug.toLowerCase();
+  const normalized_slug = slug.toLowerCase();
+  const listing_params = await searchParams;
 
-  let menu: MenuItem[] = [];
+  const settings = await fetchSiteSettings().catch(() => null);
 
-  try {
-    menu = await fetchMenu();
-  } catch (error) {
-    console.error("Menu fetch failed:", error);
+  if (is_catalog_listing_slug(normalized_slug, settings?.woocommerce)) {
+    return <CatalogListingPage searchParams={listing_params} />;
   }
 
-  const menuItem = findMenuItemBySlug(menu, normalizedSlug);
+  // Menu and page content are independent — fetch in parallel.
+  const [menu_result, page_result] = await Promise.allSettled([
+    fetchMenu(),
+    fetchPageBySlug(normalized_slug),
+  ]);
 
-  let wpPage = null;
+  const menu: MenuItem[] =
+    menu_result.status === "fulfilled" ? menu_result.value : [];
 
-  try {
-    wpPage = await fetchPageBySlug(normalizedSlug);
-  } catch (error) {
-    console.error("Page fetch failed:", error);
+  if (menu_result.status === "rejected") {
+    console.error("Menu fetch failed:", menu_result.reason);
   }
 
-  if (!menuItem && !wpPage) {
+  const menu_item = findMenuItemBySlug(menu, normalized_slug);
+  const wp_page = page_result.status === "fulfilled" ? page_result.value : null;
+
+  if (page_result.status === "rejected") {
+    console.error("Page fetch failed:", page_result.reason);
+  }
+
+  if (!menu_item && !wp_page) {
     notFound();
   }
 
-  const pageTitle = wpPage?.title.rendered ?? menuItem?.title ?? "";
-  const pageContent = wpPage?.content.rendered;
+  const page_title = wp_page?.title.rendered ?? menu_item?.title ?? "";
+  const page_content = wp_page?.content.rendered;
 
-  if (!pageTitle && !pageContent) {
+  if (!page_title && !page_content) {
     notFound();
   }
 
   return (
     <WpPageContent
-      title={pageTitle || undefined}
-      content={pageContent}
+      title={page_title || undefined}
+      content={page_content}
     />
   );
 }
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+
+  try {
+    const settings = await fetchSiteSettings();
+    if (is_catalog_listing_slug(slug.toLowerCase(), settings?.woocommerce)) {
+      return {
+        title: "Product Catalog | Midwest Military Fasteners",
+        description: "Browse Midwest Military Fasteners product catalog.",
+      };
+    }
+  } catch {
+    // Fall through to Yoast lookup.
+  }
+
   try {
     const yoast = await fetchYoastBySlug(slug.toLowerCase());
     return buildYoastMetadata(yoast);

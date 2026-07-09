@@ -14,6 +14,7 @@ export interface CatalogTerm {
 
 export interface CatalogProduct {
   id: number;
+  slug?: string;
   sku: string;
   name: string;
   permalink: string;
@@ -34,6 +35,7 @@ export interface ProductCatalogResponse {
 }
 
 export interface CategoryColumnItem {
+  id?: number;
   label: string;
   href: string;
 }

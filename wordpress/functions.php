@@ -12,6 +12,14 @@ if ( ! defined( '_S_VERSION' ) ) {
 	define( '_S_VERSION', '1.0.0' );
 }
 
+// ============================================================
+// DEFER WOOCOMMERCE TRANSACTIONAL EMAILS
+// SMTP on this host can hang for ~30s per email. Order emails sent inline
+// during Store API checkout blocked the request past Pantheon's 60s limit
+// (504). Deferring queues them via wp-cron — checkout responds instantly.
+// ============================================================
+add_filter( 'woocommerce_defer_transactional_emails', '__return_true' );
+
 /**
  * Sets up theme defaults and registers support for various WordPress features.
  *
@@ -232,7 +240,10 @@ require get_template_directory() . '/inc/api.php';
 add_filter( 'upload_mimes', 'theme_allow_svg_uploads' );
 
 function theme_allow_svg_uploads( $mimes ) {
-	$mimes['svg'] = 'image/svg+xml';
+	// SVGs can carry executable script; only trusted admins may upload them.
+	if ( current_user_can( 'manage_options' ) ) {
+		$mimes['svg'] = 'image/svg+xml';
+	}
 
 	return $mimes;
 }
@@ -247,10 +258,12 @@ function theme_allow_svg_uploads( $mimes ) {
  *   WC Native  : SKU, title, description, price, weight, stock, categories,
  *                attributes (manufacturer, country, specs_standard/DFAR)
  *   Custom Tax : product_series
- *   ACF ONLY   : package_pricing_tiers repeater + pkg_qty
- *   Post Meta  : _backorder_leadtime, _reorder_limit, _mfr_coc,
+ *   ACF ONLY   : package_pricing_tiers repeater (qty + price) + pkg_qty
+ *   Post Meta  : _package_pricing (qty + price tiers for cart/API),
+ *                _backorder_leadtime, _reorder_limit, _mfr_coc,
  *                _material_certs, _process_certs, _test_reports,
- *                _lot_in_use, _cert_location, _cost_per_ea, _spec_file_url
+ *                _lot_in_use, _cert_location, _cost_per_ea, _spec_file_url,
+ *                _certificate_file_url
  */
 
 if (!defined('ABSPATH')) exit;
@@ -279,12 +292,79 @@ if ( ! function_exists( 'specparts_get_series_taxonomy' ) ) {
     }
 }
 
+if ( ! function_exists( 'specparts_register_series_taxonomy' ) ) {
+    /**
+     * Register the product series taxonomy when it is not already provided by another plugin.
+     */
+    function specparts_register_series_taxonomy() {
+        $taxonomy = specparts_get_series_taxonomy();
+        if ( taxonomy_exists( $taxonomy ) ) {
+            return;
+        }
+
+        register_taxonomy(
+            $taxonomy,
+            [ 'product' ],
+            [
+                'labels'            => [
+                    'name'          => 'Product Series',
+                    'singular_name' => 'Product Series',
+                ],
+                'hierarchical'      => true,
+                'public'            => true,
+                'show_ui'           => true,
+                'show_admin_column' => true,
+                'show_in_rest'      => true,
+                'rewrite'           => [ 'slug' => 'product-series' ],
+            ]
+        );
+    }
+    add_action( 'init', 'specparts_register_series_taxonomy', 0 );
+}
+
 require_once get_template_directory() . '/inc/shortcode.php';
-require_once get_template_directory() . '/inc/import.php';
 require_once get_template_directory() . '/inc/catalog-api.php';
+require_once get_template_directory() . '/inc/product-spec.php';
+require_once get_template_directory() . '/inc/import.php';
 require_once get_template_directory() . '/inc/auth.php';
 require_once get_template_directory() . '/inc/cart.php';
+require_once get_template_directory() . '/inc/tax-exemption.php';
+require_once get_template_directory() . '/inc/tax-exemption-admin.php';
+require_once get_template_directory() . '/inc/order-documents.php';
 
+
+// ============================================================
+// HELPER: Normalize package pricing tiers to qty + price only.
+// ============================================================
+if (!function_exists('parts_catalog_normalize_pricing_tiers')) {
+    function parts_catalog_normalize_pricing_tiers($pricing) {
+        if (!is_array($pricing)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($pricing as $tier) {
+            if (!is_array($tier)) {
+                continue;
+            }
+
+            $qty   = intval($tier['qty'] ?? 0);
+            $price = floatval($tier['price'] ?? 0);
+            if ($qty > 0 && $price > 0) {
+                $normalized[] = [
+                    'qty'   => $qty,
+                    'price' => $price,
+                ];
+            }
+        }
+
+        usort($normalized, function ($a, $b) {
+            return $a['qty'] - $b['qty'];
+        });
+
+        return $normalized;
+    }
+}
 
 // ============================================================
 // HELPER: Get package pricing — ACF first, raw meta fallback
@@ -296,22 +376,13 @@ if (!function_exists('parts_catalog_get_product_package_pricing')) {
         if (function_exists('get_field')) {
             $tiers = get_field('package_pricing_tiers', $product_id);
             if (!empty($tiers) && is_array($tiers)) {
-                $out = [];
-                foreach ($tiers as $t) {
-                    $out[] = [
-                        'qty'             => intval($t['qty'] ?? 0),
-                        'price'           => floatval($t['price'] ?? 0),
-                        'shipping_dims'   => sanitize_text_field($t['shipping_dims'] ?? ''),
-                        'shipping_weight' => floatval($t['shipping_weight'] ?? 0),
-                    ];
-                }
-                return $out;
+                return parts_catalog_normalize_pricing_tiers($tiers);
             }
         }
         // Fallback: raw _package_pricing meta (set by importer)
         $pricing = get_post_meta($product_id, '_package_pricing', true);
         if (empty($pricing)) return [];
-        return is_array($pricing) ? $pricing : [];
+        return parts_catalog_normalize_pricing_tiers($pricing);
     }
 }
 
@@ -325,30 +396,9 @@ add_action('acf/save_post', function ($post_id) {
     $tiers = get_field('package_pricing_tiers', $post_id);
     if (empty($tiers) || !is_array($tiers)) return;
 
-    $pricing = [];
-    foreach ($tiers as $t) {
-        $qty   = intval($t['qty'] ?? 0);
-        $price = floatval($t['price'] ?? 0);
-        if ($qty > 0 && $price > 0) {
-            // Merge with existing _package_pricing to preserve shipping dims/weight set by importer
-            $existing = get_post_meta($post_id, '_package_pricing', true);
-            $existing_map = [];
-            if (is_array($existing)) {
-                foreach ($existing as $e) {
-                    $existing_map[intval($e['qty'])] = $e;
-                }
-            }
-            $pricing[] = [
-                'qty'             => $qty,
-                'price'           => $price,
-                'shipping_dims'   => $existing_map[$qty]['shipping_dims'] ?? '',
-                'shipping_weight' => $existing_map[$qty]['shipping_weight'] ?? 0,
-            ];
-        }
-    }
+    $pricing = parts_catalog_normalize_pricing_tiers($tiers);
     if (empty($pricing)) return;
 
-    usort($pricing, function($a, $b) { return $a['qty'] - $b['qty']; });
     update_post_meta($post_id, '_package_pricing', $pricing);
 
     // Sync WC price = tier-1 price
@@ -478,8 +528,6 @@ add_action('woocommerce_after_single_product_summary', function () {
                 <tr>
                     <th>Min Packages</th>
                     <th>Price / Package</th>
-                    <?php if (!empty($tiers[0]['shipping_weight'])): ?><th>Ship Weight (lbs)</th><?php endif; ?>
-                    <?php if (!empty($tiers[0]['shipping_dims'])): ?><th>Ship Dims</th><?php endif; ?>
                 </tr>
             </thead>
             <tbody>
@@ -487,8 +535,6 @@ add_action('woocommerce_after_single_product_summary', function () {
                 <tr>
                     <td><?php echo intval($tier['qty']); ?> pkg</td>
                     <td><strong>$<?php echo number_format(floatval($tier['price']), 2); ?></strong></td>
-                    <?php if (!empty($tiers[0]['shipping_weight'])): ?><td><?php echo esc_html($tier['shipping_weight']); ?></td><?php endif; ?>
-                    <?php if (!empty($tiers[0]['shipping_dims'])): ?><td><?php echo esc_html($tier['shipping_dims']); ?></td><?php endif; ?>
                 </tr>
             <?php endforeach; ?>
             </tbody>
@@ -531,17 +577,37 @@ add_action('woocommerce_single_product_summary', function () {
 }, 25);
 
 // ============================================================
-// SINGLE PRODUCT: Spec sheet download
+// SINGLE PRODUCT: Spec sheet + certificate downloads
 // ============================================================
 add_action('woocommerce_single_product_summary', function () {
     global $product;
     if (!$product) return;
-    $url = get_post_meta($product->get_id(), '_spec_file_url', true);
-    if (empty($url)) return;
-    echo '<a href="' . esc_url($url) . '" class="sp-spec-btn" target="_blank" rel="noopener">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download Spec Sheet (PDF)
-    </a>';
+
+    $pid      = $product->get_id();
+    $spec_url = function_exists('specparts_get_product_spec_url') ? specparts_get_product_spec_url($pid) : get_post_meta($pid, '_spec_file_url', true);
+    $cert_url = get_post_meta($pid, '_certificate_file_url', true);
+
+    if (empty($spec_url) && empty($cert_url)) {
+        return;
+    }
+
+    echo '<div class="sp-product-documents">';
+
+    if (!empty($spec_url)) {
+        echo '<a href="' . esc_url($spec_url) . '" class="sp-spec-btn" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Spec Sheet (PDF)
+        </a>';
+    }
+
+    if (!empty($cert_url)) {
+        echo '<a href="' . esc_url($cert_url) . '" class="sp-spec-btn" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Certificate (PDF)
+        </a>';
+    }
+
+    echo '</div>';
 }, 35);
 
 // ============================================================

@@ -3,7 +3,7 @@
  * Description: Central app route definitions for pages and API.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-07
  */
 
 /** Public website pages — no login required */
@@ -12,8 +12,18 @@ export const PUBLIC_ROUTES = {
   login: "/login",
   forgotPassword: "/forgot-password",
   register: "/register",
+  cart: "/cart",
+  myAccount: "/my-account",
   productListing: "/product",
-  productDetail: (series: string, partNumber: string) =>
+  productCategory: "/product-category",
+  /** Resolved at runtime from WooCommerce Shop page via site-settings API. */
+  getCatalogListingPath: (shopPagePath?: string) =>
+    shopPagePath?.trim() ? shopPagePath.replace(/\/+$/, "") || "/product" : "/product",
+  productDetail: (slug: string) => `/product/${encodeURIComponent(slug)}`,
+  productCategoryPath: (...segments: string[]) =>
+    `/product-category/${segments.map((segment) => encodeURIComponent(segment)).join("/")}`,
+  /** @deprecated Use productDetail(slug) — legacy series/sku URLs redirect automatically */
+  productDetailLegacy: (series: string, partNumber: string) =>
     `/product/${series}/${partNumber}`,
   cmsPage: (slug: string) => `/${slug}`,
 } as const;
@@ -22,7 +32,27 @@ export const PUBLIC_ROUTES = {
 export const GUEST_ONLY_ROUTES = ["/login", "/register", "/forgot-password"] as const;
 
 /** Protected pages — login required */
-export const PROTECTED_ROUTES = ["/my-account", "/cart"] as const;
+export const PROTECTED_ROUTES = ["/my-account", "/cart", "/checkout"] as const;
+
+/**
+ * App Router file mapping (Next.js best practice — single source of truth).
+ *
+ * /                          → (website)/page.tsx
+ * /:slug                     → (website)/[slug]/page.tsx (CMS + shop alias)
+ * /product                   → (website)/product/page.tsx
+ * /product/:slug             → (website)/product/[...segments]/page.tsx
+ * /product-category          → (website)/product-category/page.tsx (redirect)
+ * /product-category/*        → (website)/product-category/[...slug]/page.tsx
+ * /cart, /login, /register   → static auth/cart routes
+ */
+export const APP_ROUTE_SEGMENTS = {
+  product: "product",
+  productCategory: "product-category",
+  cart: "cart",
+  login: "login",
+  register: "register",
+  myAccount: "my-account",
+} as const;
 
 /** Next.js API proxy routes */
 export const API_ROUTES = {
@@ -38,6 +68,12 @@ export const API_ROUTES = {
   cart: "/api/cart",
   cartUpdate: "/api/cart/update",
   cartRemove: "/api/cart/remove",
+  cartCustomer: "/api/cart/customer",
+  cartSelectShipping: "/api/cart/select-shipping",
+  checkout: "/api/checkout",
+  checkoutLocations: "/api/checkout/locations",
+  catalogProducts: "/api/catalog/products",
+  catalogCategories: "/api/catalog/categories",
 } as const;
 
 /** WordPress custom REST endpoints */

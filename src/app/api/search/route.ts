@@ -16,6 +16,10 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const scope =
+    request.nextUrl.searchParams.get("scope") === "catalog"
+      ? "catalog"
+      : "global";
 
   if (!query) {
     return NextResponse.json({
@@ -27,7 +31,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await fetchSearchResults(query);
+    const results = await fetchSearchResults(query, 15, scope);
 
     return NextResponse.json(results, {
       headers: {

@@ -30,7 +30,7 @@ export default function Hero({ banner, categories }: HeroProps) {
   return (
     <section className={`relative overflow-hidden ${hasBannerImage ? "" : "bg-amber"}`}>
       {hasBannerImage ? (
-        <div className="absolute inset-0">
+        <div className="pointer-events-none absolute inset-0">
           <Image
             src={banner_image!.url}
             alt={imageAlt}
@@ -42,7 +42,7 @@ export default function Hero({ banner, categories }: HeroProps) {
         </div>
       ) : null}
 
-      <div className="absolute inset-0 bg-amber/85" />
+      <div className="pointer-events-none absolute inset-0 bg-amber/85" />
 
       <div className="relative z-10">
         <div className="mx-auto flex min-h-[760px] max-w-8xl flex-col items-center px-5 pt-32 pb-20">

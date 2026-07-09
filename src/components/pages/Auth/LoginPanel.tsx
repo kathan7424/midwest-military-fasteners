@@ -29,6 +29,7 @@ const loginSchema = z.object({
     .min(1, "Email is required.")
     .email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
+  remember: z.boolean(),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -55,6 +56,7 @@ export default function LoginPanel() {
     defaultValues: {
       email: "",
       password: "",
+      remember: true,
     },
   });
 
@@ -65,7 +67,7 @@ export default function LoginPanel() {
       const { ok, data } = await login_user({
         email: values.email,
         password: values.password,
-        remember: true,
+        remember: values.remember,
       });
 
       if (!ok) {
@@ -138,7 +140,24 @@ export default function LoginPanel() {
           )}
         />
 
-        <div className="text-right">
+        <div className="flex items-center justify-between">
+          <Controller
+            name="remember"
+            control={control}
+            render={({ field: { value, onChange, ...field } }) => (
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-near-black">
+                <input
+                  {...field}
+                  type="checkbox"
+                  checked={value}
+                  onChange={(event) => onChange(event.target.checked)}
+                  className="h-4 w-4 accent-blue"
+                />
+                Remember me
+              </label>
+            )}
+          />
+
           <Link
             href={PUBLIC_ROUTES.forgotPassword}
             className="text-sm font-medium text-blue transition-colors hover:text-navy"

@@ -28,8 +28,9 @@ export default function CartStockNotice({ item, className }: CartStockNoticeProp
 
   return (
     <p
+      role="status"
       className={cn(
-        "text-xs font-semibold uppercase tracking-wide",
+        "text-base font-semibold leading-snug",
         inStock ? "text-amber" : "text-red-600",
         className
       )}

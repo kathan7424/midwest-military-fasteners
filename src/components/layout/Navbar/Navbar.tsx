@@ -58,7 +58,6 @@ export default function Navbar({
               <li key={item.id}>
                 <Link
                   href={normalizeWpUrl(item.url)}
-                  prefetch={false}
                   className="text-body font-normal uppercase tracking-wide text-near-black transition-colors hover:text-blue"
                 >
                   {item.title}

@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
 
-    return buildProxiedResponse(wpResponse);
+    // Drop any pre-login WC cart session token so this user gets their OWN
+    // cart (WooCommerce merges/loads the customer cart from the login cookie).
+    return buildProxiedResponse(wpResponse, { clearWcSession: true });
   } catch (error) {
     console.error("Login proxy error:", error);
 

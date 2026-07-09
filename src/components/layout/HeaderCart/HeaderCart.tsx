@@ -10,12 +10,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FaChevronRight, FaXmark } from "react-icons/fa6";
+import { FaChevronRight } from "react-icons/fa6";
 
 import { getCartItemCount, useCartStore } from "@/stores/cart.store";
-import CartQuantityControl from "@/components/shared_Ui/CartQuantityControl";
-import CartStockNotice from "@/components/shared_Ui/CartStockNotice";
-import { getCartItemQuantityControlProps } from "@/utils/cart-stock.utils";
+import CartCountBadge from "@/components/shared_Ui/CartCountBadge";
+import CartLineItem from "@/components/shared_Ui/CartLineItem";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { normalizeWpUrl } from "@/utils/url.utils";
 
 export default function HeaderCart() {
@@ -29,6 +29,7 @@ export default function HeaderCart() {
   const removeItem = useCartStore((state) => state.removeItem);
   const itemCount = getCartItemCount(cart);
   const hasItems = itemCount > 0;
+  const { catalogListingPath } = useSiteConfig();
 
   const handleRemove = async (key: string) => {
     await removeItem(key);
@@ -96,9 +97,7 @@ export default function HeaderCart() {
         onClick={() => setOpen((prev) => !prev)}
         className="relative hidden shrink-0 items-center gap-2 rounded-none border border-amber px-[16px] py-[11px] transition-colors lg:flex"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber text-link font-normal text-white">
-          {itemCount}
-        </span>
+        <CartCountBadge count={itemCount} size="md" />
         <span className="text-link font-bold uppercase text-near-black">
           Your Order
         </span>
@@ -113,57 +112,17 @@ export default function HeaderCart() {
           <div className="mt-[-1px] border border-amber bg-white p-4 shadow-xl">
             {hasItems && cart?.items.length ? (
               <div className="max-h-64 divide-y divide-light-gray overflow-y-auto">
-                {cart.items.map((item) => {
-                  const quantityProps = getCartItemQuantityControlProps(item);
-
-                  return (
-                  <div
+                {cart.items.map((item) => (
+                  <CartLineItem
                     key={item.key}
-                    className="flex items-center justify-between py-2.5 text-link"
-                  >
-                    <div className="w-44 shrink-0">
-                      <Link
-                        href={normalizeWpUrl(item.url)}
-                        prefetch={false}
-                        onClick={() => setOpen(false)}
-                        className="block truncate text-blue hover:underline"
-                      >
-                        {item.sku || item.name}
-                      </Link>
-                      <CartStockNotice item={item} className="mt-1" />
-                    </div>
-
-                    <CartQuantityControl
-                      quantity={item.quantity}
-                      minQuantity={quantityProps.minQuantity}
-                      maxQuantity={quantityProps.maxQuantity}
-                      editable={quantityProps.editable}
-                      disabled={quantityProps.disabled}
-                      isUpdating={updatingItemKey === item.key}
-                      onChange={(nextQuantity) =>
-                        handleQuantityChange(item.key, nextQuantity)
-                      }
-                    />
-
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-mid-gray">Price</span>
-                      <span
-                        className="text-near-black"
-                        dangerouslySetInnerHTML={{ __html: item.price_html }}
-                      />
-                      <button
-                        type="button"
-                        disabled={isMutating}
-                        aria-label={`Remove ${item.sku || item.name}`}
-                        onClick={() => void handleRemove(item.key)}
-                        className="ml-2.5 text-red-500 transition-colors hover:text-red-600 disabled:opacity-50"
-                      >
-                        <FaXmark size={18} />
-                      </button>
-                    </div>
-                  </div>
-                  );
-                })}
+                    item={item}
+                    isMutating={isMutating}
+                    isUpdating={updatingItemKey === item.key}
+                    onClose={() => setOpen(false)}
+                    onRemove={handleRemove}
+                    onQuantityChange={handleQuantityChange}
+                  />
+                ))}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-mid-gray">
@@ -174,7 +133,6 @@ export default function HeaderCart() {
             <div className="mt-5 flex items-center justify-between gap-4 xl:mt-[28px]">
               <Link
                 href="/cart"
-                prefetch={false}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-2 text-link text-blue transition-colors hover:text-amber"
               >
@@ -194,10 +152,9 @@ export default function HeaderCart() {
                 View Cart
               </Link>
 
-              {hasItems && cart?.checkout_url ? (
+              {hasItems ? (
                 <Link
-                  href={normalizeWpUrl(cart.checkout_url)}
-                  prefetch={false}
+                  href="/checkout"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
                 >
@@ -218,8 +175,7 @@ export default function HeaderCart() {
                 </Link>
               ) : (
                 <Link
-                  href="/product"
-                  prefetch={false}
+                  href={catalogListingPath}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
                 >
