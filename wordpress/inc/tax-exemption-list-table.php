@@ -232,14 +232,14 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 	protected function column_customer( $item ): string {
 		$user_id = (int) $item['user_id'];
 
-		$out  = '<strong><a href="' . esc_url( (string) $item['edit_url'] ) . '">' . esc_html( (string) $item['display_name'] ) . '</a></strong>';
+		$out  = '<a class="mmf-customer-name" href="' . esc_url( (string) $item['edit_url'] ) . '">' . esc_html( (string) $item['display_name'] ) . '</a>';
 		if ( ! empty( $item['company'] ) ) {
-			$out .= '<br /><span class="mmf-company">' . esc_html( (string) $item['company'] ) . '</span>';
+			$out .= '<span class="mmf-company">' . esc_html( (string) $item['company'] ) . '</span>';
 		}
-		$out .= '<br /><span class="mmf-email">' . esc_html( (string) $item['email'] ) . '</span>';
+		$out .= '<span class="mmf-email">' . esc_html( (string) $item['email'] ) . '</span>';
 
 		$actions = array(
-			'edit' => '<a href="' . esc_url( (string) $item['edit_url'] ) . '">' . esc_html__( 'Edit User', 'midwest-military' ) . '</a>',
+			'edit' => '<a href="' . esc_url( (string) $item['edit_url'] ) . '" class="mmf-action-btn mmf-action-btn--edit">' . esc_html__( 'Edit User', 'midwest-military' ) . '</a>',
 		);
 
 		if ( MMF_TAX_STATUS_PENDING === $item['status'] ) {
@@ -253,8 +253,8 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 			);
 
 			$actions = array(
-				'approve' => '<a href="' . esc_url( $approve_url ) . '" style="color:#00a32a;font-weight:600">' . esc_html__( 'Approve', 'midwest-military' ) . '</a>',
-				'reject'  => '<a href="' . esc_url( $reject_url ) . '" style="color:#b32d2e">' . esc_html__( 'Reject', 'midwest-military' ) . '</a>',
+				'approve' => '<a href="' . esc_url( $approve_url ) . '" class="mmf-action-btn mmf-action-btn--approve">' . esc_html__( 'Approve', 'midwest-military' ) . '</a>',
+				'reject'  => '<a href="' . esc_url( $reject_url ) . '" class="mmf-action-btn mmf-action-btn--reject">' . esc_html__( 'Reject', 'midwest-military' ) . '</a>',
 			) + $actions;
 		}
 
@@ -346,7 +346,7 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 				<option value="approved" <?php selected( $item['status'], MMF_TAX_STATUS_APPROVED ); ?>><?php esc_html_e( 'Approved', 'midwest-military' ); ?></option>
 				<option value="rejected" <?php selected( $item['status'], MMF_TAX_STATUS_REJECTED ); ?>><?php esc_html_e( 'Rejected', 'midwest-military' ); ?></option>
 			</select>
-			<button type="submit" name="mmf_tax_cert_save_row" value="<?php echo esc_attr( (string) $user_id ); ?>" class="button button-small"><?php esc_html_e( 'Save', 'midwest-military' ); ?></button>
+			<button type="submit" name="mmf_tax_cert_save_row" value="<?php echo esc_attr( (string) $user_id ); ?>" class="button button-primary button-small mmf-qe-save"><?php esc_html_e( 'Save', 'midwest-military' ); ?></button>
 		</div>
 		<?php
 		return (string) ob_get_clean();
@@ -357,10 +357,10 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 	}
 
 	public function no_items(): void {
-		echo '<div class="mmf-tax-empty"><span class="dashicons dashicons-media-document"></span><br />';
-		esc_html_e( 'No certificates match this filter.', 'midwest-military' );
-		echo '<br /><small>';
-		esc_html_e( 'If customers uploaded documents at registration but nothing shows here, click "Sync from Registration Form".', 'midwest-military' );
-		echo '</small></div>';
+		echo '<div class="mmf-tax-empty">';
+		echo '<div class="mmf-empty-icon"><span class="dashicons dashicons-media-document"></span></div>';
+		echo '<strong>' . esc_html__( 'No certificates match this filter.', 'midwest-military' ) . '</strong>';
+		echo '<small>' . esc_html__( 'If customers uploaded documents at registration but nothing shows here, click "Sync from Registration Form".', 'midwest-military' ) . '</small>';
+		echo '</div>';
 	}
 }

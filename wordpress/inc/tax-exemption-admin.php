@@ -26,7 +26,7 @@ function mmf_enqueue_tax_certificate_admin_assets( string $hook ): void {
 		'mmf-tax-admin',
 		get_template_directory_uri() . '/assets/css/tax-admin.css',
 		array(),
-		'1.0.0'
+		'2.0.0'
 	);
 }
 
@@ -595,41 +595,48 @@ function mmf_render_tax_certificate_admin_page(): void {
 
 	$base_url = admin_url( 'admin.php?page=mmf-tax-certificates' );
 	$cards    = array(
-		'pending'  => array( __( 'Pending Review', 'midwest-military' ), $stats['pending'] ),
-		'valid'    => array( __( 'Active / Tax Exempt', 'midwest-military' ), $stats['valid'] ),
-		'expired'  => array( __( 'Expired', 'midwest-military' ), $stats['expired'] ),
-		'rejected' => array( __( 'Rejected', 'midwest-military' ), $stats['rejected'] ),
+		'pending'  => array( __( 'Pending Review', 'midwest-military' ), $stats['pending'],  'dashicons-clock',        'pending' ),
+		'valid'    => array( __( 'Active / Tax Exempt', 'midwest-military' ), $stats['valid'],   'dashicons-shield-alt',   'active' ),
+		'expired'  => array( __( 'Expired', 'midwest-military' ), $stats['expired'],  'dashicons-calendar-alt', 'expired' ),
+		'rejected' => array( __( 'Rejected', 'midwest-military' ), $stats['rejected'], 'dashicons-dismiss',      'rejected' ),
 	);
 	?>
 	<div class="wrap mmf-tax-wrap">
-		<h1>
-			<span class="dashicons dashicons-media-spreadsheet" style="font-size:26px;width:26px;height:26px;color:#2271b1"></span>
-			<?php esc_html_e( 'Tax Exemption Certificates', 'midwest-military' ); ?>
-		</h1>
-		<p class="description">
-			<?php esc_html_e( 'Approved certificate + valid expiry date = customer pays no sales tax at checkout (TaxJar). Pending, rejected, or expired customers are taxed normally and see an upload notice in their cart.', 'midwest-military' ); ?>
-		</p>
 
-		<div class="mmf-tax-stats">
-			<?php foreach ( $cards as $key => $card ) : ?>
-				<a
-					class="mmf-tax-stat mmf-tax-stat--<?php echo esc_attr( 'valid' === $key ? 'active' : $key ); ?> <?php echo $status_filter === $key ? 'is-active' : ''; ?>"
-					href="<?php echo esc_url( $base_url . '&status=' . $key ); ?>"
-				>
-					<span class="num"><?php echo (int) $card[1]; ?></span>
-					<span class="label"><?php echo esc_html( $card[0] ); ?></span>
-				</a>
-			<?php endforeach; ?>
-		</div>
-
-		<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-			<form method="post">
+		<div class="mmf-tax-header">
+			<div class="mmf-tax-header__title-group">
+				<h1>
+					<span class="dashicons dashicons-media-spreadsheet"></span>
+					<?php esc_html_e( 'Tax Exemption Certificates', 'midwest-military' ); ?>
+				</h1>
+				<p class="mmf-page-desc">
+					<?php esc_html_e( 'Approved certificate + valid expiry date = customer pays no sales tax at checkout (TaxJar). Pending, rejected, or expired customers are taxed normally and see an upload notice in their cart.', 'midwest-military' ); ?>
+				</p>
+			</div>
+			<form method="post" class="mmf-sync-form">
 				<?php wp_nonce_field( 'mmf_tax_cert_sync_gf' ); ?>
-				<button type="submit" name="mmf_tax_cert_sync_gf" class="button">
-					<span class="dashicons dashicons-update" style="vertical-align:text-bottom"></span>
+				<button type="submit" name="mmf_tax_cert_sync_gf" class="mmf-sync-btn">
+					<span class="dashicons dashicons-update"></span>
 					<?php esc_html_e( 'Sync from Registration Form', 'midwest-military' ); ?>
 				</button>
 			</form>
+		</div>
+
+		<div class="mmf-stat-grid">
+			<?php foreach ( $cards as $key => $card ) : ?>
+				<a
+					class="mmf-stat-card mmf-stat-card--<?php echo esc_attr( $card[3] ); ?> <?php echo $status_filter === $key ? 'is-active' : ''; ?>"
+					href="<?php echo esc_url( $base_url . '&status=' . $key ); ?>"
+				>
+					<div class="mmf-stat-card__icon">
+						<span class="dashicons <?php echo esc_attr( $card[2] ); ?>"></span>
+					</div>
+					<div class="mmf-stat-card__body">
+						<span class="mmf-stat-card__num"><?php echo (int) $card[1]; ?></span>
+						<span class="mmf-stat-card__label"><?php echo esc_html( $card[0] ); ?></span>
+					</div>
+				</a>
+			<?php endforeach; ?>
 		</div>
 
 		<?php $table->views(); ?>

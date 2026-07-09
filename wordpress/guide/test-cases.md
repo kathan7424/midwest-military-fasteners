@@ -25,6 +25,11 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-11 | Sidebar: open "Hex Cap Screws", then open "Cap Nuts" (different section) | "Hex Cap Screws" closes automatically — only ONE group open at a time across the whole sidebar |
 | PDP-12 | Sidebar: click the currently open group's header | Group closes; no group is open |
 | PDP-13 | Navigate to a category page (e.g. /product-category/screws/hex-cap-screws) | That category's sidebar group is open on load; all others closed |
+| PDP-14 | Add gallery images to a product in WC admin, then open its detail page | Thumbnails appear (allow up to ~60s — product fetch cache); no code change needed |
+| PDP-15 | Product with distinct long + short descriptions | Under the title: LONG description; spec table DESCRIPTION row: SHORT description |
+| PDP-16 | Open shop page / product detail | Every qty input is BLANK (placeholder "QTY") — no pre-filled 1 |
+| PDP-17 | Click "Add to Order" with a blank qty input | Error toast "Please enter a quantity." — nothing added to cart |
+| PDP-18 | Enter qty, click "Add to Order", item adds | Qty input resets to blank after a successful add |
 
 ## TC-IMP — CSV Import
 

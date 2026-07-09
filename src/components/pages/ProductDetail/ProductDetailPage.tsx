@@ -115,8 +115,10 @@ export default function ProductDetailPage({
             {product.partNumber}
           </h1>
 
+          {/* Long (main) description under the title; the spec table below
+              shows the short description in its DESCRIPTION row. */}
           <p className="mb-8 max-w-[770px] text-link text-black">
-            {product.description}
+            {product.longDescription || product.description}
           </p>
 
           {/* Image + spec table */}

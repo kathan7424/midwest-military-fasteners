@@ -51,7 +51,9 @@ export default function QtyAddToOrder({
   size = "sm",
   className,
 }: QtyAddToOrderProps) {
-  const [quantity, setQuantity] = useState(1);
+  // Blank by default — the buyer types the quantity they want; nothing is
+  // pre-filled. Kept as a string so the field can be genuinely empty.
+  const [quantity, setQuantity] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const isLg = size === "lg";
@@ -59,19 +61,30 @@ export default function QtyAddToOrder({
   const isOutOfStock = !stock.in_stock;
 
   const handleQuantityChange = (raw_value: string, commit = false) => {
-    const raw = Number(raw_value) || 1;
+    // Allow clearing the field — an empty box stays empty while typing.
+    if (raw_value.trim() === "") {
+      setQuantity("");
+      return;
+    }
+
+    const raw = Number(raw_value);
+
+    if (!Number.isFinite(raw) || raw < 1) {
+      setQuantity("");
+      return;
+    }
 
     if (stock.max_quantity !== undefined && raw > stock.max_quantity) {
       notifyError(
         `You cannot add that amount to the cart — we have ${stock.max_quantity} in stock.`
       );
-      setQuantity(stock.max_quantity);
+      setQuantity(String(stock.max_quantity));
       return;
     }
 
     const parsed = clamp_quantity(raw, 1, stock.max_quantity);
 
-    if (commit && parsed > quantity) {
+    if (commit && parsed > Number(quantity || 0)) {
       const message = getProductStockMessage(
         stockStatus,
         stockQuantity,
@@ -83,7 +96,7 @@ export default function QtyAddToOrder({
       }
     }
 
-    setQuantity(parsed);
+    setQuantity(String(parsed));
   };
 
   const handleAdd = async () => {
@@ -92,7 +105,14 @@ export default function QtyAddToOrder({
       return;
     }
 
-    const parsedQty = clamp_quantity(quantity, 1, stock.max_quantity);
+    const entered = Number(quantity);
+
+    if (quantity.trim() === "" || !Number.isFinite(entered) || entered < 1) {
+      notifyError("Please enter a quantity.");
+      return;
+    }
+
+    const parsedQty = clamp_quantity(entered, 1, stock.max_quantity);
     const stock_message = getProductStockMessage(
       stockStatus,
       stockQuantity,
@@ -107,7 +127,7 @@ export default function QtyAddToOrder({
         stock_message ??
           `You cannot add that amount to the cart — we have ${stock.max_quantity} in stock.`
       );
-      setQuantity(stock.max_quantity);
+      setQuantity(String(stock.max_quantity));
       return;
     }
 
@@ -120,6 +140,11 @@ export default function QtyAddToOrder({
         productName,
         quantity: parsedQty,
       });
+
+      if (added) {
+        // Back to blank, ready for the next entry.
+        setQuantity("");
+      }
 
       if (added && stock_message) {
         notifyWarning(stock_message);

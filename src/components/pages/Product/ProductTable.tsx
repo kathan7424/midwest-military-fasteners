@@ -25,7 +25,10 @@ export interface Product {
   slug: string;
   partNumber: string;
   sku: string;
+  /** Short description — table rows and the detail spec table. */
   description: string;
+  /** Long (main) product description — under the detail-page title. */
+  longDescription?: string;
   pkgQty: number;
   price1: string;
   price3: string;
