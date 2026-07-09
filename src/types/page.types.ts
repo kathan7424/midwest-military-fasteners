@@ -17,5 +17,11 @@ export interface WpPage {
   content: {
     rendered: string;
   };
+  featured_media?: number;
+  _embedded?: {
+    "wp:featuredmedia"?: Array<{
+      source_url?: string;
+    }>;
+  };
   yoast_head_json?: YoastHeadJson;
 }

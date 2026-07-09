@@ -332,6 +332,7 @@ require_once get_template_directory() . '/inc/tax-exemption.php';
 require_once get_template_directory() . '/inc/tax-exemption-admin.php';
 require_once get_template_directory() . '/inc/order-documents.php';
 require_once get_template_directory() . '/inc/net30.php';
+require_once get_template_directory() . '/inc/headless-frontend.php';
 
 
 // ============================================================

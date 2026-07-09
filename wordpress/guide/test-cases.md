@@ -30,6 +30,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-16 | Open shop page / product detail | Every qty input is BLANK (placeholder "QTY") — no pre-filled 1 |
 | PDP-17 | Click "Add to Order" with a blank qty input | Error toast "Please enter a quantity." — nothing added to cart |
 | PDP-18 | Enter qty, click "Add to Order", item adds | Qty input resets to blank after a successful add |
+| PDP-19 | Edit WP admin → Pages → Shop (title/content/featured image), Update, wait ~60s, reload /shop | Hero shows the WP title, content, and featured image; empty fields fall back (title "Product Catalog", first product image) |
+| PDP-20 | As a guest, open the WordPress URL directly (site root or any WP page) | Redirects to the storefront with path preserved (Frontend URL set) OR shows plain "API backend" notice (not set) — never the WP theme |
+| PDP-21 | As a guest, open `{wp}/wp-login.php` and `{wp}/wp-json/` | Both still work — login page loads, REST responds (redirect must not touch admin/API traffic) |
 
 ## TC-IMP — CSV Import
 
