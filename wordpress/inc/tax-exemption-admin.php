@@ -26,7 +26,15 @@ function mmf_enqueue_tax_certificate_admin_assets( string $hook ): void {
 		'mmf-tax-admin',
 		get_template_directory_uri() . '/assets/css/tax-admin.css',
 		array(),
-		'2.0.0'
+		'2.1.0'
+	);
+
+	wp_enqueue_script(
+		'mmf-tax-admin',
+		get_template_directory_uri() . '/assets/js/tax-admin.js',
+		array(),
+		'2.1.0',
+		true
 	);
 }
 

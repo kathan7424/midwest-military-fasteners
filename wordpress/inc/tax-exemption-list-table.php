@@ -338,9 +338,14 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 
 		ob_start();
 		?>
+		<?php
+		$status_class = in_array( $item['status'], array( 'pending', 'approved', 'rejected' ), true )
+			? 'is-' . $item['status']
+			: 'is-none';
+		?>
 		<div class="mmf-quick-edit">
 			<input type="date" name="mmf_qe_expiry[<?php echo esc_attr( (string) $user_id ); ?>]" value="<?php echo esc_attr( (string) $item['expiry_date'] ); ?>" />
-			<select name="mmf_qe_status[<?php echo esc_attr( (string) $user_id ); ?>]">
+			<select name="mmf_qe_status[<?php echo esc_attr( (string) $user_id ); ?>]" class="mmf-qe-status <?php echo esc_attr( $status_class ); ?>">
 				<option value=""><?php esc_html_e( '— None —', 'midwest-military' ); ?></option>
 				<option value="pending" <?php selected( $item['status'], MMF_TAX_STATUS_PENDING ); ?>><?php esc_html_e( 'Pending', 'midwest-military' ); ?></option>
 				<option value="approved" <?php selected( $item['status'], MMF_TAX_STATUS_APPROVED ); ?>><?php esc_html_e( 'Approved', 'midwest-military' ); ?></option>

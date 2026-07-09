@@ -21,7 +21,9 @@
     --shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
     --shadow-md:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
     --shadow-ring: 0 0 0 3px rgba(34,113,177,.18);
-    max-width: 1280px;
+    /* Full width — the list table uses every pixel the admin gives it. */
+    max-width: none;
+    margin-right: 12px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -368,11 +370,15 @@
     font-size: 12px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     flex-wrap: wrap;
     visibility: visible;
     position: static;
+    left: auto;
+    color: transparent; /* hides WP's " | " separators between actions */
 }
+
+.mmf-tax-wrap .row-actions > span { color: transparent; }
 
 .mmf-action-btn {
     display: inline-flex;
@@ -545,24 +551,27 @@
 /* ── Quick Edit ─────────────────────────────────────── */
 .mmf-quick-edit {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 170px;
-    max-width: 200px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 320px;
 }
 
 .mmf-quick-edit input[type="date"],
 .mmf-quick-edit select {
-    width: 100%;
     border: 1px solid var(--c-border);
     border-radius: var(--radius-sm);
     padding: 6px 9px;
     font-size: 12.5px;
+    line-height: 1.4;
     background: var(--c-surface);
     color: var(--c-text);
     box-shadow: inset 0 1px 2px rgba(0,0,0,.03);
-    transition: border-color .12s, box-shadow .12s;
+    transition: border-color .12s, box-shadow .12s, background .12s, color .12s;
 }
+
+.mmf-quick-edit input[type="date"] { width: 140px; }
+.mmf-quick-edit select { width: 130px; font-weight: 600; }
 
 .mmf-quick-edit input[type="date"]:focus,
 .mmf-quick-edit select:focus {
@@ -571,12 +580,21 @@
     outline: none;
 }
 
+/* Status select tinted by its CURRENT value (JS keeps the class in sync). */
+.mmf-qe-status.is-pending  { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.mmf-qe-status.is-approved { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.mmf-qe-status.is-rejected { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.mmf-qe-status.is-none     { background: var(--c-surface); color: var(--c-muted); }
+
+/* Options render on white — keep them readable regardless of the tint. */
+.mmf-qe-status option { background: var(--c-surface); color: var(--c-text); font-weight: 500; }
+
 .mmf-qe-save {
-    align-self: flex-start;
     border-radius: var(--radius-sm) !important;
     font-size: 12px !important;
     font-weight: 600 !important;
-    padding: 4px 12px !important;
+    padding: 4px 14px !important;
+    line-height: 1.8 !important;
 }
 
 /* ── Empty state ────────────────────────────────────── */

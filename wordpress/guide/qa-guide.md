@@ -131,6 +131,7 @@ the response body usually names the real cause.
 - **Shippo is plugin-only; the frontend is already compatible** — checkout renders whatever shipping rates WooCommerce returns, so Shippo live rates appear automatically once the plugin is active (client credentials pending). Order tracking shows in My Account order detail as soon as the plugin writes a tracking number to the order. Don't file "no UPS/FedEx rates" until the plugin is installed. Full module doc: shippo-guide.md.
 - **"Shipment Tracking" section is hidden until tracking exists** — a processing order with no label yet shows no tracking section. That's by design, not a missing feature.
 - **Guests see ONLY the 1 PKG price** — the 3/5/10 PKG tier columns (shop/category tables) and tier rows (product detail spec table) require login. Log out to test the guest view; log in and the tiers appear. Exception: the loading skeleton briefly shows generic column headers (it can't know auth state) — only the loaded table matters. Tier prices visible to a logged-out user IS a bug.
+- **Tax Certificates admin quick-edit status select is COLOR-TINTED** — amber = Pending, green = Approved, red = Rejected, plain = None; the tint updates live when you change the selection (tax-admin.js). The table is full-width; quick-edit controls sit in one row (date + status + Save). A stale look after deploy = hard-refresh (CSS/JS are version-busted at 2.1.0).
 
 ## 8. Regression Scope by Change Type
 
