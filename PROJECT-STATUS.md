@@ -101,6 +101,17 @@
 
 ---
 
+## Change Log
+
+| Date | Area | Short Summary |
+|------|------|---------------|
+| 2026-07-09 | Home Hero | Adjusted hero spacing, category grid spacing, and improved search input accessibility |
+| 2026-07-09 | Header / Mobile Menu | Updated navigation typography, button styling, and icon treatment for desktop/mobile views |
+| 2026-07-09 | Auth UI | Refined login, register, forgot-password, and tax-exemption upload field styling and focus states |
+| 2026-07-09 | Global UI | Added clearer visible focus outlines for links and buttons |
+
+---
+
 ## Styling / Brand
 
 | Item | Status | Notes |

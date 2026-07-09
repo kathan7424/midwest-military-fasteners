@@ -32,6 +32,9 @@ export default function SearchBar({
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-[800px]">
       <div className="flex overflow-hidden bg-white shadow-lg">
         <input
+          id="search"
+          name="search"
+          aria-label="Search by part number or keywords"
           type="text"
           value={query}
           placeholder={placeholder}

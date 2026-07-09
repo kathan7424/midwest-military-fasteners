@@ -19,7 +19,7 @@ export default function CategoryGrid({ categories }: CategoryGridProps) {
   }
 
   return (
-    <div className="mt-20 w-full max-w-8xl px-0 xl:px-5">
+    <div className="mt-12 lg:mt-[70px] w-full max-w-8xl px-0 xl:px-5">
       <div className="grid grid-cols-1 gap-[40px] lg:grid-cols-[1fr_1fr] xl:gap-[60px]">
         {categories.slice(0, 2).map((category) => (
           <section key={category.title}>

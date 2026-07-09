@@ -77,7 +77,7 @@ export default function SalesTaxExemptionUpload({
         className={`flex items-center h-12 overflow-hidden bg-white ${
           error
             ? "border border-red-300"
-            : "rounded-none border border-[#666666] bg-white ring-0 focus-within:ring-0 focus-within:ring-transparent focus-within:outline-none shadow-none"
+            : "rounded-none border border-[#666666] bg-white ring-0 focus-within:ring-2 focus-within:ring-brand focus-within:outline-none shadow-none"
         }`}
       >
         <input
@@ -100,7 +100,7 @@ export default function SalesTaxExemptionUpload({
 
         <button
           type="button"
-          className="flex h-full shrink-0 items-center gap-1.5 bg-blue px-4 text-link font-bold uppercase text-white transition-colors hover:bg-navy"
+          className="flex h-full shrink-0 items-center gap-1.5 bg-blue px-4 text-link font-bold uppercase text-white transition-colors hover:bg-navy ring-0 focus-within:ring-2 focus-within:ring-brand"
           onClick={() => fileInputRef.current?.click()}
         >
           <FaFileArrowUp aria-hidden="true" />

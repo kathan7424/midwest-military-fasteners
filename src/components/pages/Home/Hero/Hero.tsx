@@ -45,9 +45,9 @@ export default function Hero({ banner, categories }: HeroProps) {
       <div className="absolute inset-0 bg-amber/85" />
 
       <div className="relative z-10">
-        <div className="mx-auto flex min-h-[760px] max-w-8xl flex-col items-center px-5 pt-32 pb-20">
+        <div className="mx-auto flex max-w-8xl flex-col items-center px-5 pt-[60px] lg:pt-[150px] pb-[60px]">
           {hasBannerTitle ? (
-            <h1 className="mb-14 max-w-[1120px] text-center text-[30px] font-black leading-[1.1] text-white sm:text-[36px] md:text-[44px] lg:text-[52px] xl:text-[60px]">
+            <h1 className="mb-12 lg:mb-[70px] max-w-[1120px] text-center text-[30px] font-black leading-[1.1] text-white sm:text-[36px] md:text-[44px] lg:text-[52px] xl:text-[60px]">
               {banner_title}
             </h1>
           ) : null}

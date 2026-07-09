@@ -34,9 +34,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
   const figma_input_wrapper_class =
-    "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12  ring-0 focus-within:ring-0 focus-within:ring-transparent focus-within:outline-none shadow-none";
+    "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12  shadow-none";
   const figma_input_text_class =
-    "text-link text-[#989898] placeholder:text-[#989898] focus:outline-none ring-0 focus:ring-0 shadow-none";
+    "text-link text-[#989898] placeholder:text-[#989898] shadow-none";
 
 export default function LoginPanel() {
   const router = useRouter();

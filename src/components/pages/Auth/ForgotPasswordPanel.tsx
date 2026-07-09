@@ -29,9 +29,9 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 const figma_input_wrapper_class =
-  "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12 ring-0 focus-within:ring-0 focus-within:ring-transparent focus-within:outline-none shadow-none";
+  "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12 shadow-none";
 const figma_input_text_class =
-  "text-link text-[#989898] placeholder:text-[#989898] focus:outline-none ring-0 focus:ring-0 shadow-none";
+  "text-link text-[#989898] placeholder:text-[#989898] shadow-none";
 
 export default function ForgotPasswordPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,9 +81,9 @@ export default function ForgotPasswordPanel() {
 
   return (
     <div className="bg-white px-8 py-10 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
-      <h2 className="mb-8 text-center font-condensed text-[28px] font-bold uppercase tracking-wide text-blue">
+      <h1 className="mb-8 text-center font-condensed text-[28px] font-bold uppercase tracking-wide text-blue">
         Forgot Password
-      </h2>
+      </h1>
 
       <p className="mb-6 text-center text-sm text-dark-gray">
         Enter your email address and we&apos;ll send you password reset instructions.
