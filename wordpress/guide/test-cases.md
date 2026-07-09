@@ -209,6 +209,24 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-VAL-06 | Click Place Order while shipping rates are updating | Button remains enabled and clickable — rate update is a background process; WooCommerce standard |
 | CHK-VAL-07 | Section heading in checkout billing area | Heading reads "Billing details" (not "Billing & Shipping") — WooCommerce standard label |
 
+## TC-SHIP — Shippo Shipping & Fulfillment (run after plugin install)
+
+Pre-req: Shippo plugin active, client's UPS/FedEx accounts connected, ship-from
+address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
+
+| ID | Steps | Expected |
+|---|---|---|
+| SHIP-01 | Checkout with full US address | Live UPS/FedEx rates listed as radio options alongside/instead of zone methods; each shows name + price |
+| SHIP-02 | Select a different rate | Order total updates to include the chosen rate (server-recalculated) |
+| SHIP-03 | Change the delivery address mid-checkout | Rates refresh automatically, no reload |
+| SHIP-04 | Place order | Chosen carrier/service + shipping cost on the WC order and the order confirmation/email |
+| SHIP-05 | Generate label in Shippo for the order | Label produced; tracking number written back to the WC order |
+| SHIP-06 | My Account → order detail (after label) | "Shipment Tracking" section: carrier + clickable tracking number (+ ship date when provided) |
+| SHIP-07 | Shipping-notification email | Contains the tracking number/link |
+| SHIP-08 | Order detail API as a DIFFERENT logged-in user | 403 — tracking numbers never leak across accounts |
+| SHIP-09 | Product missing weight or dimensions | No live rate for it — fix product data (import warns); checkout code is not the bug |
+| SHIP-10 | Order without tracking yet (processing) | No "Shipment Tracking" section — appears only once tracking exists |
+
 ## TC-SET — WooCommerce Settings Reactivity
 
 | ID | Steps | Expected |
