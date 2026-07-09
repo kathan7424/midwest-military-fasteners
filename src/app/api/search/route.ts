@@ -15,7 +15,12 @@ export const fetchCache = "force-no-store";
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
-  const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
+  // Cap query length — WP search gains nothing past this and long strings
+  // are a cheap way to hammer the backend.
+  const query = (request.nextUrl.searchParams.get("q")?.trim() ?? "").slice(
+    0,
+    100
+  );
   const scope =
     request.nextUrl.searchParams.get("scope") === "catalog"
       ? "catalog"

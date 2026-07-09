@@ -34,10 +34,15 @@ add_filter( 'rest_authentication_errors', 'mmf_headless_cookie_auth', 200 );
  * /custom/v1/tax-exemption always returned 401 and Store API orders were
  * created as guests.
  *
- * CSRF-safe: only applies when the X-MMF-Proxy header is present — browsers
- * cannot send custom headers cross-origin without a CORS preflight, so forged
- * cross-site requests never carry it. The header is added exclusively by the
- * Next.js server-side proxy.
+ * CSRF-safe: only applies when the X-MMF-Proxy header carries the shared
+ * secret — browsers cannot send custom headers cross-origin without a CORS
+ * preflight, so forged cross-site requests never carry it. The header is
+ * added exclusively by the Next.js server-side proxy.
+ *
+ * Admins: define MMF_PROXY_SECRET in wp-config.php with a long random value
+ * and set the same value in the Next.js environment (sent as the X-MMF-Proxy
+ * header). Until the constant is defined, the legacy value "1" is accepted
+ * for back-compat.
  *
  * @param WP_Error|true|null $result Current authentication result.
  * @return WP_Error|true|null
@@ -48,6 +53,12 @@ function mmf_headless_cookie_auth( $result ) {
 	}
 
 	if ( empty( $_SERVER['HTTP_X_MMF_PROXY'] ) ) {
+		return $result;
+	}
+
+	$secret = defined( 'MMF_PROXY_SECRET' ) ? (string) MMF_PROXY_SECRET : '1';
+
+	if ( ! hash_equals( $secret, (string) wp_unslash( $_SERVER['HTTP_X_MMF_PROXY'] ) ) ) {
 		return $result;
 	}
 
@@ -136,6 +147,77 @@ function mmf_register_auth_routes(): void {
 			'methods'             => WP_REST_Server::CREATABLE,
 			'callback'            => 'mmf_auth_forgot_password',
 			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/account/details',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_account_update_details',
+			'permission_callback' => 'is_user_logged_in',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/account/addresses',
+		array(
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'mmf_account_addresses',
+				'permission_callback' => 'is_user_logged_in',
+			),
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => 'mmf_account_update_addresses',
+				'permission_callback' => 'is_user_logged_in',
+			),
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/account/password',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_account_change_password',
+			'permission_callback' => 'is_user_logged_in',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/account/payment-methods',
+		array(
+			array(
+				'methods'             => 'GET',
+				'callback'            => 'mmf_get_payment_methods',
+				'permission_callback' => 'is_user_logged_in',
+			),
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => 'mmf_create_setup_intent',
+				'permission_callback' => 'is_user_logged_in',
+			),
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
+		'/account/payment-methods/(?P<pm_id>pm_[a-zA-Z0-9]+)',
+		array(
+			'methods'             => 'DELETE',
+			'callback'            => 'mmf_delete_payment_method',
+			'permission_callback' => 'is_user_logged_in',
+			'args'                => array(
+				'pm_id' => array(
+					'validate_callback' => function ( $param ) {
+						return (bool) preg_match( '/^pm_[a-zA-Z0-9]+$/', $param );
+					},
+				),
+			),
 		)
 	);
 }
@@ -240,43 +322,6 @@ function mmf_auth_logout(): WP_REST_Response {
 	);
 }
 
-// ── Gravity Forms merge tags for the tax-cert review email ────────────────
-// {mmf_approve_url} / {mmf_reject_url} — one-click action links. Resolves the
-// WP user by the entry's email; falls back to the Tax Certificates dashboard
-// when the user doesn't exist yet.
-add_filter( 'gform_replace_merge_tags', 'mmf_gf_tax_cert_merge_tags', 10, 3 );
-
-/**
- * @param string $text  Notification text.
- * @param array  $form  Form.
- * @param array  $entry Entry.
- * @return string
- */
-function mmf_gf_tax_cert_merge_tags( $text, $form, $entry ) {
-	if ( ! is_string( $text ) || strpos( $text, '{mmf_' ) === false ) {
-		return $text;
-	}
-
-	$dashboard = admin_url( 'admin.php?page=mmf-tax-certificates' );
-	$approve   = $dashboard;
-	$reject    = $dashboard;
-
-	if ( is_array( $entry ) && function_exists( 'mmf_build_tax_cert_action_url' ) ) {
-		$email = sanitize_email( (string) rgar( $entry, MMF_GF_FIELD_EMAIL ) );
-		$user  = $email ? get_user_by( 'email', $email ) : false;
-
-		if ( $user instanceof WP_User ) {
-			$approve = mmf_build_tax_cert_action_url( (int) $user->ID, 'approve' );
-			$reject  = mmf_build_tax_cert_action_url( (int) $user->ID, 'reject' );
-		}
-	}
-
-	return str_replace(
-		array( '{mmf_approve_url}', '{mmf_reject_url}' ),
-		array( esc_url( $approve ), esc_url( $reject ) ),
-		$text
-	);
-}
 
 /**
  * Return the currently logged-in user.
@@ -307,6 +352,49 @@ function mmf_auth_me() {
 	return rest_ensure_response(
 		array(
 			'user' => mmf_format_auth_user( $user ),
+		)
+	);
+}
+
+/**
+ * GET /custom/v1/account/addresses — the customer's saved WooCommerce
+ * billing + shipping addresses (same data classic My Account shows).
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_account_addresses() {
+	if ( ! class_exists( 'WC_Customer' ) ) {
+		return new WP_Error( 'woocommerce_missing', 'WooCommerce is not active.', array( 'status' => 500 ) );
+	}
+
+	$customer = new WC_Customer( get_current_user_id() );
+
+	return rest_ensure_response(
+		array(
+			'billing'  => array(
+				'first_name' => $customer->get_billing_first_name(),
+				'last_name'  => $customer->get_billing_last_name(),
+				'company'    => $customer->get_billing_company(),
+				'address_1'  => $customer->get_billing_address_1(),
+				'address_2'  => $customer->get_billing_address_2(),
+				'city'       => $customer->get_billing_city(),
+				'state'      => $customer->get_billing_state(),
+				'postcode'   => $customer->get_billing_postcode(),
+				'country'    => $customer->get_billing_country(),
+				'email'      => $customer->get_billing_email(),
+				'phone'      => $customer->get_billing_phone(),
+			),
+			'shipping' => array(
+				'first_name' => $customer->get_shipping_first_name(),
+				'last_name'  => $customer->get_shipping_last_name(),
+				'company'    => $customer->get_shipping_company(),
+				'address_1'  => $customer->get_shipping_address_1(),
+				'address_2'  => $customer->get_shipping_address_2(),
+				'city'       => $customer->get_shipping_city(),
+				'state'      => $customer->get_shipping_state(),
+				'postcode'   => $customer->get_shipping_postcode(),
+				'country'    => $customer->get_shipping_country(),
+			),
 		)
 	);
 }
@@ -448,16 +536,20 @@ function mmf_auth_forgot_password( WP_REST_Request $request ) {
 		? get_user_by( 'email', $email_or_login )
 		: get_user_by( 'login', $email_or_login );
 
-	// Always return the same response so the endpoint can't be used to
-	// enumerate which email addresses have accounts.
-	if ( $user instanceof WP_User ) {
-		retrieve_password( $user->user_login );
+	if ( ! $user instanceof WP_User ) {
+		return new WP_Error(
+			'user_not_found',
+			'No account found with that email address.',
+			array( 'status' => 404 )
+		);
 	}
+
+	retrieve_password( $user->user_login );
 
 	return rest_ensure_response(
 		array(
 			'success' => true,
-			'message' => 'If an account exists for that email address, password reset instructions have been sent.',
+			'message' => 'Password reset instructions have been sent to your email.',
 		)
 	);
 }
@@ -546,6 +638,12 @@ function mmf_auth_register( WP_REST_Request $request ) {
 	$files = array();
 
 	if ( ! empty( $_FILES['certificate'] ) && ! empty( $_FILES['certificate']['name'] ) ) {
+		$validation = mmf_validate_tax_cert_upload( $_FILES['certificate'] );
+
+		if ( is_wp_error( $validation ) ) {
+			return $validation;
+		}
+
 		$files['input_6'] = $_FILES['certificate'];
 	}
 
@@ -601,8 +699,18 @@ function mmf_auth_register( WP_REST_Request $request ) {
 			$attachment_id = media_handle_upload( 'certificate', 0 );
 
 			if ( ! is_wp_error( $attachment_id ) ) {
+				// Keep certificates out of the public media library and
+				// REST /wp/v2/media enumeration.
+				wp_update_post(
+					array(
+						'ID'          => $attachment_id,
+						'post_status' => 'private',
+					)
+				);
+
 				$cert_url = wp_get_attachment_url( $attachment_id );
 				update_user_meta( $uid, 'mmf_tax_exemption_cert', esc_url_raw( (string) $cert_url ) );
+				update_user_meta( $uid, 'mmf_tax_exemption_cert_id', (int) $attachment_id );
 				update_user_meta( $uid, 'mmf_tax_exemption_status', MMF_TAX_STATUS_PENDING );
 				update_user_meta( $uid, 'mmf_tax_exemption_submitted_at', current_time( 'mysql' ) );
 
@@ -723,4 +831,383 @@ function mmf_create_customer_from_gravity_entry( array $entry, array $form ): vo
 	}
 
 	do_action( 'woocommerce_created_customer', $user_id, array(), true );
+}
+
+/**
+ * POST /custom/v1/account/details — WooCommerce My Account → Account Details.
+ *
+ * Updates first name, last name, display name, email, and company.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_account_update_details( WP_REST_Request $request ) {
+	$user_id = get_current_user_id();
+	$user    = get_user_by( 'id', $user_id );
+
+	if ( ! $user ) {
+		return new WP_Error( 'not_authenticated', 'Not logged in.', array( 'status' => 401 ) );
+	}
+
+	$first_name   = sanitize_text_field( (string) $request->get_param( 'first_name' ) );
+	$last_name    = sanitize_text_field( (string) $request->get_param( 'last_name' ) );
+	$display_name = sanitize_text_field( (string) $request->get_param( 'display_name' ) );
+	$email        = sanitize_email( (string) $request->get_param( 'email' ) );
+	$company      = sanitize_text_field( (string) $request->get_param( 'company' ) );
+
+	if ( empty( $first_name ) || empty( $last_name ) || empty( $email ) ) {
+		return new WP_Error( 'missing_fields', 'First name, last name, and email are required.', array( 'status' => 400 ) );
+	}
+
+	if ( ! is_email( $email ) ) {
+		return new WP_Error( 'invalid_email', 'Please enter a valid email address.', array( 'status' => 400 ) );
+	}
+
+	if ( strtolower( $email ) !== strtolower( $user->user_email ) ) {
+		$existing = email_exists( $email );
+		if ( $existing && (int) $existing !== $user_id ) {
+			return new WP_Error( 'email_exists', 'This email address is already in use.', array( 'status' => 409 ) );
+		}
+	}
+
+	$update_data = array(
+		'ID'           => $user_id,
+		'first_name'   => $first_name,
+		'last_name'    => $last_name,
+		'display_name' => $display_name ?: trim( "$first_name $last_name" ),
+		'user_email'   => $email,
+	);
+
+	$result = wp_update_user( $update_data );
+
+	if ( is_wp_error( $result ) ) {
+		return new WP_Error( 'update_failed', $result->get_error_message(), array( 'status' => 500 ) );
+	}
+
+	update_user_meta( $user_id, 'first_name', $first_name );
+	update_user_meta( $user_id, 'last_name', $last_name );
+	update_user_meta( $user_id, 'billing_first_name', $first_name );
+	update_user_meta( $user_id, 'billing_last_name', $last_name );
+	update_user_meta( $user_id, 'billing_email', $email );
+	update_user_meta( $user_id, 'billing_company', $company );
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'user'    => mmf_format_auth_user( get_user_by( 'id', $user_id ) ),
+		)
+	);
+}
+
+/**
+ * POST /custom/v1/account/addresses — update billing and/or shipping address.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_account_update_addresses( WP_REST_Request $request ) {
+	if ( ! class_exists( 'WC_Customer' ) ) {
+		return new WP_Error( 'woocommerce_missing', 'WooCommerce is not active.', array( 'status' => 500 ) );
+	}
+
+	$user_id  = get_current_user_id();
+	$customer = new WC_Customer( $user_id );
+	$type     = sanitize_text_field( (string) $request->get_param( 'type' ) );
+
+	if ( ! in_array( $type, array( 'billing', 'shipping' ), true ) ) {
+		return new WP_Error( 'invalid_type', 'Address type must be "billing" or "shipping".', array( 'status' => 400 ) );
+	}
+
+	$address_fields = array( 'first_name', 'last_name', 'company', 'address_1', 'address_2', 'city', 'state', 'postcode', 'country' );
+
+	if ( $type === 'billing' ) {
+		$address_fields[] = 'email';
+		$address_fields[] = 'phone';
+	}
+
+	foreach ( $address_fields as $field ) {
+		$value = sanitize_text_field( (string) $request->get_param( $field ) );
+		$setter = "set_{$type}_{$field}";
+		if ( method_exists( $customer, $setter ) ) {
+			$customer->$setter( $value );
+		}
+	}
+
+	if ( $type === 'billing' ) {
+		$first = sanitize_text_field( (string) $request->get_param( 'first_name' ) );
+		$last  = sanitize_text_field( (string) $request->get_param( 'last_name' ) );
+		if ( empty( $first ) || empty( $last ) ) {
+			return new WP_Error( 'missing_fields', 'First name and last name are required.', array( 'status' => 400 ) );
+		}
+	}
+
+	$customer->save();
+
+	return rest_ensure_response( array( 'success' => true ) );
+}
+
+/**
+ * POST /custom/v1/account/password — WooCommerce-standard password change.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_account_change_password( WP_REST_Request $request ) {
+	$user_id          = get_current_user_id();
+	$user             = get_user_by( 'id', $user_id );
+	$current_password = (string) $request->get_param( 'current_password' );
+	$new_password     = (string) $request->get_param( 'new_password' );
+	$confirm_password = (string) $request->get_param( 'confirm_password' );
+
+	if ( ! $user ) {
+		return new WP_Error( 'not_authenticated', 'Not logged in.', array( 'status' => 401 ) );
+	}
+
+	if ( empty( $current_password ) || empty( $new_password ) || empty( $confirm_password ) ) {
+		return new WP_Error( 'missing_fields', 'All password fields are required.', array( 'status' => 400 ) );
+	}
+
+	if ( ! wp_check_password( $current_password, $user->user_pass, $user_id ) ) {
+		return new WP_Error( 'wrong_password', 'Your current password is incorrect.', array( 'status' => 403 ) );
+	}
+
+	if ( $new_password !== $confirm_password ) {
+		return new WP_Error( 'password_mismatch', 'New passwords do not match.', array( 'status' => 400 ) );
+	}
+
+	if ( strlen( $new_password ) < 8 ) {
+		return new WP_Error( 'weak_password', 'Password must be at least 8 characters.', array( 'status' => 400 ) );
+	}
+
+	wp_set_password( $new_password, $user_id );
+	wp_set_current_user( $user_id );
+	wp_set_auth_cookie( $user_id, true, is_ssl() );
+
+	return rest_ensure_response(
+		array(
+			'success' => true,
+			'message' => 'Password changed successfully.',
+		)
+	);
+}
+
+/* ===================================================================
+   Payment Methods — Stripe saved cards
+   =================================================================== */
+
+/**
+ * Get Stripe secret key from WooCommerce Stripe plugin settings.
+ */
+function mmf_stripe_secret_key(): string {
+	$settings = get_option( 'woocommerce_stripe_settings', array() );
+	$is_test  = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
+	return $is_test
+		? ( $settings['test_secret_key'] ?? '' )
+		: ( $settings['secret_key'] ?? '' );
+}
+
+/**
+ * Get or create a Stripe customer ID for a given WP user.
+ * WC Stripe stores IDs in _stripe_customer_id / _stripe_test_customer_id.
+ *
+ * @param int $user_id WordPress user ID.
+ * @return string|WP_Error Stripe customer ID or WP_Error on failure.
+ */
+function mmf_get_or_create_stripe_customer( int $user_id ) {
+	$settings  = get_option( 'woocommerce_stripe_settings', array() );
+	$is_test   = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
+	$meta_key  = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
+	$secret    = mmf_stripe_secret_key();
+
+	$customer_id = get_user_meta( $user_id, $meta_key, true );
+	if ( $customer_id ) {
+		return $customer_id;
+	}
+
+	if ( ! $secret ) {
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	}
+
+	$user     = get_userdata( $user_id );
+	$name     = trim( ( $user->first_name ?? '' ) . ' ' . ( $user->last_name ?? '' ) ) ?: $user->display_name;
+	$response = wp_remote_post(
+		'https://api.stripe.com/v1/customers',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $secret,
+				'Content-Type'  => 'application/x-www-form-urlencoded',
+			),
+			'body'    => array(
+				'email'                   => $user->user_email,
+				'name'                    => $name,
+				'metadata[wp_user_id]'    => (string) $user_id,
+			),
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return $response;
+	}
+
+	$body = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( empty( $body['id'] ) ) {
+		return new WP_Error( 'stripe_customer_failed', 'Failed to create Stripe customer.', array( 'status' => 500 ) );
+	}
+
+	update_user_meta( $user_id, $meta_key, $body['id'] );
+	return $body['id'];
+}
+
+/**
+ * GET /account/payment-methods — list saved Stripe cards for the current user.
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_get_payment_methods() {
+	$user_id  = get_current_user_id();
+	$settings = get_option( 'woocommerce_stripe_settings', array() );
+	$is_test  = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
+	$meta_key = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
+	$secret   = mmf_stripe_secret_key();
+
+	$customer_id = get_user_meta( $user_id, $meta_key, true );
+	if ( ! $customer_id ) {
+		return rest_ensure_response( array( 'payment_methods' => array() ) );
+	}
+
+	if ( ! $secret ) {
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	}
+
+	$response = wp_remote_get(
+		add_query_arg(
+			array(
+				'customer' => $customer_id,
+				'type'     => 'card',
+				'limit'    => 20,
+			),
+			'https://api.stripe.com/v1/payment_methods'
+		),
+		array(
+			'headers' => array( 'Authorization' => 'Bearer ' . $secret ),
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to fetch payment methods.', array( 'status' => 502 ) );
+	}
+
+	$body    = json_decode( wp_remote_retrieve_body( $response ), true );
+	$methods = array();
+
+	foreach ( $body['data'] ?? array() as $pm ) {
+		$card      = $pm['card'] ?? array();
+		$methods[] = array(
+			'id'        => $pm['id'],
+			'brand'     => $card['brand'] ?? 'card',
+			'last4'     => $card['last4'] ?? '****',
+			'exp_month' => (int) ( $card['exp_month'] ?? 0 ),
+			'exp_year'  => (int) ( $card['exp_year'] ?? 0 ),
+		);
+	}
+
+	return rest_ensure_response( array( 'payment_methods' => $methods ) );
+}
+
+/**
+ * POST /account/payment-methods — create a Stripe SetupIntent.
+ * Returns client_secret so the frontend can call confirmCardSetup.
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_create_setup_intent() {
+	$user_id     = get_current_user_id();
+	$customer_id = mmf_get_or_create_stripe_customer( $user_id );
+
+	if ( is_wp_error( $customer_id ) ) {
+		return $customer_id;
+	}
+
+	$secret   = mmf_stripe_secret_key();
+	$response = wp_remote_post(
+		'https://api.stripe.com/v1/setup_intents',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $secret,
+				'Content-Type'  => 'application/x-www-form-urlencoded',
+			),
+			'body'    => array(
+				'customer'                 => $customer_id,
+				'payment_method_types[]'   => 'card',
+				'usage'                    => 'off_session',
+			),
+		)
+	);
+
+	if ( is_wp_error( $response ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to create setup intent.', array( 'status' => 502 ) );
+	}
+
+	$body = json_decode( wp_remote_retrieve_body( $response ), true );
+	if ( empty( $body['client_secret'] ) ) {
+		return new WP_Error( 'setup_intent_failed', 'Failed to create setup intent.', array( 'status' => 500 ) );
+	}
+
+	return rest_ensure_response( array( 'client_secret' => $body['client_secret'] ) );
+}
+
+/**
+ * DELETE /account/payment-methods/{pm_id} — detach a card.
+ * Verifies ownership: the PM must belong to this user's Stripe customer.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_delete_payment_method( WP_REST_Request $request ) {
+	$pm_id    = sanitize_text_field( (string) $request->get_param( 'pm_id' ) );
+	$user_id  = get_current_user_id();
+	$settings = get_option( 'woocommerce_stripe_settings', array() );
+	$is_test  = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
+	$meta_key = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
+	$secret   = mmf_stripe_secret_key();
+
+	if ( ! $secret ) {
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	}
+
+	$customer_id = get_user_meta( $user_id, $meta_key, true );
+
+	// Retrieve PM and verify it belongs to this customer before detaching.
+	$pm_response = wp_remote_get(
+		'https://api.stripe.com/v1/payment_methods/' . rawurlencode( $pm_id ),
+		array(
+			'headers' => array( 'Authorization' => 'Bearer ' . $secret ),
+		)
+	);
+
+	if ( is_wp_error( $pm_response ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to verify payment method.', array( 'status' => 502 ) );
+	}
+
+	$pm_data = json_decode( wp_remote_retrieve_body( $pm_response ), true );
+	if ( ( $pm_data['customer'] ?? '' ) !== $customer_id ) {
+		return new WP_Error(
+			'unauthorized',
+			'Payment method does not belong to this account.',
+			array( 'status' => 403 )
+		);
+	}
+
+	wp_remote_post(
+		'https://api.stripe.com/v1/payment_methods/' . rawurlencode( $pm_id ) . '/detach',
+		array(
+			'headers' => array(
+				'Authorization' => 'Bearer ' . $secret,
+				'Content-Type'  => 'application/x-www-form-urlencoded',
+			),
+			'body'    => array(),
+		)
+	);
+
+	return rest_ensure_response( array( 'success' => true ) );
 }

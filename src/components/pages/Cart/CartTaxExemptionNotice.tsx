@@ -11,8 +11,11 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { parseDate, today, getLocalTimeZone } from "@internationalized/date";
 
+import { DatePicker } from "@/components/application/date-picker/date-picker";
+import SalesTaxExemptionUpload from "@/components/pages/Auth/SalesTaxExemptionUpload";
 import {
   fetch_tax_exemption_status,
   upload_tax_exemption_document,
@@ -42,9 +45,11 @@ function UploadDocumentIcon() {
 export default function CartTaxExemptionNotice() {
   const [status, setStatus] = useState<TaxExemptionStatus | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [expiryDate, setExpiryDate] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileError, setFileError] = useState("");
+  const [dateError, setDateError] = useState("");
 
   useEffect(() => {
     fetch_tax_exemption_status()
@@ -62,27 +67,39 @@ export default function CartTaxExemptionNotice() {
   const handleUpload = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    const file = fileInputRef.current?.files?.[0];
+    let valid = true;
 
     if (!file) {
-      notifyError("Choose a certificate file to upload.");
-      return;
+      setFileError("Please upload your exemption certificate.");
+      valid = false;
     }
 
     if (!expiryDate) {
-      notifyError("Enter the certificate expiry date.");
-      return;
+      setDateError("Expiry date is required.");
+      valid = false;
+    } else {
+      const selected = parseDate(expiryDate);
+      const todayDate = today(getLocalTimeZone());
+      if (selected.compare(todayDate) <= 0) {
+        setDateError("Expiry date must be a future date.");
+        valid = false;
+      }
     }
+
+    if (!valid) return;
 
     setIsUploading(true);
 
     try {
-      const result = await upload_tax_exemption_document(file, expiryDate);
+      const result = await upload_tax_exemption_document(file!, expiryDate);
 
       // Instant state update — banner flips to the pending message right away.
       setStatus(result);
       setIsFormOpen(false);
+      setFile(null);
       setExpiryDate("");
+      setFileError("");
+      setDateError("");
       notifySuccess(
         result.message || "Document uploaded — awaiting admin approval."
       );
@@ -117,34 +134,42 @@ export default function CartTaxExemptionNotice() {
           onSubmit={handleUpload}
           className="mt-4 flex flex-col gap-3 border-t border-[#c9dcea] pt-4 sm:flex-row sm:items-end"
         >
-          <label className="flex-1">
-            <span className="mb-1 block text-sm font-semibold text-near-black">
-              Certificate (PDF / JPG / PNG)
-            </span>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              className="w-full border border-light-gray bg-white px-3 py-2 text-sm file:mr-3 file:border-0 file:bg-navy file:px-3 file:py-1.5 file:text-xs file:font-semibold file:uppercase file:text-white"
+          <div className="flex-1">
+            <SalesTaxExemptionUpload
+              file={file}
+              onFileChange={(f) => {
+                setFile(f);
+                if (f) setFileError("");
+              }}
+              error={fileError}
+              onSizeError={() => setFileError("File must be 5 MB or smaller.")}
+              onTypeError={() =>
+                setFileError("Allowed types: PDF, JPG, PNG, DOC, DOCX.")
+              }
             />
-          </label>
+          </div>
 
-          <label className="sm:w-[170px]">
-            <span className="mb-1 block text-sm font-semibold text-near-black">
-              Expiry date
+          <div className="sm:w-[190px]">
+            <span className="mb-1.5 block text-sm font-semibold text-dark-gray">
+              Expiry Date
             </span>
-            <input
-              type="date"
-              value={expiryDate}
-              onChange={(event) => setExpiryDate(event.target.value)}
-              className="w-full border border-light-gray bg-white px-3 py-2 text-sm"
+            <DatePicker
+              value={expiryDate ? parseDate(expiryDate) : null}
+              onChange={(date) => {
+                const val = date ? date.toString() : "";
+                setExpiryDate(val);
+                if (val) setDateError("");
+              }}
             />
-          </label>
+            {dateError ? (
+              <p className="mt-1 text-xs text-red-600">{dateError}</p>
+            ) : null}
+          </div>
 
           <button
             type="submit"
             disabled={isUploading}
-            className="inline-flex shrink-0 items-center justify-center bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
+            className="inline-flex h-10 shrink-0 items-center justify-center bg-amber px-5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
           >
             {isUploading ? "Uploading..." : "Submit"}
           </button>

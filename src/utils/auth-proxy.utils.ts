@@ -24,9 +24,14 @@ export function appendSetCookie(
   value: string,
   options: { expire?: boolean } = {}
 ): void {
-  const attributes = options.expire
+  let attributes = options.expire
     ? "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax"
     : "Path=/; HttpOnly; SameSite=Lax";
+
+  // Secure in production only — local dev serves over plain http.
+  if (process.env.NODE_ENV === "production") {
+    attributes += "; Secure";
+  }
 
   response.headers.append("set-cookie", `${name}=${value}; ${attributes}`);
 }
@@ -72,12 +77,14 @@ export async function buildProxiedResponse(
  *
  * X-MMF-Proxy marks the request as coming from our server-side proxy — WP
  * uses it to allow cookie auth without an X-WP-Nonce (see
- * mmf_headless_cookie_auth). Browsers can't forge it cross-origin.
+ * mmf_headless_cookie_auth). Browsers can't forge it cross-origin. The value
+ * is a server-only shared secret (MMF_PROXY_SECRET) so requests that reach WP
+ * directly can't spoof the header.
  */
 export function buildWpCookieHeader(cookieHeader: string | null): HeadersInit {
   const headers: Record<string, string> = {
     Accept: "application/json",
-    "X-MMF-Proxy": "1",
+    "X-MMF-Proxy": process.env.MMF_PROXY_SECRET || "1",
   };
 
   if (cookieHeader) {

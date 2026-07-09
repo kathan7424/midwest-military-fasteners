@@ -42,10 +42,15 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
+    // Forward the real client IP so WP-side rate limiting doesn't see every
+    // registration as coming from this server.
+    const forwardedFor = request.headers.get("x-forwarded-for");
+
     const wpResponse = await fetch(
       `${ENV.WP_SITE_URL}/wp-json/custom/v1/auth/register`,
       {
         method: "POST",
+        headers: forwardedFor ? { "X-Forwarded-For": forwardedFor } : {},
         body: formData,
         cache: "no-store",
       }

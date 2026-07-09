@@ -9,7 +9,6 @@
 import type { Metadata } from "next";
 
 import CartPageView from "@/components/pages/Cart/CartPageView";
-import { requireAuth } from "@/services/auth.service";
 import { fetch_sidebar_categories } from "@/services/spec-parts.service";
 
 export const metadata: Metadata = {
@@ -18,8 +17,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CartPage() {
-  await requireAuth("/cart");
-
+  // No auth gate — WooCommerce always allows guests to view their cart.
   const sidebar_categories = await fetch_sidebar_categories();
 
   return <CartPageView sidebarCategories={sidebar_categories} />;

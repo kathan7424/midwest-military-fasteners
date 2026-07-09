@@ -15,11 +15,11 @@ import type {
   SpecPartsProduct,
   SpecPartsSeriesTerm,
 } from "@/types/spec-parts.types";
+import { format_store_price } from "@/utils/currency.utils";
 import { decodeHtmlEntities } from "@/utils/text.utils";
 import {
   build_product_category_path,
   build_product_category_series_path,
-  build_product_path,
   extract_product_slug_from_permalink,
 } from "@/utils/catalog-url.utils";
 import { resolve_product_image_url } from "@/utils/product-image.utils";
@@ -60,7 +60,9 @@ export function map_product_spec_href(spec_file_url?: string | null): string {
     return "";
   }
 
-  return spec_file_url!.trim();
+  // Cross-origin WP files can't force-download via the `download` attribute —
+  // route through the same-origin proxy which sets Content-Disposition.
+  return `/api/download?url=${encodeURIComponent(spec_file_url!.trim())}`;
 }
 
 export function map_product_certificate_href(certificate_file_url?: string | null): string {
@@ -71,10 +73,7 @@ function format_price(value: unknown): string {
   const numeric = Number(value);
 
   if (Number.isFinite(numeric) && numeric > 0) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(numeric);
+    return format_store_price(numeric);
   }
 
   return "";
@@ -135,6 +134,9 @@ export function map_spec_parts_product_to_table_product(
       ? decodeHtmlEntities(primary_category.name)
       : undefined,
     image: resolve_product_image_url(product.image),
+    gallery: (product.gallery ?? [])
+      .map((url) => resolve_product_image_url(url))
+      .filter((url): url is string => Boolean(url)),
     stock_status: product.stock_status,
     stock_quantity: product.stock_quantity,
   };

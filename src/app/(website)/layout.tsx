@@ -16,14 +16,23 @@ import { getWebsiteShellData } from "@/services/shell-data.service";
 import { warm_catalog_categories_cache } from "@/services/catalog-data.service";
 import { warm_sidebar_categories_cache } from "@/utils/spec-parts.utils";
 import CatalogWarmup from "@/components/providers/CatalogWarmup";
+import CurrencyProvider from "@/components/providers/CurrencyProvider";
+import { fetch_store_currency } from "@/services/currency.service";
 import { get_catalog_listing_path } from "@/utils/catalog-path.utils";
+import { set_store_currency } from "@/utils/currency.utils";
 
 export default async function WebsiteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const shell = await getWebsiteShellData();
+  const [shell, currency] = await Promise.all([
+    getWebsiteShellData(),
+    fetch_store_currency(),
+  ]);
+
+  // Server-side formatter (product tables rendered in RSC).
+  set_store_currency(currency);
   const catalog_listing_path = get_catalog_listing_path(shell.settings?.woocommerce);
   const iso_section = shell.settings?.footer
     ? {
@@ -42,6 +51,8 @@ export default async function WebsiteLayout({
         isoSection={iso_section}
       >
         <CatalogWarmup />
+        {/* Client-side formatter (search/table hooks in the browser). */}
+        <CurrencyProvider currency={currency} />
         <ToasterProvider />
         <CartProvider isLoggedIn={shell.is_logged_in}>
           <Header

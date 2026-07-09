@@ -40,6 +40,7 @@ export default function ForgotPasswordPanel() {
     control,
     handleSubmit,
     reset,
+    setError,
     formState: { errors },
   } = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -59,21 +60,20 @@ export default function ForgotPasswordPanel() {
       });
 
       if (!ok) {
-        throw new Error(
-          data.message || "Password reset instructions could not be sent."
-        );
+        // Show server-side errors inline below the email field.
+        setError("email", {
+          type: "server",
+          message: data.message || "Password reset instructions could not be sent.",
+        });
+        return;
       }
 
       notifySuccess(
         data.message || "Password reset instructions have been sent to your email."
       );
       reset();
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Password reset instructions could not be sent.";
-      notifyError(message);
+    } catch {
+      notifyError("Password reset instructions could not be sent.");
     } finally {
       setIsSubmitting(false);
     }

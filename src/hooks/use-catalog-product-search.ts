@@ -56,11 +56,6 @@ export function useCatalogProductSearch({
   const [tablePage, setTablePage] = useState(currentPage);
   const [tableTotalPages, setTableTotalPages] = useState(totalPages);
   const [isSearching, setIsSearching] = useState(false);
-  const baselineRef = useRef({
-    products,
-    currentPage,
-    totalPages,
-  });
   const requestIdRef = useRef(0);
   const skipInitialFetchRef = useRef(true);
 
@@ -68,33 +63,43 @@ export function useCatalogProductSearch({
     skipInitialFetchRef.current = true;
   }, [pathname, categorySlug, seriesSlug, initialSearch]);
 
-  useEffect(() => {
-    baselineRef.current = {
-      products,
-      currentPage,
-      totalPages,
-    };
+  // Sync the server-provided baseline into table state when the props change
+  // and no client filter is active (adjust state during render, not an effect).
+  const [prevBaseline, setPrevBaseline] = useState({
+    products,
+    currentPage,
+    totalPages,
+  });
+
+  if (
+    prevBaseline.products !== products ||
+    prevBaseline.currentPage !== currentPage ||
+    prevBaseline.totalPages !== totalPages
+  ) {
+    setPrevBaseline({ products, currentPage, totalPages });
 
     if (!filter.trim()) {
       setTableProducts(products);
       setTablePage(currentPage);
       setTableTotalPages(totalPages);
     }
-  }, [products, currentPage, totalPages, filter]);
+  }
 
-  useEffect(() => {
+  // Adopt a new initial search (e.g. from the URL) when it changes.
+  const [prevInitialSearch, setPrevInitialSearch] = useState(initialSearch);
+
+  if (prevInitialSearch !== initialSearch) {
+    setPrevInitialSearch(initialSearch);
     setFilter(initialSearch);
-  }, [initialSearch]);
+  }
 
   const resetToBaseline = useCallback(() => {
-    const baseline = baselineRef.current;
-
-    setTableProducts(baseline.products);
-    setTablePage(baseline.currentPage);
-    setTableTotalPages(baseline.totalPages);
+    setTableProducts(products);
+    setTablePage(currentPage);
+    setTableTotalPages(totalPages);
     setIsSearching(false);
     sync_catalog_search_query(pathname, "");
-  }, [pathname]);
+  }, [products, currentPage, totalPages, pathname]);
 
   const handleFilterChange = useCallback(
     (value: string) => {

@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
 
     let productId = Number(body.product_id) || 0;
     const sku = typeof body.sku === "string" ? body.sku.trim() : "";
-    const quantity = Math.max(1, Number(body.quantity) || 1);
+    const rawQuantity = Number(body.quantity);
+    const quantity = Number.isFinite(rawQuantity)
+      ? Math.min(9999, Math.max(1, Math.trunc(rawQuantity)))
+      : 1;
 
     if (!productId && sku) {
       productId = (await resolveProductIdBySku(sku)) ?? 0;

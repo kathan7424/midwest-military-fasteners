@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
@@ -65,10 +65,16 @@ export default function ProductImage({
   const [resolved_src, set_resolved_src] = useState(() =>
     resolve_image_src(src, categoryImage)
   );
+  const [prev_src, set_prev_src] = useState(src);
+  const [prev_category_image, set_prev_category_image] = useState(categoryImage);
 
-  useEffect(() => {
+  // Re-resolve when the source props change (adjust state during render
+  // instead of an effect) while keeping the onError placeholder fallback.
+  if (prev_src !== src || prev_category_image !== categoryImage) {
+    set_prev_src(src);
+    set_prev_category_image(categoryImage);
     set_resolved_src(resolve_image_src(src, categoryImage));
-  }, [src, categoryImage]);
+  }
 
   const is_placeholder = is_product_placeholder_image(resolved_src);
 

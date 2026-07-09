@@ -21,6 +21,21 @@ import { formatNoticeMessage } from "@/utils/text.utils";
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+// WC Store API rejects unknown keys (additionalProperties: false in WC 9+).
+// billing includes email; shipping never does.
+const WC_BILLING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone","email"] as const;
+const WC_SHIPPING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone"] as const;
+
+function pickWcAddress(
+  addr: Record<string, string>,
+  isBilling: boolean
+): Record<string, string> {
+  const keys = isBilling ? WC_BILLING_KEYS : WC_SHIPPING_KEYS;
+  const out: Record<string, string> = {};
+  for (const k of keys) if (k in addr) out[k] = addr[k] ?? "";
+  return out;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const wpResponse = await fetchStoreCartWithRecovery(request);
@@ -39,6 +54,7 @@ export async function POST(request: NextRequest) {
       payment_method?: string;
       payment_data?: Array<{ key: string; value: string | boolean }>;
       customer_note?: string;
+      create_account?: boolean;
     };
 
     if (!body.billing_address || !body.payment_method) {
@@ -50,17 +66,26 @@ export async function POST(request: NextRequest) {
 
     const bootstrapResponse = await fetchStoreCart(request);
 
+    // WC Store API schema is strict: shipping_address never includes email;
+    // billing_address and shipping_address must only contain WC-known keys.
+    const billingForWc = pickWcAddress(body.billing_address, true);
+    const shippingForWc = pickWcAddress(
+      body.shipping_address ?? body.billing_address,
+      false
+    );
+
     const wpResponse = await fetch(
       `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/checkout`,
       {
         method: "POST",
         headers: buildWcStoreHeaders(request, true, bootstrapResponse),
         body: JSON.stringify({
-          billing_address: body.billing_address,
-          shipping_address: body.shipping_address ?? body.billing_address,
+          billing_address: billingForWc,
+          shipping_address: shippingForWc,
           payment_method: body.payment_method,
           payment_data: body.payment_data ?? [],
-          customer_note: body.customer_note ?? "",
+          customer_note: (body.customer_note ?? "").slice(0, 1000),
+          create_account: body.create_account === true,
         }),
         cache: "no-store",
       }

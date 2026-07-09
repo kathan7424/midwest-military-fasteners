@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Forward the real client IP so WP-side rate limiting doesn't see every
+    // request as coming from this server.
+    const forwardedFor = request.headers.get("x-forwarded-for");
+
     const wpResponse = await fetch(
       `${ENV.WP_SITE_URL}/wp-json/custom/v1/auth/forgot-password`,
       {
@@ -24,6 +28,7 @@ export async function POST(request: NextRequest) {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
         },
         body: JSON.stringify(body),
         cache: "no-store",

@@ -87,6 +87,96 @@ integration is 100% compatible. Nothing custom, nothing non-standard.
 
 ---
 
+## 4b. Net 30 Payment Terms (COD repurposed — per SOW)
+
+**One-time setup:**
+```
+WP Admin → WooCommerce → Settings → Payments → Cash on delivery → Manage
+   Enable : ✔
+   Title  : Net 30 — Purchase Order Terms
+   Description : Payment due within 30 days of invoice.
+   → Save
+```
+
+**Per-customer approval (admin only) — this is the whole workflow:**
+```
+WP Admin → Users → [customer] → Edit
+   → scroll to "Net 30 Payment Terms" section
+   → check "Net 30 eligible" → Update User
+```
+**Fastest way — one-click toggle in the Users list:**
+```
+WP Admin → Users → "Net 30" column → click the button
+   "Disabled"    → click → "✓ Eligible" (green)   — enabled instantly
+   "✓ Eligible"  → click → "Disabled"             — revoked instantly
+```
+No page reload, no profile visit needed. The profile checkbox (above) does the
+same thing — use whichever is convenient.
+
+- To revoke: click the toggle (or uncheck the profile box). The customer stops
+  seeing Net 30 on their very next checkout — no other cleanup needed.
+- **No other WooCommerce settings are involved.** The one-time COD
+  enable/rename above + this per-customer flag is the entire configuration.
+
+**SOW compliance map:**
+| SOW requirement | Where it lives |
+|---|---|
+| Administrative customer approval | Users → Edit → "Net 30 eligible" checkbox (manage_woocommerce only) |
+| Customer-specific Net 30 access | `mmf_net30_eligible` user meta — per account, off by default |
+| Restricted payment method visibility | `woocommerce_available_payment_gateways` filter (`inc/net30.php`) — unflagged customers never receive the gateway, at checkout or via API |
+| Net 30 checkout option for approved accounts | Headless checkout renders the gateway list WooCommerce returns — flagged accounts see "Net 30 — Purchase Order Terms" as a payment choice |
+| COD repurposed & renamed | WC → Settings → Payments → Cash on delivery (Title = "Net 30 — Purchase Order Terms") |
+
+**How it works:**
+- Customers WITHOUT the flag never see Net 30 — not at checkout, not via the
+  API (`woocommerce_available_payment_gateways` filter, theme `inc/net30.php`).
+- Flagged customers see TWO payment options at checkout: Credit Card and
+  Net 30. Choosing Net 30 skips card entry — the order is placed on terms
+  (WC status "Processing", payment method "Net 30 — Purchase Order Terms").
+- Net 30 orders appear in WooCommerce → Orders like any order; mark them
+  paid/completed manually when the invoice is settled.
+
+## 4c. Currency — WooCommerce Is the Source of Truth
+
+Every price the frontend shows follows **WC → Settings → General → Currency
+options** — currency, symbol position, separators, and decimal places. Nothing
+is hardcoded.
+
+| Where prices appear | How they get the WC currency |
+|---|---|
+| Cart / checkout totals | WC Store API returns `currency_code` + formatted totals per request |
+| Product tables / search results | `/custom/v1/checkout/locations` now returns a `currency` block; the layout registers it in `currency.utils.ts` (server + client) and `format_store_price()` formats every price with it |
+| Order history (My Account) | WP formats via `wc_price()` → `mmf_plain_price()` strips tags + decodes entities (fixes the `&#36;` display bug) |
+
+Change the store currency in WC admin → the frontend follows within 5 minutes
+(ISR) — instantly in dev.
+
+## 4d. All WooCommerce Settings the Headless Checkout Follows
+
+Every behavior below reads live WooCommerce options — change it in WP admin
+and the headless frontend follows (5-min ISR in prod, instant in dev). Nothing
+is hardcoded.
+
+| WooCommerce setting (WP admin) | Frontend behavior |
+|---|---|
+| Accounts & Privacy → "Allow customers to place orders without an account" | ON: guests can open /checkout. OFF: /checkout redirects to login (WC standard) |
+| Accounts & Privacy → "Allow customers to log into an existing account during checkout" | Shows the classic "Returning customer? Click here to login" notice for guests |
+| General → "Enable the use of coupon codes" | Shows "Have a coupon?" form at checkout; apply/remove hits WC Store API `apply-coupon`/`remove-coupon`; discount + per-coupon rows appear in the order summary with [Remove] |
+| Customizer → WooCommerce → Checkout → Company / Apartment / Phone field | hidden = field not rendered; optional = rendered; required = rendered + blocks order until filled — in billing AND shipping blocks |
+| General → Currency options (symbol, position, separators, decimals) | All prices site-wide (section 4c) |
+| General → Selling location(s) | Country/state dropdowns at checkout |
+| Tax settings + TaxJar | Totals at cart/checkout per shipping address |
+| Shipping zones & methods | Rate options at checkout |
+| Payments → enabled gateways (+ Net 30 flag) | Payment options per customer |
+
+Coupon plumbing: `/api/cart/coupon` (POST = apply, DELETE = remove) →
+`wc/store/v1/cart/apply-coupon` / `remove-coupon`. Coupon validity, usage
+limits, expiry, minimum spend — all enforced by WooCommerce itself; the
+frontend just displays WC's response.
+
+If WP is unreachable the frontend falls back to WooCommerce core defaults
+(guest checkout on, coupons on, phone required) — never a broken checkout.
+
 ## 5-pre. Temporary Shipping (until Shippo is connected)
 
 No code changes needed — the headless checkout renders whatever methods the
@@ -172,7 +262,8 @@ any CVC — succeeds. `4000 0000 0000 0002` — declines.
 | Variable | Purpose | Example |
 |---|---|---|
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe card field at checkout | `pk_test_...` |
-| `REVALIDATION_SECRET` | WP → Next.js instant cache refresh webhook | long random string |
+| `REVALIDATION_SECRET` | WP → Next.js instant cache refresh webhook (sent via `x-revalidate-secret` header, `?secret=` query still accepted) | long random string |
+| `MMF_PROXY_SECRET` | Value of the `X-MMF-Proxy` header on server-side WP requests (server-only, no `NEXT_PUBLIC` prefix) | long random string |
 | `NEXT_PUBLIC_WP_API` / `NEXT_PUBLIC_WP_SITE_URL` | WordPress endpoints | already configured |
 
 WordPress `wp-config.php` (for instant home-page updates):

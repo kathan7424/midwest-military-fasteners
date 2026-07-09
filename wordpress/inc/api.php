@@ -1,4 +1,12 @@
 <?php
+/**
+ * Custom REST API cache headers and Next.js on-demand revalidation.
+ *
+ * @package midwest-military
+ */
+
+defined( 'ABSPATH' ) || exit;
+
 define( 'MMF_HOME_PAGE_SLUG', 'home-page' );
 
 // ── Cache-Control for all custom/v1 endpoints ─────────────────────────────
@@ -88,12 +96,17 @@ function mmf_notify_nextjs_revalidate( int $post_id, WP_Post $post ): void {
 	// Home page ACF content changed — revalidate the "/" route and "home-page" tag.
 	if ( MMF_HOME_PAGE_SLUG === $post->post_name ) {
 		foreach ( array( 'home-page' ) as $tag ) {
+			// Secret travels in a header (preferred) and the query param (back-compat).
 			wp_remote_post(
 				add_query_arg(
 					array( 'secret' => $secret, 'tag' => $tag ),
 					trailingslashit( $nextjs_url ) . 'api/revalidate'
 				),
-				array( 'timeout' => 2, 'blocking' => false )
+				array(
+					'timeout'  => 2,
+					'blocking' => false,
+					'headers'  => array( 'x-revalidate-secret' => $secret ),
+				)
 			);
 		}
 	}
@@ -178,11 +191,23 @@ add_action( 'rest_api_init', function () {
 
 } );
 
+// Cache key for checkout locations — bump suffix when response shape changes.
+define( 'MMF_LOCATIONS_CACHE_KEY', 'mmf_checkout_locations_v3' );
+define( 'MMF_LOCATIONS_CACHE_TTL', 5 * MINUTE_IN_SECONDS );
+
+// Clear cached locations whenever any WooCommerce settings tab is saved.
+add_action( 'woocommerce_settings_saved', 'mmf_clear_checkout_locations_cache' );
+function mmf_clear_checkout_locations_cache(): void {
+	delete_transient( MMF_LOCATIONS_CACHE_KEY );
+}
+
 /**
  * Allowed countries + states for checkout dropdowns.
  *
- * Sourced from WooCommerce settings (selling locations) — same data the
- * classic WC checkout renders. Endpoint: GET /custom/v1/checkout/locations
+ * WP-side 5-minute transient cache so ISR misses on the Next.js side still
+ * return quickly. Cache is busted automatically on every WC settings save.
+ *
+ * Endpoint: GET /custom/v1/checkout/locations
  *
  * @return WP_REST_Response|WP_Error
  */
@@ -191,45 +216,97 @@ function mmf_get_checkout_locations() {
 		return new WP_Error( 'wc_unavailable', 'WooCommerce unavailable', array( 'status' => 500 ) );
 	}
 
+	$cached = get_transient( MMF_LOCATIONS_CACHE_KEY );
+	if ( false !== $cached && is_array( $cached ) ) {
+		return rest_ensure_response( $cached );
+	}
+
 	$countries_obj = WC()->countries;
 	$allowed       = $countries_obj->get_allowed_countries();
 	$all_states    = $countries_obj->get_allowed_country_states();
 
-	$countries = array();
+	// WC → General → "Shipping location(s)" — may differ from selling locations.
+	$shipping_allowed    = $countries_obj->get_shipping_countries();
+	$shipping_states_raw = $countries_obj->get_shipping_country_states();
 
-	foreach ( $allowed as $code => $name ) {
-		$countries[] = array(
-			'code' => (string) $code,
-			'name' => html_entity_decode( (string) $name ),
-		);
-	}
-
-	$states = array();
-
-	foreach ( $all_states as $country_code => $country_states ) {
-		if ( empty( $country_states ) || ! is_array( $country_states ) ) {
-			continue;
-		}
-
-		$state_list = array();
-
-		foreach ( $country_states as $state_code => $state_name ) {
-			$state_list[] = array(
-				'code' => (string) $state_code,
-				'name' => html_entity_decode( (string) $state_name ),
+	$format_countries = static function ( array $list ): array {
+		$out = array();
+		foreach ( $list as $code => $name ) {
+			$out[] = array(
+				'code' => (string) $code,
+				'name' => html_entity_decode( (string) $name ),
 			);
 		}
+		return $out;
+	};
 
-		$states[ (string) $country_code ] = $state_list;
-	}
+	$format_states = static function ( array $map ): array {
+		$out = array();
+		foreach ( $map as $country_code => $country_states ) {
+			if ( empty( $country_states ) || ! is_array( $country_states ) ) {
+				continue;
+			}
+			$state_list = array();
+			foreach ( $country_states as $state_code => $state_name ) {
+				$state_list[] = array(
+					'code' => (string) $state_code,
+					'name' => html_entity_decode( (string) $state_name ),
+				);
+			}
+			$out[ (string) $country_code ] = $state_list;
+		}
+		return $out;
+	};
 
-	return rest_ensure_response(
-		array(
-			'default_country' => (string) $countries_obj->get_base_country(),
-			'countries'       => $countries,
-			'states'          => $states,
-		)
+	$countries          = $format_countries( $allowed );
+	$states             = $format_states( $all_states );
+	$shipping_countries = $format_countries( $shipping_allowed );
+	$shipping_states    = $format_states( $shipping_states_raw );
+
+	$data = array(
+		'default_country'    => (string) $countries_obj->get_base_country(),
+		'countries'          => $countries,
+		'states'             => $states,
+		// WC → General → Shipping location(s) — used by the
+		// "Ship to a different address?" form.
+		'shipping_countries' => $shipping_countries,
+		'shipping_states'    => $shipping_states,
+		// WC → Settings → General → Currency options (source of truth).
+		'currency'           => array(
+			'code'               => get_woocommerce_currency(),
+			'symbol'             => html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ),
+			'position'           => get_option( 'woocommerce_currency_pos', 'left' ),
+			'decimal_separator'  => wc_get_price_decimal_separator(),
+			'thousand_separator' => wc_get_price_thousand_separator(),
+			'decimals'           => wc_get_price_decimals(),
+		),
+		// WC checkout + account settings — mirrors WP admin changes.
+		'checkout'           => array(
+			// Accounts & Privacy → "Allow customers to place orders without an account".
+			'guest_checkout'       => 'yes' === get_option( 'woocommerce_enable_guest_checkout', 'yes' ),
+			// Accounts & Privacy → "Allow customers to log into an existing account during checkout".
+			'login_reminder'       => 'yes' === get_option( 'woocommerce_enable_checkout_login_reminder', 'yes' ),
+			// Accounts & Privacy → "Allow customers to create an account during checkout".
+			'signup_enabled'       => 'yes' === get_option( 'woocommerce_enable_signup_and_login_from_checkout', 'no' ),
+			// Accounts & Privacy → Account creation → "On My account page".
+			// Controls whether a Register link / form is shown at the login page.
+			'registration_enabled' => 'yes' === get_option( 'woocommerce_enable_myaccount_registration', 'yes' ),
+			// General → "Enable the use of coupon codes".
+			'coupons_enabled'      => wc_coupons_enabled(),
+			// General → "Enable the use of order notes".
+			'order_notes_enabled'  => 'yes' === get_option( 'woocommerce_enable_order_comments', 'yes' ),
+			// Appearance → Customize → WooCommerce → Checkout field visibility.
+			'fields'               => array(
+				'company'   => get_option( 'woocommerce_checkout_company_field', 'optional' ),
+				'address_2' => get_option( 'woocommerce_checkout_address_2_field', 'optional' ),
+				'phone'     => get_option( 'woocommerce_checkout_phone_field', 'required' ),
+			),
+		),
 	);
+
+	set_transient( MMF_LOCATIONS_CACHE_KEY, $data, MMF_LOCATIONS_CACHE_TTL );
+
+	return rest_ensure_response( $data );
 }
 
 require_once get_template_directory() . '/inc/cart.php';

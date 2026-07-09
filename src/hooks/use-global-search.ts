@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SearchSuggestion } from "@/types/hero.types";
 import { SearchApiResponse } from "@/types/search.types";
@@ -55,14 +55,28 @@ export interface UseGlobalSearchOptions {
   scope?: "global" | "catalog";
 }
 
-export function useGlobalSearch(options: UseGlobalSearchOptions = {}) {
+export function useGlobalSearch<T extends HTMLElement = HTMLDivElement>(
+  options: UseGlobalSearchOptions = {}
+) {
   const scope = options.scope ?? "global";
-  const [query, setQuery] = useState("");
+  const [query, setQueryState] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<T>(null);
   const latestQueryRef = useRef("");
+
+  // Short queries never show results — reset in the event handler rather
+  // than in the debounce effect so the effect never sets state synchronously.
+  const setQuery = useCallback((value: string) => {
+    setQueryState(value);
+
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setIsLoading(false);
+      setIsOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,9 +100,6 @@ export function useGlobalSearch(options: UseGlobalSearchOptions = {}) {
     latestQueryRef.current = trimmed;
 
     if (trimmed.length < 2) {
-      setSuggestions([]);
-      setIsLoading(false);
-      setIsOpen(false);
       return;
     }
 
@@ -137,7 +148,7 @@ export function useGlobalSearch(options: UseGlobalSearchOptions = {}) {
 
   const clearSearch = () => {
     latestQueryRef.current = "";
-    setQuery("");
+    setQueryState("");
     setSuggestions([]);
     setIsLoading(false);
     setIsOpen(false);

@@ -48,6 +48,9 @@ export const config = {
     "/register",
     "/forgot-password",
     "/my-account/:path*",
-    "/cart/:path*",
+    // /cart is intentionally NOT protected here — WooCommerce always allows
+    // guests to view their cart. Checkout guest access is controlled by the
+    // WC "Allow customers to place orders without an account" setting and
+    // enforced in checkout/page.tsx, not in middleware.
   ],
 };

@@ -331,6 +331,7 @@ require_once get_template_directory() . '/inc/cart.php';
 require_once get_template_directory() . '/inc/tax-exemption.php';
 require_once get_template_directory() . '/inc/tax-exemption-admin.php';
 require_once get_template_directory() . '/inc/order-documents.php';
+require_once get_template_directory() . '/inc/net30.php';
 
 
 // ============================================================
@@ -634,3 +635,9 @@ function specparts_cart_count() {
 }
 
 add_filter('document_title_separator', function () { return '|'; });
+
+
+function gf_current_year_shortcode() {
+return date('Y');
+}
+add_shortcode('current_year', 'gf_current_year_shortcode');

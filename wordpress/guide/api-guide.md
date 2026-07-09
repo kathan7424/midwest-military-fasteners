@@ -107,3 +107,8 @@ All routes gated by `mmf_cart_permission`. Inputs sanitized (`absint` / `sanitiz
 3. All `$wpdb` queries use `prepare()`.
 4. Mutating endpoints require login (cart) or capability + nonce (admin import).
 5. Auth endpoints return uniform messages — no account-existence oracles.
+6. Tax exemption certificates are **private** attachments (`post_status: private`) — never linked by raw media URL. All views/downloads go through the gated `admin-post.php?action=mmf_tax_cert_download` handler (login + owner-or-`manage_woocommerce` + 14-day HMAC token). `certificate_url` in API responses is the gated URL.
+7. Certificate uploads (REST + registration) are validated server-side: PDF/JPG/PNG/DOC/DOCX only, max 5MB.
+8. The headless proxy header `X-MMF-Proxy` must match `MMF_PROXY_SECRET` (wp-config.php) via `hash_equals()`; legacy value `"1"` is accepted until the constant is defined — set it, plus the matching Next.js env value.
+9. One-click approve/reject email links carry an HMAC-covered `expires` timestamp (14 days) and are rejected after expiry.
+10. The Next.js revalidation webhook sends the secret as the `x-revalidate-secret` header (query param kept for back-compat).

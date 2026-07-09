@@ -21,6 +21,7 @@ type Props = {
     order_id?: string;
     total?: string;
     email?: string;
+    method?: string;
   }>;
 };
 
@@ -31,6 +32,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const order_id = params.order_id?.replace(/\D/g, "") ?? "";
   const total = params.total?.trim() ?? "";
   const email = params.email?.trim() ?? "";
+  const payment_label =
+    params.method === "net30" ? "Net 30 — Purchase Order" : "Credit Card (Stripe)";
   const order_date = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -84,7 +87,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
             Payment method
           </span>
           <span className="block text-link font-bold text-near-black">
-            Credit Card (Stripe)
+            {payment_label}
           </span>
         </li>
       </ul>

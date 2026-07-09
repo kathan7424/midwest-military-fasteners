@@ -54,9 +54,8 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
                   alt={iso_logo!.alt || "ISO certification logo"}
                   width={164}
                   height={144}
-                  className="h-auto w-[164px]"
+                  className="h-auto w-auto max-w-[164px]"
                   priority
-                  style={{ width: "auto", height: "auto" }}
                 />
               </div>
             ) : null}

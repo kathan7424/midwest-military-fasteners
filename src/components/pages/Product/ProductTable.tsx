@@ -41,6 +41,7 @@ export interface Product {
   parentCategorySlug?: string;
   categoryLabel?: string;
   image?: string;
+  gallery?: string[];
   stock_status?: string;
   stock_quantity?: number | null;
 }
@@ -169,8 +170,7 @@ export const productColumns: ColumnDef<Product>[] = [
       return (
         <a
           href={specHref}
-          target="_blank"
-          rel="noopener noreferrer"
+          download
           className="inline-flex items-center justify-center gap-1.5 font-condensed text-sm font-bold uppercase text-amber hover:underline"
         >
           <Download className="size-4" />

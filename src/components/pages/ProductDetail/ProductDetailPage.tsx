@@ -13,8 +13,8 @@ import { Filter } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar/Sidebar";
 import Breadcrumb from "@/components/shared_Ui/Breadcrumb";
 import IsoSection from "@/components/shared_Ui/IsoSection";
-import ProductImage from "@/components/shared_Ui/ProductImage";
 import QtyAddToOrder from "@/components/shared_Ui/QtyAddToOrder";
+import ProductGallery from "./ProductGallery";
 import type { SidebarCategory } from "@/components/layout/Sidebar/types";
 import type { Product } from "@/components/pages/Product/ProductTable";
 import ProductSpecTable from "./ProductSpecTable";
@@ -109,7 +109,9 @@ export default function ProductDetailPage({
 
           {/* Title + description */}
           <h1 className="mb-4 text-h2 font-bold uppercase leading-heading text-near-black">
-            <span className="text-mid-gray">Part</span>{" "}
+            <span className="font-normal text-mid-gray">
+              {product.categoryLabel ?? product.seriesLabel ?? "Part"}
+            </span>{" "}
             {product.partNumber}
           </h1>
 
@@ -120,11 +122,10 @@ export default function ProductDetailPage({
           {/* Image + spec table */}
           <div className="flex flex-col gap-5 xl:gap-[130px] lg:flex-row lg:items-start max-w-auto xl:max-w-[1000px]">
             <div className="lg:w-[290px] xl:w-auto">
-              <ProductImage
-                src={product.image}
+              <ProductGallery
+                image={product.image}
+                gallery={product.gallery}
                 alt={product.partNumber}
-                fill
-                containerClassName="h-[140px] w-[280px] xl:h-[199px] xl:w-[298px]"
               />
 
               <QtyAddToOrder

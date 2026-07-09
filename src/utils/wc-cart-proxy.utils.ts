@@ -63,8 +63,17 @@ interface StoreCartTotals {
   total_price: string;
   total_shipping?: string;
   total_tax?: string;
+  total_discount?: string;
   currency_code?: string;
   currency_minor_unit?: number;
+}
+
+interface StoreCartCoupon {
+  code: string;
+  totals?: {
+    total_discount?: string;
+    currency_minor_unit?: number;
+  };
 }
 
 interface StoreShippingRate {
@@ -91,6 +100,8 @@ export interface StoreCartResponse {
   shipping_rates?: StoreShippingPackage[];
   shipping_address?: Partial<CheckoutAddress>;
   billing_address?: Partial<CheckoutAddress>;
+  payment_methods?: string[];
+  coupons?: StoreCartCoupon[];
 }
 
 function getHeaderValue(response: Response, name: string): string | null {
@@ -219,17 +230,33 @@ export function mapStoreCartToCheckoutState(
     })
   );
 
+  const discountRaw = Number(storeCart.totals.total_discount ?? "0");
+
   return {
     totals: {
       subtotal: formatMinorUnits(storeCart.totals.total_items, minorUnit, currency),
       shipping_total: formatMinorUnits(storeCart.totals.total_shipping ?? "0", minorUnit, currency),
       tax_total: formatMinorUnits(storeCart.totals.total_tax ?? "0", minorUnit, currency),
+      discount_total:
+        discountRaw > 0
+          ? formatMinorUnits(storeCart.totals.total_discount ?? "0", minorUnit, currency)
+          : "",
       total: formatMinorUnits(storeCart.totals.total_price, minorUnit, currency),
     },
     shipping_packages,
     needs_shipping: Boolean(storeCart.needs_shipping ?? shipping_packages.length > 0),
     shipping_address: storeCart.shipping_address ?? {},
     billing_address: storeCart.billing_address ?? {},
+    // WooCommerce decides per customer (e.g. Net 30/cod only for flagged accounts).
+    payment_methods: storeCart.payment_methods ?? [],
+    coupons: (storeCart.coupons ?? []).map((coupon) => ({
+      code: coupon.code,
+      discount: formatMinorUnits(
+        coupon.totals?.total_discount ?? "0",
+        coupon.totals?.currency_minor_unit ?? minorUnit,
+        currency
+      ),
+    })),
   };
 }
 
@@ -249,10 +276,13 @@ export async function buildCheckoutCartStateResponse(
     const message = formatNoticeMessage(
       raw && "message" in raw && raw.message ? raw.message : "Cart request failed."
     );
+    // When WP returns a PHP fatal (HTML body, status 200), raw is null.
+    // Force a 503 so response.ok is false on the client — avoids silent failures.
+    const status = !raw ? 503 : wpResponse.status || 500;
 
     return NextResponse.json(
       { message, code: raw && "code" in raw ? raw.code : undefined },
-      { status: wpResponse.status || 500 }
+      { status }
     );
   }
 
@@ -340,13 +370,14 @@ export async function buildStoreCartResponse(
         ? raw.message
         : "Cart request failed."
     );
+    const status = !raw ? 503 : wpResponse.status || 500;
 
     return NextResponse.json(
       {
         message,
         code: raw && "code" in raw ? raw.code : undefined,
       },
-      { status: wpResponse.status || 500 }
+      { status }
     );
   }
 
@@ -380,13 +411,14 @@ export async function buildStoreCartMutationResponse(
         ? raw.message
         : "Cart request failed."
     );
+    const status = !raw ? 503 : wpResponse.status || 500;
 
     return NextResponse.json(
       {
         message,
         code: raw && "code" in raw ? raw.code : undefined,
       },
-      { status: wpResponse.status || 500 }
+      { status }
     );
   }
 

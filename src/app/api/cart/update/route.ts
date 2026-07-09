@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
       quantity?: number;
     };
     const cartItemKey = body.cart_item_key?.trim();
-    const quantity = Math.max(1, Number(body.quantity) || 1);
+    const rawQuantity = Number(body.quantity);
+    const quantity = Number.isFinite(rawQuantity)
+      ? Math.min(9999, Math.max(1, Math.trunc(rawQuantity)))
+      : 1;
 
     if (!cartItemKey) {
       return Response.json(

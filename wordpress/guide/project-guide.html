@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midwest Military Fasteners — Project Guide</title>
+<style>
+  :root {
+    --navy: #1a3659; --blue: #1a56db; --amber: #d9a521; --gold: #f6c90e;
+    --ink: #1d2327; --gray: #50575e; --light: #e5e7eb; --bg: #f6f7f9;
+    --green: #2e7d32; --red: #b81c23; --card: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
+  header.hero { background: var(--navy); color: #fff; padding: 40px 20px; margin-bottom: 32px; }
+  .hero-inner { max-width: 1080px; margin: 0 auto; }
+  .hero h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { color: #a8bdd4; margin-top: 6px; font-size: 14px; }
+  nav.toc { background: var(--card); border: 1px solid var(--light); padding: 16px 20px; margin-bottom: 28px; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+  nav.toc a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  nav.toc a:hover { color: var(--amber); }
+  section { margin-bottom: 40px; }
+  h2 { font-size: 19px; text-transform: uppercase; color: var(--navy); border-left: 4px solid var(--gold); padding-left: 12px; margin-bottom: 16px; }
+  h3 { font-size: 15px; color: var(--navy); margin: 18px 0 8px; }
+  p.lead { color: var(--gray); margin-bottom: 14px; font-size: 14.5px; }
+  .card { background: var(--card); border: 1px solid var(--light); padding: 18px 20px; margin-bottom: 14px; }
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--card); }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 9px 12px; text-transform: uppercase; font-size: 12px; letter-spacing: .4px; }
+  td { padding: 9px 12px; border-top: 1px solid var(--light); vertical-align: top; }
+  code { background: #eef1f5; padding: 1px 6px; font-size: 12.5px; border-radius: 3px; font-family: Consolas, Menlo, monospace; }
+  pre.flow { background: var(--navy); color: #dbe6f3; padding: 18px 20px; overflow-x: auto; font-size: 12.5px; font-family: Consolas, Menlo, monospace; line-height: 1.7; }
+  pre.flow b { color: var(--gold); font-weight: 700; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; letter-spacing: .3px; }
+  .badge.done { background: #e5f5e8; color: var(--green); }
+  .badge.pending { background: #fdf3e0; color: #9a6700; }
+  .badge.sec { background: #fbeaea; color: var(--red); }
+  .feature { border-left: 3px solid var(--gold); }
+  .feature h3 { margin-top: 0; }
+  .feature p { font-size: 13.5px; color: var(--gray); }
+  ul.clean { list-style: none; font-size: 13.5px; }
+  ul.clean li { padding: 4px 0 4px 18px; position: relative; }
+  ul.clean li::before { content: "▸"; color: var(--amber); position: absolute; left: 0; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .pill { background: #eef6fb; border: 1px solid #c9dcea; color: var(--navy); font-size: 12px; padding: 3px 10px; border-radius: 12px; }
+  footer { text-align: center; color: var(--gray); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <h1>Midwest Military <span>Fasteners</span> — Project Guide</h1>
+    <p>Headless WooCommerce ecommerce · Next.js 16 + WordPress · Updated 2026-07-09</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <a href="#arch">Architecture</a>
+  <a href="#features">Features</a>
+  <a href="#flows">Key Flows</a>
+  <a href="#structure">Code Structure</a>
+  <a href="#settings">WC Settings → Frontend</a>
+  <a href="#security">Security</a>
+  <a href="#guides">All Guides</a>
+  <a href="#deploy">Deploy</a>
+</nav>
+
+<section id="arch">
+  <h2>Architecture</h2>
+  <p class="lead">The browser only ever talks to Next.js. WordPress/WooCommerce is the single source of truth for products, pricing, tax, stock, orders and every setting. Stripe and TaxJar plug into WooCommerce exactly as they would on a classic store.</p>
+  <pre class="flow">
+Browser (React UI, Stripe Elements iframes)
+   │  HTTPS only — WP cookies are HttpOnly, never visible to JS
+   ▼
+<b>Next.js 16</b>  /api/* proxy routes · RSC + ISR pages · security headers
+   │  forwards WP session cookies + X-MMF-Proxy shared secret
+   ▼
+<b>WordPress / WooCommerce</b> (Pantheon)
+   ├── WC Store API  → cart · checkout · coupons · shipping · gateways
+   ├── custom/v1     → auth · tax-exemption · orders · settings · search
+   ├── Stripe Gateway (UPE deferred intent — card charged server-side)
+   ├── TaxJar        → rooftop-accurate sales tax (needs full address)
+   └── Shippo        → labels + tracking (pending client credentials)</pre>
+</section>
+
+<section id="features">
+  <h2>Features Built</h2>
+  <div class="grid cols-2">
+    <div class="card feature">
+      <h3>Headless Checkout <span class="badge done">Done</span></h3>
+      <p>WC Store API checkout: address → live shipping rates → tax → Stripe split card fields (number/expiry/CVC) with on-submit validation → 3DS support → WC-style success page. Guest checkout, login notice, coupons and field visibility all follow WC admin settings.</p>
+    </div>
+    <div class="card feature">
+      <h3>Tax Exemption Module <span class="badge done">Done</span></h3>
+      <p>Certificate upload (register + inline banner), pending/approved/rejected/expiring/expired states, admin one-click email approval (HMAC, 14-day expiry), branded customer emails, daily expiry-reminder cron, TaxJar $0 tax for approved customers. Certificates stored <b>private</b> with owner-gated downloads.</p>
+    </div>
+    <div class="card feature">
+      <h3>Net 30 Terms <span class="badge done">Done</span></h3>
+      <p>COD gateway repurposed per SOW. Per-customer flag — Users-list one-click AJAX toggle + profile checkbox. Server-side gateway filter: unflagged customers never see it, even via API. Checkout skips card entry for Net 30.</p>
+    </div>
+    <div class="card feature">
+      <h3>My Account (Figma) <span class="badge done">Done</span></h3>
+      <p>Sidebar layout: Orders (expandable rows, certificate downloads), Certifications, Spec Sheets, Addresses (WC customer data), Payment Methods, Account Details, Documents, Logout.</p>
+    </div>
+    <div class="card feature">
+      <h3>Product Catalog + Docs <span class="badge done">Done</span></h3>
+      <p>Spec-parts catalog (1,900+ SKUs via CSV import), package pricing tiers, spec sheets + certificates per product, post-purchase document downloads pinned to order line items.</p>
+    </div>
+    <div class="card feature">
+      <h3>Shippo Integration <span class="badge pending">Pending client</span></h3>
+      <p>Checkout renders whatever the shipping zones return — temporary flat/free rates now; Shippo live rates drop in with zero frontend changes. Client needs: account, ship-from address, carrier accounts, box sizes, pricing policy.</p>
+    </div>
+  </div>
+</section>
+
+<section id="flows">
+  <h2>Key Flows</h2>
+  <div class="card">
+    <h3>Order placement</h3>
+    <pre class="flow">address complete → <b>debounced 800ms</b> → update-customer → rates + tax refresh
+card fields valid → createPaymentMethod (browser ↔ Stripe direct)
+→ POST /wc/store/v1/checkout {payment_data: wc-stripe keys}
+→ [3DS? confirmCardPayment in browser] → order created → /checkout/success
+emails: deferred to wp-cron (fixes the old 504 timeout)</pre>
+  </div>
+  <div class="card">
+    <h3>Tax exemption lifecycle</h3>
+    <pre class="flow">upload (register / banner) → status: <b>pending</b> → async admin email
+admin APPROVE (email HMAC link · dashboard · profile) → status: <b>approved</b>
+→ customer email → checkout tax = $0 while expiry valid
+expiry −30d: reminder email → expired: banner + re-upload → cycle repeats</pre>
+  </div>
+</section>
+
+<section id="structure">
+  <h2>Code Structure</h2>
+  <div class="grid cols-2">
+    <div class="card">
+      <h3>Next.js — <code>src/</code></h3>
+      <table>
+        <tr><td><code>app/(website)/</code></td><td>Pages (RSC + ISR)</td></tr>
+        <tr><td><code>app/api/</code></td><td>Proxy routes (auth, cart, checkout, orders, account, tax-exemption, search, revalidate)</td></tr>
+        <tr><td><code>components/pages/</code></td><td>Page-level UI (Checkout, Account, Cart, Auth, Product)</td></tr>
+        <tr><td><code>components/application|base/</code></td><td>Untitled UI component library</td></tr>
+        <tr><td><code>services/</code></td><td>Data fetching (server + client wrappers)</td></tr>
+        <tr><td><code>utils/</code></td><td>auth-proxy, wc-cart-proxy, currency, spec-parts mappers</td></tr>
+        <tr><td><code>stores/</code></td><td>Zustand (cart)</td></tr>
+        <tr><td><code>types/ · config/</code></td><td>Shared types · routes/env constants</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>WordPress — <code>wordpress/</code></h3>
+      <table>
+        <tr><td><code>functions.php</code></td><td>Bootstrap + email deferral</td></tr>
+        <tr><td><code>inc/auth.php</code></td><td>Login/register REST, headless cookie auth, GF integration</td></tr>
+        <tr><td><code>inc/tax-exemption*.php</code></td><td>Cert module + admin dashboard + list table</td></tr>
+        <tr><td><code>inc/net30.php</code></td><td>Net 30 gateway filter + admin toggles</td></tr>
+        <tr><td><code>inc/order-documents.php</code></td><td>Order history + doc downloads</td></tr>
+        <tr><td><code>inc/api.php</code></td><td>Settings/search/menu endpoints + ISR webhook</td></tr>
+        <tr><td><code>inc/cart.php</code></td><td>Cart helpers</td></tr>
+        <tr><td><code>guide/</code></td><td>All project documentation (this file)</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Code conventions</h3>
+    <ul class="clean">
+      <li>No inline CSS (<code>style=</code>) — Tailwind classes only; sole exception: runtime-computed values (progress %, measured offsets)</li>
+      <li>No hardcoded money/currency — <code>format_store_price()</code> (frontend) / <code>mmf_plain_price()</code> (WP) read WC settings</li>
+      <li>Every file has the header comment block (name, description, developer, dates)</li>
+      <li>Pre-commit: <code>npx tsc --noEmit</code> · <code>npx next lint</code> · <code>php -l</code> — all must pass clean</li>
+    </ul>
+  </div>
+</section>
+
+<section id="settings">
+  <h2>WooCommerce Settings → Frontend (all dynamic)</h2>
+  <p class="lead">Change any of these in WP admin and the storefront follows — 5-minute ISR in production, instant in dev. Nothing is hardcoded.</p>
+  <table>
+    <tr><th>WooCommerce setting</th><th>Frontend effect</th></tr>
+    <tr><td>General → Currency options</td><td>Symbol, position, separators, decimals — every price site-wide</td></tr>
+    <tr><td>General → Selling location(s)</td><td>Checkout country/state dropdowns</td></tr>
+    <tr><td>General → Enable coupons</td><td>"Have a coupon?" form + discount rows</td></tr>
+    <tr><td>Accounts &amp; Privacy → guest checkout</td><td>Guest access to /checkout vs login redirect</td></tr>
+    <tr><td>Accounts &amp; Privacy → login during checkout</td><td>"Returning customer?" notice</td></tr>
+    <tr><td>Customizer → checkout fields</td><td>Company / Apartment / Phone: hidden · optional · required</td></tr>
+    <tr><td>Shipping zones &amp; methods</td><td>Rate options at checkout</td></tr>
+    <tr><td>Payments → gateways (+ Net 30 flag)</td><td>Payment options per customer</td></tr>
+    <tr><td>Tax + TaxJar</td><td>Cart/checkout totals per shipping address</td></tr>
+  </table>
+</section>
+
+<section id="security">
+  <h2>Security <span class="badge sec">audited 2026-07-09</span></h2>
+  <p class="lead">Full two-sided audit (Next.js + WordPress) completed; every High and Medium finding fixed. Details in <code>security-guide.md</code>.</p>
+  <div class="grid cols-3">
+    <div class="card"><h3>Sessions</h3><ul class="clean"><li>HttpOnly + Secure + SameSite cookies</li><li>Proxy shared secret (<code>MMF_PROXY_SECRET</code>)</li><li>Open-redirect blocked</li></ul></div>
+    <div class="card"><h3>Data</h3><ul class="clean"><li>Tax certs private + owner-gated</li><li>No IDOR — all endpoints scoped to current user</li><li>Card data never touches our servers (PCI SAQ-A)</li></ul></div>
+    <div class="card"><h3>Hardening</h3><ul class="clean"><li>Input caps on every route</li><li>Nonce + capability on all admin actions</li><li>HMAC + expiry on email action links</li><li>HSTS / XFO / nosniff headers</li></ul></div>
+  </div>
+</section>
+
+<section id="guides">
+  <h2>All Guides (this folder)</h2>
+  <table>
+    <tr><th>File</th><th>For</th><th>Contents</th></tr>
+    <tr><td><code>project-guide.html</code></td><td>Everyone</td><td>This overview</td></tr>
+    <tr><td><code>security-guide.md</code></td><td>Developers</td><td>Every security rule + per-PR checklist + secrets inventory</td></tr>
+    <tr><td><code>test-cases.md</code></td><td>QA + devs</td><td>60+ test cases by module with acceptance criteria</td></tr>
+    <tr><td><code>qa-guide.md</code></td><td>QA person</td><td>Env, test data, golden path, gotchas, bug format</td></tr>
+    <tr><td><code>shipping-payments-guide.md</code></td><td>Devs + admin</td><td>Checkout/Stripe/Shippo/Net 30/currency/WC settings</td></tr>
+    <tr><td><code>api-guide.md</code></td><td>Developers</td><td>Endpoint reference + security invariants</td></tr>
+    <tr><td><code>import-guide.md/.html</code></td><td>Admin/client</td><td>Product CSV import</td></tr>
+  </table>
+</section>
+
+<section id="deploy">
+  <h2>Deploy Checklist</h2>
+  <div class="card">
+    <ul class="clean">
+      <li>Push all <code>wordpress/inc/*.php</code> + <code>functions.php</code> to Pantheon</li>
+      <li><code>wp-config.php</code>: <code>define( 'MMF_PROXY_SECRET', '&lt;long random&gt;' );</code> + same value in Next.js env <code>MMF_PROXY_SECRET</code></li>
+      <li>Next.js env: <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> (live: pk_live), <code>REVALIDATION_SECRET</code></li>
+      <li>WC one-time: COD gateway enable + rename "Net 30 — Purchase Order Terms"</li>
+      <li>WC shipping zones: single US zone with flat/free (until Shippo)</li>
+      <li>Run the QA golden path (qa-guide.md §4) after every deploy</li>
+    </ul>
+  </div>
+</section>
+
+<footer>Midwest Military Fasteners · internal project documentation · keep this file updated with every feature change</footer>
+
+</div>
+</body>
+</html>

@@ -8,7 +8,7 @@
  * Last Modified: 2026-07-07
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,6 +22,8 @@ import {
 
 import { MenuItem } from "@/types/menu.types";
 import { normalizeTel, normalizeWpUrl } from "@/utils/url.utils";
+
+const emptySubscribe = () => () => {};
 
 interface NavLinkProps {
   href: string;
@@ -54,20 +56,24 @@ export default function MobileMenu({
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
   const [menuTop, setMenuTop] = useState(0);
-  const [mounted, setMounted] = useState(false);
+  // true after hydration on the client, false during SSR — without an effect.
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Close the menu on navigation (adjust state during render instead of an effect).
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setOpen(false);
+  }
 
   const closeMenu = () => setOpen(false);
   const hasContact = Boolean(phone || email);
   const hasAuthButtons = showRegister || showLogin;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const handlePageShow = () => {

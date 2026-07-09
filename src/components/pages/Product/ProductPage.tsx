@@ -153,8 +153,6 @@ export default function ProductPage({
 
     tableTotalPages,
 
-    isSearching,
-
     isPendingSearch,
 
   } = useCatalogProductSearch({

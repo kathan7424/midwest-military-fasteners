@@ -43,7 +43,16 @@ export default function LoginPanel() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const redirectTo = searchParams.get("redirect") || "/";
+
+  // Only allow same-origin paths — "//evil.com" and "/\evil.com" are treated
+  // as protocol-relative URLs by browsers and would redirect off-site.
+  const rawRedirect = searchParams.get("redirect") || "/";
+  const redirectTo =
+    rawRedirect.startsWith("/") &&
+    !rawRedirect.startsWith("//") &&
+    !rawRedirect.startsWith("/\\")
+      ? rawRedirect
+      : "/";
 
   const {
     control,
@@ -80,7 +89,7 @@ export default function LoginPanel() {
         "there";
 
       notifySuccess(`Welcome back, ${user_name}!`);
-      router.push(redirectTo.startsWith("/") ? redirectTo : "/");
+      router.push(redirectTo);
       router.refresh();
     } catch (error) {
       const message =

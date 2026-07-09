@@ -9,7 +9,6 @@ import type { BreadcrumbItem } from "@/components/shared_Ui/Breadcrumb";
 import type { SidebarCategory } from "@/components/layout/Sidebar/types";
 import type { SpecPartsCategoryTerm } from "@/types/spec-parts.types";
 import { decodeHtmlEntities } from "@/utils/text.utils";
-import { build_product_category_path } from "@/utils/catalog-url.utils";
 import { resolve_category_hero_image } from "@/utils/product-image.utils";
 
 export function flatten_spec_parts_categories(

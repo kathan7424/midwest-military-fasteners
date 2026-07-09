@@ -56,8 +56,7 @@ export default function ProductSpecTable({ product }: ProductSpecTableProps) {
             <td className="px-2 sm:px-4 py-3 align-top">
               <a
                 href={product.specHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                download
                 className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
               >
                 <Download className="size-4" />
@@ -73,8 +72,7 @@ export default function ProductSpecTable({ product }: ProductSpecTableProps) {
             <td className="px-2 sm:px-4 py-3 align-top">
               <a
                 href={product.certHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                download
                 className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
               >
                 <Download className="size-4" />

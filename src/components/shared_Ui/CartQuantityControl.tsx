@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { notifyError } from "@/utils/notifications";
@@ -50,15 +50,19 @@ export default function CartQuantityControl({
   onChange,
 }: CartQuantityControlProps) {
   const [inputValue, setInputValue] = useState(String(quantity));
+  const [prevQuantity, setPrevQuantity] = useState(quantity);
   const isLarge = size === "lg";
   const hasMaxLimit = Boolean(maxQuantity && maxQuantity > 0);
   const isAtMax = hasMaxLimit && quantity >= (maxQuantity ?? 0);
   const isAtMin = quantity <= minQuantity;
   const isLocked = disabled || isUpdating;
 
-  useEffect(() => {
+  // Sync the store quantity into the local input when it changes
+  // (adjust state during render instead of an effect).
+  if (prevQuantity !== quantity) {
+    setPrevQuantity(quantity);
     setInputValue(String(quantity));
-  }, [quantity]);
+  }
 
   if (!editable) {
     return (

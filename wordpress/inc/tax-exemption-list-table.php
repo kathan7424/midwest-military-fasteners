@@ -262,13 +262,21 @@ class MMF_Tax_Certificates_List_Table extends WP_List_Table {
 	}
 
 	protected function column_certificate( $item ): string {
+		// certificate_url is the gated admin-post download URL (private
+		// attachments are never linked directly).
 		$cert_url = (string) $item['certificate_url'];
 
 		if ( $cert_url === '' ) {
 			return '<span aria-hidden="true">&mdash;</span>';
 		}
 
-		$is_image = (bool) preg_match( '/\.(jpe?g|png|gif|webp)(\?|$)/i', $cert_url );
+		$attachment_id = function_exists( 'mmf_get_tax_cert_attachment_id' )
+			? mmf_get_tax_cert_attachment_id( (int) $item['user_id'] )
+			: 0;
+
+		$is_image = $attachment_id
+			? wp_attachment_is_image( $attachment_id )
+			: (bool) preg_match( '/\.(jpe?g|png|gif|webp)(\?|$)/i', $cert_url );
 		$preview  = $is_image
 			? '<img class="mmf-cert-thumb" src="' . esc_url( $cert_url ) . '" alt="" loading="lazy" />'
 			: '<span class="mmf-cert-pdf">PDF</span>';

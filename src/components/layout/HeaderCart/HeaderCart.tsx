@@ -16,12 +16,19 @@ import { getCartItemCount, useCartStore } from "@/stores/cart.store";
 import CartCountBadge from "@/components/shared_Ui/CartCountBadge";
 import CartLineItem from "@/components/shared_Ui/CartLineItem";
 import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
-import { normalizeWpUrl } from "@/utils/url.utils";
 
 export default function HeaderCart() {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Close the dropdown on navigation (adjust state during render instead of an effect).
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setOpen(false);
+  }
+
   const cart = useCartStore((state) => state.cart);
   const isMutating = useCartStore((state) => state.isMutating);
   const updatingItemKey = useCartStore((state) => state.updatingItemKey);
@@ -67,10 +74,6 @@ export default function HeaderCart() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const handlePageShow = () => {

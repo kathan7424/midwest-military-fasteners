@@ -21,26 +21,51 @@ async function get_cookie_header(): Promise<string | null> {
   return cookie_header || null;
 }
 
-export async function GET() {
-  const response = await fetch(`${ENV.WP_SITE_URL}/wp-json/custom/v1/tax-exemption`, {
-    method: "GET",
-    headers: buildWpCookieHeader(await get_cookie_header()),
-    cache: "no-store",
-  });
+// Reject uploads over 10 MB before parsing the form data.
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+export async function GET() {
+  try {
+    const response = await fetch(`${ENV.WP_SITE_URL}/wp-json/custom/v1/tax-exemption`, {
+      method: "GET",
+      headers: buildWpCookieHeader(await get_cookie_header()),
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error("Tax exemption GET proxy error:", error);
+    return NextResponse.json(
+      { message: "Tax exemption fetch failed." },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
-  const form_data = await request.formData();
+  try {
+    const content_length = Number(request.headers.get("content-length"));
 
-  const response = await fetch(`${ENV.WP_SITE_URL}/wp-json/custom/v1/tax-exemption`, {
-    method: "POST",
-    headers: buildWpCookieHeader(await get_cookie_header()),
-    body: form_data,
-  });
+    if (Number.isFinite(content_length) && content_length > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ message: "File too large." }, { status: 413 });
+    }
 
-  const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+    const form_data = await request.formData();
+
+    const response = await fetch(`${ENV.WP_SITE_URL}/wp-json/custom/v1/tax-exemption`, {
+      method: "POST",
+      headers: buildWpCookieHeader(await get_cookie_header()),
+      body: form_data,
+    });
+
+    const data = await response.json();
+    return NextResponse.json(data, { status: response.status });
+  } catch (error) {
+    console.error("Tax exemption POST proxy error:", error);
+    return NextResponse.json(
+      { message: "Tax exemption submission failed." },
+      { status: 500 }
+    );
+  }
 }

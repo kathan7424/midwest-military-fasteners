@@ -29,17 +29,11 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
     isLoading,
     wrapperRef,
     clearSearch,
-  } = useGlobalSearch();
+  } = useGlobalSearch<HTMLFormElement>();
 
   return (
     <form
-      ref={(node) => {
-        (
-          wrapperRef as unknown as {
-            current: HTMLFormElement | null;
-          }
-        ).current = node;
-      }}
+      ref={wrapperRef}
       action="/catalog"
       method="GET"
       className={cn(

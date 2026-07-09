@@ -31,8 +31,11 @@ export const PUBLIC_ROUTES = {
 /** Guest-only pages — logged-in users are redirected away */
 export const GUEST_ONLY_ROUTES = ["/login", "/register", "/forgot-password"] as const;
 
-/** Protected pages — login required */
-export const PROTECTED_ROUTES = ["/my-account", "/cart", "/checkout"] as const;
+/** Protected pages — login required (enforced by middleware). */
+export const PROTECTED_ROUTES = ["/my-account"] as const;
+// /cart is guest-accessible in WooCommerce (guests always see their cart).
+// /checkout guest access is driven by WC "Allow customers to place orders
+// without an account" setting — enforced in checkout/page.tsx, not here.
 
 /**
  * App Router file mapping (Next.js best practice — single source of truth).
@@ -70,6 +73,7 @@ export const API_ROUTES = {
   cartRemove: "/api/cart/remove",
   cartCustomer: "/api/cart/customer",
   cartSelectShipping: "/api/cart/select-shipping",
+  cartCoupon: "/api/cart/coupon",
   checkout: "/api/checkout",
   checkoutLocations: "/api/checkout/locations",
   catalogProducts: "/api/catalog/products",

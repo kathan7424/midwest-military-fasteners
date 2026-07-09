@@ -19,6 +19,19 @@ import {
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
+const WC_BILLING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone","email"] as const;
+const WC_SHIPPING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone"] as const;
+
+function pickWcAddress(
+  addr: Record<string, string>,
+  isBilling: boolean
+): Record<string, string> {
+  const keys = isBilling ? WC_BILLING_KEYS : WC_SHIPPING_KEYS;
+  const out: Record<string, string> = {};
+  for (const k of keys) if (k in addr) out[k] = addr[k] ?? "";
+  return out;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as {
@@ -41,8 +54,14 @@ export async function POST(request: NextRequest) {
         method: "POST",
         headers: buildWcStoreHeaders(request, true, bootstrapResponse),
         body: JSON.stringify({
-          shipping_address: body.shipping_address,
-          billing_address: body.billing_address ?? body.shipping_address,
+          billing_address: pickWcAddress(
+            (body.billing_address ?? body.shipping_address) as Record<string, string>,
+            true
+          ),
+          shipping_address: pickWcAddress(
+            (body.shipping_address ?? body.billing_address) as Record<string, string>,
+            false
+          ),
         }),
         cache: "no-store",
       }

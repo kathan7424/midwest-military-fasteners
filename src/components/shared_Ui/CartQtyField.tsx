@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -47,12 +47,16 @@ export default function CartQtyField({
   onChange,
 }: CartQtyFieldProps) {
   const [inputValue, setInputValue] = useState(String(quantity));
+  const [prevQuantity, setPrevQuantity] = useState(quantity);
   const hasMaxLimit = Boolean(maxQuantity && maxQuantity > 0);
   const isLocked = disabled || isUpdating || !editable;
 
-  useEffect(() => {
+  // Sync the store quantity into the local input when it changes
+  // (adjust state during render instead of an effect).
+  if (prevQuantity !== quantity) {
+    setPrevQuantity(quantity);
     setInputValue(String(quantity));
-  }, [quantity]);
+  }
 
   const applyQuantity = (rawValue: string, commit_empty = false) => {
     if (isLocked) {

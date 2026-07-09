@@ -959,8 +959,8 @@ function specparts_render_guide_tab() {
                     <td>E.g. MS35307, NAS1149. Cascades to following rows.</td></tr>
                 <tr><td>5</td><td>P/N</td><td>WC SKU + product title</td>
                     <td><strong>Required.</strong> Becomes the WC product title <em>and</em> SKU. Rows with blank P/N are treated as context/header rows and skipped.</td></tr>
-                <tr><td>6</td><td>DESCRIPTION</td><td>WC short description</td>
-                    <td>Long-form part description. Shown in the Description column of the catalog table and on the product page.</td></tr>
+                <tr><td>6</td><td>DESCRIPTION</td><td>WC product description + short description</td>
+                    <td>Part description paragraph. Saved as both WC full description (shown on product page below the title) and short description (shown in the catalog table Description column).</td></tr>
                 <tr><td>7</td><td>PACKAGE QTY</td><td>Meta <code>_pkg_qty</code></td>
                     <td>Pieces per package. Read by cart logic and the REST API.</td></tr>
 
@@ -1233,6 +1233,7 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
 
         $product->set_name( $sku );
         $product->set_sku( $sku );
+        $product->set_description( $description );
         $product->set_short_description( $description );
         $product->set_regular_price( $regular_price > 0 ? (string) $regular_price : '' );
         $product->set_price( $regular_price > 0 ? (string) $regular_price : '' );

@@ -11,17 +11,12 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  FaCartShopping,
-  FaChevronRight,
-  FaXmark,
-} from "react-icons/fa6";
+import { FaCartShopping, FaXmark } from "react-icons/fa6";
 
 import { getCartItemCount, useCartStore } from "@/stores/cart.store";
 import CartCountBadge from "@/components/shared_Ui/CartCountBadge";
 import CartLineItem from "@/components/shared_Ui/CartLineItem";
 import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
-import { normalizeWpUrl } from "@/utils/url.utils";
 import { cn } from "@/lib/utils";
 
 interface HeaderCartDropdownProps {
@@ -42,6 +37,14 @@ export default function HeaderCartDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+
+  // Close the dropdown on navigation (adjust state during render instead of an effect).
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setIsOpen(false);
+  }
+
   const cart = useCartStore((state) => state.cart);
   const isMutating = useCartStore((state) => state.isMutating);
   const updatingItemKey = useCartStore((state) => state.updatingItemKey);
@@ -79,10 +82,6 @@ export default function HeaderCartDropdown({
       document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen]);
-
-  useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const handlePageShow = () => {

@@ -85,12 +85,38 @@ export async function select_shipping_rate(payload: {
   return parse_response(response);
 }
 
+export async function apply_coupon(
+  code: string
+): Promise<ApiResult<CheckoutStateResponse & CheckoutErrorResponse>> {
+  const response = await fetch(API_ROUTES.cartCoupon, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+
+  return parse_response(response);
+}
+
+export async function remove_coupon(
+  code: string
+): Promise<ApiResult<CheckoutStateResponse & CheckoutErrorResponse>> {
+  const response = await fetch(API_ROUTES.cartCoupon, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+
+  return parse_response(response);
+}
+
 export async function place_order(payload: {
   billing_address: CheckoutAddress;
   shipping_address: CheckoutAddress;
   payment_method: string;
   payment_data: Array<{ key: string; value: string | boolean }>;
   customer_note?: string;
+  /** WC Store API: create a customer account with this order (guests only). */
+  create_account?: boolean;
 }): Promise<ApiResult<CheckoutPlaceOrderResponse & CheckoutErrorResponse>> {
   const response = await fetch(API_ROUTES.checkout, {
     method: "POST",
