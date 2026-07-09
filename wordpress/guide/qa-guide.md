@@ -130,6 +130,7 @@ the response body usually names the real cause.
 - **WP frontend is guest-blocked (headless standard)** — visiting the WordPress URL directly (e.g. dev-mmf-wp.pantheonsite.io) as a guest redirects to the storefront (path preserved) when "Headless Frontend URL" is set in WP Settings → General, otherwise shows a plain "API backend" notice. wp-admin, wp-login, REST API, AJAX, and cron are untouched; logged-in editors/admins still see the WP frontend (previews). Seeing the WP theme as a guest IS a bug after deploy.
 - **Shippo is plugin-only; the frontend is already compatible** — checkout renders whatever shipping rates WooCommerce returns, so Shippo live rates appear automatically once the plugin is active (client credentials pending). Order tracking shows in My Account order detail as soon as the plugin writes a tracking number to the order. Don't file "no UPS/FedEx rates" until the plugin is installed. Full module doc: shippo-guide.md.
 - **"Shipment Tracking" section is hidden until tracking exists** — a processing order with no label yet shows no tracking section. That's by design, not a missing feature.
+- **Guests see ONLY the 1 PKG price** — the 3/5/10 PKG tier columns (shop/category tables) and tier rows (product detail spec table) require login. Log out to test the guest view; log in and the tiers appear. Exception: the loading skeleton briefly shows generic column headers (it can't know auth state) — only the loaded table matters. Tier prices visible to a logged-out user IS a bug.
 
 ## 8. Regression Scope by Change Type
 

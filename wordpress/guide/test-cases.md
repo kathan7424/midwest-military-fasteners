@@ -33,6 +33,8 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-19 | Edit WP admin → Pages → Shop (title/content/featured image), Update, wait ~60s, reload /shop | Hero shows the WP title, content, and featured image; empty fields fall back (title "Product Catalog", first product image) |
 | PDP-20 | As a guest, open the WordPress URL directly (site root or any WP page) | Redirects to the storefront with path preserved (Frontend URL set) OR shows plain "API backend" notice (not set) — never the WP theme |
 | PDP-21 | As a guest, open `{wp}/wp-login.php` and `{wp}/wp-json/` | Both still work — login page loads, REST responds (redirect must not touch admin/API traffic) |
+| PDP-22 | As a GUEST, open /shop, a category page, and a product detail | Only the 1 PKG price shows — no 3/5/10 PKG columns (tables) or rows (spec table) |
+| PDP-23 | Log in, revisit the same pages | 3/5/10 PKG tier prices appear everywhere |
 
 ## TC-IMP — CSV Import
 

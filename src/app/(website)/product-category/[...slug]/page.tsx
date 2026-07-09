@@ -20,6 +20,7 @@ import {
   build_catalog_hero_context,
 } from "@/utils/catalog-page.utils";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
+import { isUserLoggedIn } from "@/services/auth.service";
 
 type Props = {
   params: Promise<{
@@ -41,19 +42,25 @@ export default async function ProductCategoryPage({
   const active_category_slug = slug[slug.length - 1];
   const current_page = Math.max(1, Number(query.page) || 1);
 
-  const [categories, direct_category, products_response, sidebar_categories] =
-    await Promise.all([
-      fetch_spec_parts_categories(),
-      fetch_spec_parts_category_by_slug(active_category_slug).catch(() => null),
-      fetch_spec_parts_products({
-        category: active_category_slug,
-        search: query.search,
-        series: query.series,
-        per_page: 10,
-        page: current_page,
-      }),
-      fetch_sidebar_categories(),
-    ]);
+  const [
+    categories,
+    direct_category,
+    products_response,
+    sidebar_categories,
+    logged_in,
+  ] = await Promise.all([
+    fetch_spec_parts_categories(),
+    fetch_spec_parts_category_by_slug(active_category_slug).catch(() => null),
+    fetch_spec_parts_products({
+      category: active_category_slug,
+      search: query.search,
+      series: query.series,
+      per_page: 10,
+      page: current_page,
+    }),
+    fetch_sidebar_categories(),
+    isUserLoggedIn(),
+  ]);
 
   const active_category =
     direct_category ?? find_spec_parts_category(categories, active_category_slug);
@@ -89,6 +96,7 @@ export default async function ProductCategoryPage({
       partSeriesLabel={hero.partSeriesLabel}
       currentPage={products_response.page}
       totalPages={products_response.pages}
+      showTierPricing={logged_in}
     />
   );
 }

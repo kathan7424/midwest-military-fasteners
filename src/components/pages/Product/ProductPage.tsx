@@ -97,6 +97,9 @@ interface ProductPageProps {
 
   totalPages: number;
 
+  /** false = guest view: hide the 3/5/10 Pkg tier price columns. */
+  showTierPricing?: boolean;
+
 }
 
 
@@ -126,6 +129,8 @@ export default function ProductPage({
   currentPage,
 
   totalPages,
+
+  showTierPricing = true,
 
 }: ProductPageProps) {
 
@@ -389,6 +394,7 @@ export default function ProductPage({
             <ProductTable
               data={visibleProducts}
               isLoading={isPendingSearch && visibleProducts.length === 0}
+              showTierPricing={showTierPricing}
             />
 
           </div>

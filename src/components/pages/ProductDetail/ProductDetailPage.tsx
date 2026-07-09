@@ -35,6 +35,8 @@ interface ProductDetailPageProps {
   product: Product;
   sidebarCategories: SidebarCategory[];
   catalogListingPath?: string;
+  /** false = guest view: only the 1 Pkg price row shows in the spec table. */
+  showTierPricing?: boolean;
 }
 
 export default function ProductDetailPage({
@@ -42,6 +44,7 @@ export default function ProductDetailPage({
   product,
   sidebarCategories,
   catalogListingPath = DEFAULT_CATALOG_LISTING_PATH,
+  showTierPricing = true,
 }: ProductDetailPageProps) {
   const parent_category_slug =
     product.parentCategorySlug ??
@@ -142,7 +145,10 @@ export default function ProductDetailPage({
             </div>
 
             <div className="lg:flex-1">
-              <ProductSpecTable product={product} />
+              <ProductSpecTable
+                product={product}
+                showTierPricing={showTierPricing}
+              />
             </div>
           </div>
 

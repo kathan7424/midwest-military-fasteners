@@ -14,6 +14,7 @@ import {
 } from "@/services/spec-parts.service";
 import { fetchPageBySlug, get_page_featured_image } from "@/services/page.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
+import { isUserLoggedIn } from "@/services/auth.service";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
 import { resolve_product_image_url } from "@/utils/product-image.utils";
 import { decodeHtmlEntities } from "@/utils/text.utils";
@@ -33,16 +34,18 @@ export default async function CatalogListingPage({
 }: CatalogListingPageProps) {
   const current_page = Math.max(1, Number(searchParams.page) || 1);
 
-  const [sidebar_categories, products_response, settings] = await Promise.all([
-    fetch_sidebar_categories(),
-    fetch_spec_parts_products({
-      search: searchParams.search,
-      series: searchParams.series,
-      per_page: 10,
-      page: current_page,
-    }),
-    fetchSiteSettings().catch(() => null),
-  ]);
+  const [sidebar_categories, products_response, settings, logged_in] =
+    await Promise.all([
+      fetch_sidebar_categories(),
+      fetch_spec_parts_products({
+        search: searchParams.search,
+        series: searchParams.series,
+        per_page: 10,
+        page: current_page,
+      }),
+      fetchSiteSettings().catch(() => null),
+      isUserLoggedIn(),
+    ]);
 
   // WC Shop page content drives the hero (title/description/image are
   // edited in WP admin — the frontend never hardcodes them).
@@ -68,6 +71,7 @@ export default async function CatalogListingPage({
       initialSearch={searchParams.search ?? ""}
       currentPage={products_response.page}
       totalPages={products_response.pages}
+      showTierPricing={logged_in}
     />
   );
 }
