@@ -17,7 +17,7 @@ import { logout_user } from "@/services/auth-client.service";
 import { useCartStore } from "@/stores/cart.store";
 import { notifyError, notifySuccess } from "@/utils/notifications";
 
-export default function LogoutButton() {
+export default function LogoutButton({ className }: { className?: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,6 +45,19 @@ export default function LogoutButton() {
       setIsLoading(false);
     }
   };
+
+  if (className) {
+    return (
+      <button
+        type="button"
+        disabled={isLoading}
+        onClick={handleLogout}
+        className={className}
+      >
+        {isLoading ? "Logging out..." : "Log Out"}
+      </button>
+    );
+  }
 
   return (
     <Button

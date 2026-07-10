@@ -6,7 +6,7 @@
  *     upload (file + expiry) submitted right from the banner.
  * Developer: KP-184
  * Created Date: 2026-07-07
- * Last Modified: 2026-07-08
+ * Last Modified: 2026-07-10
  */
 
 "use client";
@@ -149,17 +149,22 @@ export default function CartTaxExemptionNotice() {
             />
           </div>
 
-          <div className="sm:w-[190px]">
-            <span className="mb-1.5 block text-sm font-semibold text-dark-gray">
+          <div className="sm:w-[210px]">
+            {/* <span className="mb-1.5 block text-sm font-semibold text-dark-gray">
               Expiry Date
-            </span>
+            </span> */}
             <DatePicker
+              aria-label="Certificate expiry date"
               value={expiryDate ? parseDate(expiryDate) : null}
               onChange={(date) => {
                 const val = date ? date.toString() : "";
                 setExpiryDate(val);
                 if (val) setDateError("");
               }}
+              minValue={parseDate(new Date().toISOString().slice(0, 10))}
+              placeholder="Expiration Date"
+              size="md"
+              buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
             />
             {dateError ? (
               <p className="mt-1 text-xs text-red-600">{dateError}</p>

@@ -111,6 +111,9 @@ export function map_spec_parts_product_to_table_product(
     description: decodeHtmlEntities(
       product.short_description || product.description || product.name
     ),
+    longDescription: decodeHtmlEntities(
+      product.description || product.short_description || product.name
+    ),
     pkgQty: product.pkg_qty ?? 0,
     price1: get_tier_price(product.package_pricing, 1) || format_price(product.price),
     price3: get_tier_price(product.package_pricing, 3),

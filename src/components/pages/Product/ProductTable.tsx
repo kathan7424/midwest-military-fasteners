@@ -25,7 +25,10 @@ export interface Product {
   slug: string;
   partNumber: string;
   sku: string;
+  /** Short description — table rows and the detail spec table. */
   description: string;
+  /** Long (main) product description — under the detail-page title. */
+  longDescription?: string;
   pkgQty: number;
   price1: string;
   price3: string;
@@ -195,20 +198,33 @@ export const productColumns: ColumnDef<Product>[] = [
   },
 ];
 
+/** Volume tier columns — hidden for guests (login unlocks 3/5/10 pkg pricing). */
+const TIER_PRICE_COLUMN_KEYS = ["price3", "price5", "price10"];
+
 interface ProductTableProps {
   data: Product[];
   isLoading?: boolean;
   loadingMessage?: string;
+  /** false = guest view: only the 1 Pkg price column is shown. */
+  showTierPricing?: boolean;
 }
 
 export default function ProductTable({
   data,
   isLoading = false,
   loadingMessage = "Searching products...",
+  showTierPricing = true,
 }: ProductTableProps) {
+  const columns = showTierPricing
+    ? productColumns
+    : productColumns.filter((column) => {
+        const key = (column as { accessorKey?: string }).accessorKey ?? "";
+        return !TIER_PRICE_COLUMN_KEYS.includes(key);
+      });
+
   return (
     <DataTable
-      columns={productColumns}
+      columns={columns}
       data={data}
       enableSorting
       isLoading={isLoading}

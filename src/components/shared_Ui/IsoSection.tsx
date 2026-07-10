@@ -5,7 +5,7 @@
  *              provides no content. Reused across product / cart pages.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-08
+ * Last Modified: 2026-07-10
  */
 
 "use client";
@@ -30,8 +30,9 @@ export default function IsoSection({
 
   const hasLogo = Boolean(isoSection?.logo?.url);
   const hasContent = Boolean(isoSection?.contentHtml);
+  const hastitle = Boolean(isoSection?.iso_title);
 
-  if (!hasLogo && !hasContent) {
+  if (!hasLogo && !hastitle && !hasContent) {
     return null;
   }
 
@@ -54,13 +55,23 @@ export default function IsoSection({
           />
         </Link>
       ) : null}
+    
+    
 
-      {hasContent ? (
-        <div
-          className="max-w-[950px] text-center prose prose-lg md:text-left"
-          dangerouslySetInnerHTML={{ __html: isoSection!.contentHtml }}
-        />
+
+
+
+      {hastitle && hasContent ? (
+        <div className="max-w-[1010px] text-center prose prose-lg md:text-left">
+          <h2 className="mb-4 text-[24px] lg:text-[32px] font-black text-black">{isoSection!.iso_title}</h2>
+          <div
+            className="text-[16px] text-black"
+            dangerouslySetInnerHTML={{ __html: isoSection!.contentHtml }}
+          />                   
+        
+      </div>
       ) : null}
     </div>
   );
 }
+     

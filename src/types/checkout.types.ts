@@ -114,6 +114,10 @@ export interface WcCheckoutSettings {
   coupons_enabled: boolean;
   /** General → "Enable the use of order notes" — show/hide the Order Notes textarea. */
   order_notes_enabled?: boolean;
+  /** WC → Advanced → Terms and conditions page path (relative, e.g. "/terms-conditions"). */
+  terms_page_path?: string | null;
+  /** WP privacy policy page path (relative, e.g. "/privacy-policy"). */
+  privacy_page_path?: string | null;
   fields: {
     company: WcFieldVisibility;
     address_2: WcFieldVisibility;

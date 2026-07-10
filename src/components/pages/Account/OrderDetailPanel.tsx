@@ -9,7 +9,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Truck } from "lucide-react";
 
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import {
@@ -157,6 +157,50 @@ export default function OrderDetailPanel({
           <span className="block text-link font-bold text-near-black">{order.total}</span>
         </li>
       </ul>
+
+      {/* Shipment tracking — populated by the Shippo / tracking plugin once
+          the order ships; hidden until a tracking number exists. */}
+      {order.tracking && order.tracking.length > 0 ? (
+        <section className="mb-6 border border-light-gray bg-white p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-label font-bold uppercase text-near-black">
+            <Truck className="size-4 text-blue" aria-hidden="true" />
+            Shipment Tracking
+          </h3>
+          <ul className="space-y-2">
+            {order.tracking.map((entry) => (
+              <li
+                key={entry.tracking_number}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-link"
+              >
+                {entry.carrier ? (
+                  <span className="font-semibold uppercase text-near-black">
+                    {entry.carrier}
+                  </span>
+                ) : null}
+                {entry.url ? (
+                  <a
+                    href={entry.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-blue underline transition-colors hover:text-amber"
+                  >
+                    {entry.tracking_number}
+                  </a>
+                ) : (
+                  <span className="font-semibold text-near-black">
+                    {entry.tracking_number}
+                  </span>
+                )}
+                {entry.date_shipped ? (
+                  <span className="text-dark-gray">
+                    Shipped {entry.date_shipped}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* Order note */}
       {order.customer_note ? (

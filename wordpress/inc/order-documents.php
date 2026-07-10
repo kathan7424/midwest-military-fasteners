@@ -79,6 +79,109 @@ function mmf_register_order_documents_routes(): void {
 }
 
 /**
+ * Shipment tracking entries for an order — Shippo-plugin friendly.
+ *
+ * The Shippo for WooCommerce plugin (and the common Shipment Tracking /
+ * Advanced Shipment Tracking plugins) each store tracking differently.
+ * This reads every known location so the API keeps working no matter
+ * which plugin fulfils the order. Extend via `mmf_order_tracking_entries`.
+ *
+ * @param WC_Order $order Order.
+ * @return array<int, array{tracking_number:string, carrier:string, url:string, date_shipped:string}>
+ */
+function mmf_get_order_tracking( WC_Order $order ): array {
+	$entries = array();
+
+	// 1. Shipment Tracking / AST plugins — array of tracking items.
+	$st_items = $order->get_meta( '_wc_shipment_tracking_items' );
+	if ( is_array( $st_items ) ) {
+		foreach ( $st_items as $st_item ) {
+			$number = sanitize_text_field( (string) ( $st_item['tracking_number'] ?? '' ) );
+			if ( $number === '' ) {
+				continue;
+			}
+
+			$carrier = sanitize_text_field(
+				(string) ( $st_item['tracking_provider'] ?: ( $st_item['custom_tracking_provider'] ?? '' ) )
+			);
+
+			$date_shipped = '';
+			if ( ! empty( $st_item['date_shipped'] ) && is_numeric( $st_item['date_shipped'] ) ) {
+				$date_shipped = date_i18n( get_option( 'date_format' ), (int) $st_item['date_shipped'] );
+			}
+
+			$entries[] = array(
+				'tracking_number' => $number,
+				'carrier'         => $carrier,
+				'url'             => esc_url_raw( (string) ( $st_item['custom_tracking_link'] ?? '' ) )
+					?: mmf_carrier_tracking_url( $carrier, $number ),
+				'date_shipped'    => $date_shipped,
+			);
+		}
+	}
+
+	// 2. Shippo plugin / generic single-value meta.
+	if ( empty( $entries ) ) {
+		$single_key_sets = array(
+			array( '_shippo_tracking_number', '_shippo_carrier', '_shippo_tracking_url' ),
+			array( 'shippo_tracking_number', 'shippo_carrier', 'shippo_tracking_url' ),
+			array( '_tracking_number', '_tracking_provider', '_tracking_url' ),
+		);
+
+		foreach ( $single_key_sets as $keys ) {
+			$number = sanitize_text_field( (string) $order->get_meta( $keys[0] ) );
+			if ( $number === '' ) {
+				continue;
+			}
+
+			$carrier = sanitize_text_field( (string) $order->get_meta( $keys[1] ) );
+
+			$entries[] = array(
+				'tracking_number' => $number,
+				'carrier'         => $carrier,
+				'url'             => esc_url_raw( (string) $order->get_meta( $keys[2] ) )
+					?: mmf_carrier_tracking_url( $carrier, $number ),
+				'date_shipped'    => '',
+			);
+			break;
+		}
+	}
+
+	/**
+	 * Filter the tracking entries exposed on the order APIs.
+	 *
+	 * @param array    $entries Tracking entries.
+	 * @param WC_Order $order   Order.
+	 */
+	return apply_filters( 'mmf_order_tracking_entries', $entries, $order );
+}
+
+/**
+ * Public tracking URL for the major US carriers (MMF ships domestic only).
+ *
+ * @param string $carrier Carrier name/slug as stored by the tracking plugin.
+ * @param string $number  Tracking number.
+ * @return string Empty string when the carrier is unknown.
+ */
+function mmf_carrier_tracking_url( string $carrier, string $number ): string {
+	$number = rawurlencode( $number );
+
+	switch ( strtolower( trim( $carrier ) ) ) {
+		case 'ups':
+			return 'https://www.ups.com/track?tracknum=' . $number;
+		case 'fedex':
+			return 'https://www.fedex.com/fedextrack/?trknbr=' . $number;
+		case 'usps':
+			return 'https://tools.usps.com/go/TrackConfirmAction?tLabels=' . $number;
+		case 'dhl':
+		case 'dhl express':
+			return 'https://www.dhl.com/us-en/home/tracking.html?tracking-id=' . $number;
+		default:
+			return '';
+	}
+}
+
+/**
  * GET /custom/v1/orders — the customer's order history (WC standard data).
  *
  * @return WP_REST_Response|WP_Error
@@ -138,6 +241,7 @@ function mmf_get_customer_order_history() {
 			'item_count'           => (int) $order->get_item_count(),
 			'items'                => $items,
 			'certificates'         => $certificates,
+			'tracking'             => mmf_get_order_tracking( $order ),
 		);
 	}
 
@@ -326,6 +430,7 @@ function mmf_get_single_order_detail( WP_REST_Request $request ) {
 			'payment_method'       => $order->get_payment_method(),
 			'payment_method_title' => $order->get_payment_method_title(),
 			'customer_note'        => $order->get_customer_note(),
+			'tracking'             => mmf_get_order_tracking( $order ),
 			'line_items'           => $line_items,
 			'billing_address'      => array(
 				'first_name' => $order->get_billing_first_name(),

@@ -53,6 +53,14 @@ interface AddressUpdatePayload {
   phone?: string;
 }
 
+/** One shipment tracking entry (Shippo / Shipment Tracking plugins). */
+export interface OrderTrackingEntry {
+  tracking_number: string;
+  carrier: string;
+  url: string;
+  date_shipped: string;
+}
+
 interface OrderDetail {
   order_id: number;
   order_number: string;
@@ -67,6 +75,7 @@ interface OrderDetail {
   payment_method: string;
   payment_method_title: string;
   customer_note: string;
+  tracking?: OrderTrackingEntry[];
   line_items: Array<{
     product_id: number;
     sku: string;

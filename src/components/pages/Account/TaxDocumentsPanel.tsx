@@ -12,7 +12,9 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText, Upload, CheckCircle, Clock, AlertCircle } from "lucide-react";
 
-import DatePickerField from "@/components/shared_Ui/DatePickerField";
+import { parseDate } from "@internationalized/date";
+
+import { DatePicker } from "@/components/application/date-picker/date-picker";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import SalesTaxExemptionUpload from "@/components/pages/Auth/SalesTaxExemptionUpload";
 import {
@@ -144,16 +146,20 @@ function UploadForm({
         noValidate
         className="max-w-xl space-y-5"
       >
-        <DatePickerField
-          label="Certificate Expiration Date"
-          value={expiryDate}
-          onChange={(v) => {
-            setExpiryDate(v);
-            setFieldError("");
-          }}
-          minValue={new Date().toISOString().slice(0, 10)}
-          required
-        />
+        <div>
+          <p className="mb-1.5 text-sm font-semibold text-dark-gray">Certificate Expiration Date</p>
+          <DatePicker
+            value={expiryDate ? parseDate(expiryDate) : null}
+            onChange={(date) => {
+              setExpiryDate(date ? date.toString() : "");
+              setFieldError("");
+            }}
+            minValue={parseDate(new Date().toISOString().slice(0, 10))}
+            placeholder="Expiration Date"
+            size="md"
+            buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
+          />
+        </div>
 
         <SalesTaxExemptionUpload
           file={certificate}

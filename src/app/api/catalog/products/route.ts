@@ -10,7 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetch_spec_parts_products } from "@/services/spec-parts.service";
 
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
+// NOTE: no fetchCache override here — fetch_spec_parts_products relies on
+// fetchWpJson's 60s ISR per unique query. force-no-store would disable that
+// and send every filter keystroke on a full WP roundtrip (~0.3–2s each).
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;

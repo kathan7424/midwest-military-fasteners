@@ -32,6 +32,21 @@ export interface OrderHistoryEntry {
   certificates?: string[];
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  completed:  "bg-[#e6f4ea] text-[#1a7f37]",
+  processing: "bg-[#eef6fb] text-[#0e6990]",
+  shipped:    "bg-[#eef6fb] text-[#0e6990]",
+  cancelled:  "bg-[#fce8e8] text-[#b32d2e]",
+  failed:     "bg-[#fce8e8] text-[#b32d2e]",
+  "on-hold":  "bg-[#fff4ce] text-[#996800]",
+  pending:    "bg-[#fff4ce] text-[#996800]",
+  refunded:   "bg-off-white text-dark-gray",
+};
+
+function status_badge_class(status: string): string {
+  return STATUS_COLORS[status.toLowerCase()] ?? "bg-off-white text-dark-gray";
+}
+
 function OrderTableSkeleton() {
   return (
     <div className="overflow-x-auto border border-light-gray" aria-busy="true">
@@ -170,8 +185,12 @@ function OrderRow({
         <td className="whitespace-nowrap px-4 py-3.5 text-near-black">
           {order.date}
         </td>
-        <td className="whitespace-nowrap px-4 py-3.5 text-near-black">
-          {order.status_label}
+        <td className="whitespace-nowrap px-4 py-3.5">
+          <span
+            className={`inline-flex px-2 py-0.5 text-xs font-semibold uppercase ${status_badge_class(order.status)}`}
+          >
+            {order.status_label}
+          </span>
         </td>
         <td className="whitespace-nowrap px-4 py-3.5">
           {certificates.length > 0 ? (

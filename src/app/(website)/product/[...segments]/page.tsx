@@ -16,6 +16,7 @@ import {
   fetch_spec_parts_product_by_sku,
 } from "@/services/spec-parts.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
+import { isUserLoggedIn } from "@/services/auth.service";
 import { build_product_path } from "@/utils/catalog-url.utils";
 import { get_catalog_listing_path } from "@/utils/catalog-path.utils";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
@@ -41,12 +42,14 @@ async function load_product_by_slug(slug: string) {
 }
 
 async function render_product_detail(slug: string) {
-  // Sidebar and settings don't depend on the product — fetch all three at once.
-  const [raw_product, sidebar_categories, settings] = await Promise.all([
-    load_product_by_slug(slug),
-    fetch_sidebar_categories(),
-    fetchSiteSettings().catch(() => null),
-  ]);
+  // Sidebar, settings, and auth state don't depend on the product — fetch all at once.
+  const [raw_product, sidebar_categories, settings, logged_in] =
+    await Promise.all([
+      load_product_by_slug(slug),
+      fetch_sidebar_categories(),
+      fetchSiteSettings().catch(() => null),
+      isUserLoggedIn(),
+    ]);
 
   if (!raw_product) {
     notFound();
@@ -61,6 +64,7 @@ async function render_product_detail(slug: string) {
       product={product}
       sidebarCategories={sidebar_categories}
       catalogListingPath={catalog_listing_path}
+      showTierPricing={logged_in}
     />
   );
 }

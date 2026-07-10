@@ -1,49 +1,37 @@
 /**
  * File Name: DatePickerField.tsx
- * Description: Accessible date picker using React Aria + @internationalized/date.
- *   Styled to match the existing design system. Replaces native <input type="date">.
+ * Description: Thin string↔DateValue bridge over the application DatePicker
+ *   (html-dev UI). External interface is unchanged — consumers pass/receive
+ *   plain YYYY-MM-DD strings; no functionality is affected.
  * Developer: KP-184
  * Created Date: 2026-07-09
+ * Last Modified: 2026-07-10
  */
 
 "use client";
 
-import {
-  Button,
-  Calendar,
-  CalendarCell,
-  CalendarGrid,
-  CalendarGridBody,
-  CalendarGridHeader,
-  CalendarHeaderCell,
-  DateInput,
-  DatePicker,
-  DateSegment,
-  Dialog,
-  Group,
-  Heading,
-  Label,
-  Popover,
-} from "react-aria-components";
 import { parseDate } from "@internationalized/date";
 import type { DateValue } from "@internationalized/date";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 
-import {
-  FIELD_ERROR_CLASS,
-  INPUT_ERROR_CLASS,
-  LABEL_CLASS,
-  REQUIRED_STAR_CLASS,
-} from "@/components/shared_Ui/form-styles";
+import { DatePicker } from "@/components/application/date-picker/date-picker";
 
 interface DatePickerFieldProps {
-  label: string;
+  /** Accessible name when no visible label is rendered. */
+  ariaLabel?: string;
   value: string;
   onChange: (value: string) => void;
+  /** YYYY-MM-DD string — dates before this are disabled. */
   minValue?: string;
+  /** Shown in the button trigger when no date is selected. */
+  placeholder?: string;
+  /** Optional className forwarded to the trigger Button. */
+  buttonClassName?: string;
+  // Kept for backward-compat with existing call sites; not rendered.
+  label?: string;
   required?: boolean;
   error?: string;
   className?: string;
+  groupClassName?: string;
 }
 
 function safe_parse(str: string): DateValue | null {
@@ -56,92 +44,24 @@ function safe_parse(str: string): DateValue | null {
 }
 
 export default function DatePickerField({
-  label,
+  ariaLabel,
   value,
   onChange,
   minValue,
-  required,
-  error,
-  className,
+  placeholder = "Expiration Date",
+  buttonClassName,
 }: DatePickerFieldProps) {
-  const parsedValue = safe_parse(value);
+  const parsedValue = safe_parse(value) ?? undefined;
   const parsedMin = minValue ? (safe_parse(minValue) ?? undefined) : undefined;
 
   return (
     <DatePicker
+      aria-label={ariaLabel ?? "Date picker"}
       value={parsedValue}
-      onChange={(date) => onChange(date ? date.toString() : "")}
+      onChange={(date: DateValue | null) => onChange(date ? date.toString() : "")}
       minValue={parsedMin}
-      className={className}
-    >
-      <Label className={LABEL_CLASS}>
-        {label}
-        {required ? (
-          <span className={REQUIRED_STAR_CLASS} aria-hidden="true"> *</span>
-        ) : null}
-      </Label>
-
-      <Group
-        className={`flex w-full items-center border bg-white px-4 py-3 outline-none transition-colors focus-within:border-blue ${
-          error ? INPUT_ERROR_CLASS : "border-light-gray"
-        }`}
-      >
-        <DateInput className="flex flex-1 items-center gap-0.5 text-link text-near-black">
-          {(segment) => (
-            <DateSegment
-              segment={segment}
-              className="rounded px-0.5 outline-none data-[placeholder]:text-dark-gray data-[focused]:bg-blue data-[focused]:text-white"
-            />
-          )}
-        </DateInput>
-        <Button className="ml-2 flex shrink-0 items-center justify-center text-dark-gray outline-none transition-colors hover:text-blue">
-          <CalendarIcon className="size-4" aria-hidden="true" />
-        </Button>
-      </Group>
-
-      {error ? (
-        <p className={FIELD_ERROR_CLASS}>{error}</p>
-      ) : null}
-
-      <Popover className="z-50 mt-1 w-[280px] border border-light-gray bg-white shadow-lg outline-none">
-        <Dialog className="p-3 outline-none">
-          <Calendar className="outline-none">
-            <header className="mb-3 flex items-center justify-between">
-              <Button
-                slot="previous"
-                className="flex size-8 items-center justify-center text-dark-gray outline-none transition-colors hover:text-blue"
-              >
-                <ChevronLeft className="size-4" aria-hidden="true" />
-              </Button>
-              <Heading className="text-sm font-semibold text-near-black" />
-              <Button
-                slot="next"
-                className="flex size-8 items-center justify-center text-dark-gray outline-none transition-colors hover:text-blue"
-              >
-                <ChevronRight className="size-4" aria-hidden="true" />
-              </Button>
-            </header>
-
-            <CalendarGrid className="w-full border-collapse">
-              <CalendarGridHeader>
-                {(day) => (
-                  <CalendarHeaderCell className="pb-2 text-center text-xs font-semibold uppercase text-dark-gray">
-                    {day}
-                  </CalendarHeaderCell>
-                )}
-              </CalendarGridHeader>
-              <CalendarGridBody>
-                {(date) => (
-                  <CalendarCell
-                    date={date}
-                    className="flex size-9 cursor-pointer items-center justify-center rounded text-sm text-near-black outline-none transition-colors hover:bg-off-white data-[disabled]:cursor-not-allowed data-[selected]:bg-blue data-[disabled]:opacity-40 data-[selected]:text-white data-[outside-month]:text-light-gray"
-                  />
-                )}
-              </CalendarGridBody>
-            </CalendarGrid>
-          </Calendar>
-        </Dialog>
-      </Popover>
-    </DatePicker>
+      placeholder={placeholder}
+      buttonClassName={buttonClassName}
+    />
   );
 }

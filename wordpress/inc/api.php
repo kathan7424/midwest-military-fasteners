@@ -301,6 +301,16 @@ function mmf_get_checkout_locations() {
 				'address_2' => get_option( 'woocommerce_checkout_address_2_field', 'optional' ),
 				'phone'     => get_option( 'woocommerce_checkout_phone_field', 'required' ),
 			),
+			// WC → Advanced → Page setup → Terms and conditions page.
+			'terms_page_path'      => ( function() {
+				$id = (int) wc_terms_and_conditions_page_id();
+				return $id > 0 ? '/' . get_page_uri( $id ) : null;
+			} )(),
+			// WP → Settings → Privacy → Privacy Policy page.
+			'privacy_page_path'    => ( function() {
+				$id = (int) get_option( 'wp_page_for_privacy_policy', 0 );
+				return $id > 0 ? '/' . get_page_uri( $id ) : null;
+			} )(),
 		),
 	);
 
@@ -664,6 +674,7 @@ function mmf_get_site_settings() {
 		),
 		'footer'      => array(
 			'iso_logo'        => mmf_format_acf_image( get_field( 'iso_logo', 'option' ) ),
+			'iso_title'        => sanitize_text_field( get_field( 'iso_title', 'option' ) ),
 			'content_area'    => wp_kses_post( (string) get_field( 'content_area', 'option' ) ),
 			'copy_right_text' => mmf_format_acf_link( $copy_right_text ),
 			'build_by_text'   => sanitize_text_field( (string) get_field( 'build_by_text', 'option' ) ),

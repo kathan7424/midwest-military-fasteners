@@ -30,9 +30,28 @@ is React — they talk to WooCommerce, exactly as documented by both vendors.
 
 ## 2. Checkout Flow (built)
 
-1. Customer fills address on `/checkout` → `POST /wc/store/v1/cart/update-customer`
+The form follows the **WooCommerce block checkout** structure exactly:
+Contact information (email) → Shipping address (Country/Region → First/Last
+name → Address → "+ Add apartment, suite, etc." toggle → City | State →
+ZIP Code | Phone (optional)) → "Use same address for billing" checkbox
+(checked by default; unchecking reveals a Billing address form with the same
+field order) → Shipping options → Payment options. Labels follow the WC
+block convention: required fields are plain, optional fields show
+"(optional)".
+
+1. Customer fills the shipping location (country + state + city + ZIP is
+   enough — WC standard) → `POST /wc/store/v1/cart/update-customer` fires
+   debounced ~1s later (email + phone are merged into both address objects
+   per Store API spec; an empty email is omitted so the Store API's email
+   format validation cannot reject the update)
 2. WooCommerce recalculates **shipping rates + tax** for that address → rates
-   render as radio options (real-time estimates)
+   render as radio options (real-time estimates). The Shipping method section
+   is always visible for shippable orders: it shows "Enter your shipping
+   address to view shipping options." before the address is complete, a
+   loading state during recalculation, and a warning if no methods match the
+   address. Zero-cost rates display as "Free" (WC block standard). An order
+   cannot be placed until a shipping option is selected, and the Place Order
+   button is disabled while totals recalculate.
 3. Customer picks a rate → `POST /wc/store/v1/cart/select-shipping-rate` → totals update
 4. Customer enters card → **Stripe Elements** creates a PaymentMethod
    **in the browser, directly with Stripe** (card data never touches our servers — PCI standard)
@@ -198,8 +217,9 @@ WP Admin → WooCommerce → Settings → Shipping → Shipping zones
 - **When Shippo goes live:** delete the temporary method, add Shippo live
   rates to the same zone — the checkout switches to real carrier rates with
   zero frontend changes.
-- The checkout also supports "Ship to a different address?" (WC standard) —
-  rates and tax always follow the **shipping** address, like WooCommerce core.
+- The checkout is shipping-first with a "Use same address for billing"
+  checkbox (WC block standard) — rates and tax always follow the
+  **shipping** address, like WooCommerce core.
 
 ## 5a. What to Collect From the Client (before Shippo setup)
 

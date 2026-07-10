@@ -17,10 +17,24 @@ interface DatePickerProps extends AriaDatePickerProps<DateValue> {
     onApply?: () => void;
     /** The function to call when the cancel button is clicked. */
     onCancel?: () => void;
+    /** Placeholder text shown when no date is selected. */
+    placeholder?: string;
+    /** Optional custom className for the date picker trigger button. */
+    buttonClassName?: string;
     size?: ButtonProps["size"];
 }
 
-export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, onCancel, size = "sm", ...props }: DatePickerProps) => {
+export const DatePicker = ({
+    value: valueProp,
+    defaultValue,
+    onChange,
+    onApply,
+    onCancel,
+    placeholder = "Select date",
+    buttonClassName,
+    size = "sm",
+    ...props
+}: DatePickerProps) => {
     const formatter = useDateFormatter({
         month: "short",
         day: "numeric",
@@ -28,12 +42,17 @@ export const DatePicker = ({ value: valueProp, defaultValue, onChange, onApply, 
     });
     const [value, setValue] = useControlledState(valueProp, defaultValue || null, onChange);
 
-    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : "Select date";
+    const formattedDate = value ? formatter.format(value.toDate(getLocalTimeZone())) : placeholder;
 
     return (
         <AriaDatePicker aria-label="Date picker" shouldCloseOnSelect={false} {...props} value={value} onChange={setValue}>
             <AriaGroup>
-                <Button size={size} color="secondary" iconLeading={CalendarIcon}>
+            <Button
+                    size={size}
+                    color="secondary"
+                    iconLeading={CalendarIcon}
+                    className={buttonClassName}
+                >
                     {formattedDate}
                 </Button>
             </AriaGroup>

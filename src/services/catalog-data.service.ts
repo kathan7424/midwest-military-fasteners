@@ -81,19 +81,36 @@ function parse_products_query_key(
   return params;
 }
 
+// When the primary /spec-parts/v1/products endpoint 500s (stale deploy on
+// Pantheon), don't burn a ~1s roundtrip re-trying it on every request —
+// skip straight to the fallback for a cooldown window.
+const PRIMARY_FAILURE_COOLDOWN_MS = 60_000;
+let primary_failed_at = 0;
+
 async function fetch_spec_parts_products_primary(
   query_key: string
 ): Promise<SpecPartsProductsResponse> {
+  if (Date.now() - primary_failed_at < PRIMARY_FAILURE_COOLDOWN_MS) {
+    throw new Error("spec-parts products endpoint in failure cooldown.");
+  }
+
   const endpoint = query_key
     ? `/spec-parts/v1/products?${query_key}`
     : "/spec-parts/v1/products";
 
-  // Short ISR: product data changes on import, not per request. Each unique
-  // query (category/series/search/page) caches independently for 60s.
-  return fetchWpJson<SpecPartsProductsResponse>(endpoint, {
-    mode: "static",
-    revalidate: 60,
-  });
+  try {
+    // Short ISR: product data changes on import, not per request. Each unique
+    // query (category/series/search/page) caches independently for 60s.
+    const response = await fetchWpJson<SpecPartsProductsResponse>(endpoint, {
+      mode: "static",
+      revalidate: 60,
+    });
+    primary_failed_at = 0;
+    return response;
+  } catch (error) {
+    primary_failed_at = Date.now();
+    throw error;
+  }
 }
 
 /**

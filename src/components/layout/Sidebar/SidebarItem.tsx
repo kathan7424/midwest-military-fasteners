@@ -23,6 +23,9 @@ export default function SidebarItem({ series, active = false }: SidebarItemProps
     <li> 
       <Link
         href={series.href}
+        // Full prefetch: only the open accordion group's links are mounted,
+        // so this pre-renders a handful of series pages and makes clicks instant.
+        prefetch
         aria-current={active ? "page" : undefined}
         className={cn(
           "block py-2.5 text-link transition-opacity hover:opacity-75",

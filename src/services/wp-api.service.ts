@@ -30,6 +30,45 @@ export interface WpFetchOptions {
 // otherwise keeps serving stale API responses after backend changes.
 const IS_DEV = process.env.NODE_ENV === "development";
 
+// Dev-only in-memory cache for mode:"static" requests. Unlike the persistent
+// Next Data Cache it dies with the dev server, so backend changes show up
+// after at most DEV_CACHE_TTL_MS — while repeat navigation (sidebar clicks,
+// pagination, filters) stays fast instead of paying a ~1s WP roundtrip each.
+const DEV_CACHE_TTL_MS = 30_000;
+const dev_cache = new Map<
+  string,
+  { expires: number; body: unknown; total: number; total_pages: number }
+>();
+
+function dev_cache_get(url: string) {
+  const entry = dev_cache.get(url);
+
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.expires < Date.now()) {
+    dev_cache.delete(url);
+    return null;
+  }
+
+  return entry;
+}
+
+function dev_cache_set(
+  url: string,
+  body: unknown,
+  total = 0,
+  total_pages = 1
+): void {
+  dev_cache.set(url, {
+    expires: Date.now() + DEV_CACHE_TTL_MS,
+    body,
+    total,
+    total_pages,
+  });
+}
+
 function build_static_fetch_options(revalidate?: number, tags?: string[]): RequestInit {
   if (IS_DEV) {
     return WP_DYNAMIC_FETCH_OPTIONS;
@@ -60,6 +99,13 @@ export async function fetchWpJson<T>(
   const mode = options.mode ?? "dynamic";
   const url = `${ENV.WP_API}${endpoint}`;
 
+  if (IS_DEV && mode === "static") {
+    const cached = dev_cache_get(url);
+    if (cached) {
+      return cached.body as T;
+    }
+  }
+
   const fetch_options: RequestInit =
     mode === "static"
       ? build_static_fetch_options(options.revalidate, options.tags)
@@ -71,7 +117,13 @@ export async function fetchWpJson<T>(
     throw new Error(`WP API failed (${endpoint}): ${res.status}`);
   }
 
-  return (await res.json()) as T;
+  const body = (await res.json()) as T;
+
+  if (IS_DEV && mode === "static") {
+    dev_cache_set(url, body);
+  }
+
+  return body;
 }
 
 /**
@@ -98,6 +150,17 @@ export async function fetchWpJsonWithHeaders<T>(
   const mode = options.mode ?? "dynamic";
   const url = `${ENV.WP_API}${endpoint}`;
 
+  if (IS_DEV && mode === "static") {
+    const cached = dev_cache_get(url);
+    if (cached) {
+      return {
+        data: cached.body as T,
+        total: cached.total,
+        total_pages: cached.total_pages,
+      };
+    }
+  }
+
   const fetch_options: RequestInit =
     mode === "static"
       ? build_static_fetch_options(options.revalidate, options.tags)
@@ -110,10 +173,16 @@ export async function fetchWpJsonWithHeaders<T>(
   }
 
   const data = (await res.json()) as T;
+  const total = Number(res.headers.get("X-WP-Total") || 0);
+  const total_pages = Number(res.headers.get("X-WP-TotalPages") || 1);
+
+  if (IS_DEV && mode === "static") {
+    dev_cache_set(url, data, total, total_pages);
+  }
 
   return {
     data,
-    total: Number(res.headers.get("X-WP-Total") || 0),
-    total_pages: Number(res.headers.get("X-WP-TotalPages") || 1),
+    total,
+    total_pages,
   };
 }

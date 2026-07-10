@@ -1,14 +1,15 @@
 ﻿/**
  * File Name: page.tsx
- * Description: Home page â€” hero banner, search, and category grid.
+ * Description: Home page - hero banner, search, and category grid.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-10
  */
 
 import type { Metadata } from "next";
 
 import Hero from "@/components/pages/Home/Hero";
+import IsoSection from "@/components/shared_Ui/IsoSection";
 import { fetchHomePage } from "@/services/home-page.service";
 import { fetchProductCatalog } from "@/services/product-catalog.service";
 import { fetchYoastBySlug } from "@/services/seo.service";
@@ -37,7 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  // Both fetches run in parallel — page waits only for the slowest one.
+  // Both fetches run in parallel - page waits only for the slowest one.
   const [home_result, catalog_result] = await Promise.allSettled([
     fetchHomePage(),
     fetchProductCatalog(),
@@ -58,6 +59,12 @@ export default async function HomePage() {
     console.error("Product catalog fetch failed:", catalog_result.reason);
   }
 
-  return <Hero banner={banner} categories={categories} />;
+  return (
+    <>
+      <Hero banner={banner} categories={categories} />
+      <div className="mx-auto max-w-[1680px] px-5">
+        <IsoSection align="center" />
+      </div>
+    </>
+  );
 }
-

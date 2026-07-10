@@ -3,7 +3,7 @@
  * Description: Site settings model types.
  * Developer: KP-184
  * Created Date: 2026-06-25
- * Last Modified: 2026-06-25
+ * Last Modified: 2026-07-10
  */
 
 export interface LinkField {
@@ -37,6 +37,7 @@ export interface HeaderSettings {
 
 export interface FooterSettings {
   iso_logo: MediaItem | null;
+  iso_title: string | null;
   content_area: string;
   copy_right_text: LinkField | null;
   build_by_text: string;

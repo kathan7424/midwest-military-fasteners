@@ -15,18 +15,27 @@ import { has_product_document } from "@/utils/spec-parts.utils";
 
 interface ProductSpecTableProps {
   product: Product;
+  /** false = guest view: only the 1 Pkg price row is shown. */
+  showTierPricing?: boolean;
 }
 
-export default function ProductSpecTable({ product }: ProductSpecTableProps) {
+export default function ProductSpecTable({
+  product,
+  showTierPricing = true,
+}: ProductSpecTableProps) {
   const rows: { label: string; value: React.ReactNode; bold?: boolean }[] = [
     { label: "P/N", value: product.partNumber, bold: true },
     { label: "SKU", value: product.sku },
     { label: "Description", value: product.description },
     { label: "Pkg Qty", value: product.pkgQty },
     { label: "1 Pkg", value: product.price1 },
-    { label: "3 Pkg", value: product.price3 },
-    { label: "5 Pkg", value: product.price5 },
-    { label: "10 Pkg", value: product.price10 },
+    ...(showTierPricing
+      ? [
+          { label: "3 Pkg", value: product.price3 },
+          { label: "5 Pkg", value: product.price5 },
+          { label: "10 Pkg", value: product.price10 },
+        ]
+      : []),
     { label: "MFR", value: product.mfr },
   ];
 

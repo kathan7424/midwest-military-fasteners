@@ -21,16 +21,13 @@ export default async function ForgotPasswordPage() {
   await requireGuest();
 
   return (
-    <section className="bg-off-white px-5 py-12 lg:py-16">
+    <section className="bg-white px-5 py-12 lg:py-[150px]">
       <div className="mx-auto flex w-full max-w-md flex-col items-center">
         <ForgotPasswordPanel />
 
-        <p className="mt-6 text-center text-sm text-dark-gray">
+        <p className="mt-6 text-center text-link text-dark-gray">
           Remembered your password?{" "}
-          <Link
-            href={PUBLIC_ROUTES.login}
-            className="font-semibold text-blue transition-colors hover:text-navy"
-          >
+          <Link href={PUBLIC_ROUTES.login} className="font-semibold text-blue transition-colors hover:text-navy">
             Back to login
           </Link>
         </p>

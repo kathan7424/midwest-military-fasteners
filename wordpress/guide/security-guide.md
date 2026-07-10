@@ -115,8 +115,28 @@ Admin approve/reject links use HMAC-SHA256 signed URLs. No WP login is required 
 
 **Gravity Forms merge tags** `{mmf_approve_url}` / `{mmf_reject_url}` (registered via `gform_replace_merge_tags`) generate the same HMAC-signed URLs at notification-send time. User resolution order: GF User Registration `_gform-entry-id` user meta → entry `created_by` → email-field match. If no user resolves (pending activation), the tags fall back to the Tax Certificates dashboard URL — never a broken link. No URLs are hardcoded: logo comes from `wp_get_upload_dir()`, links from `home_url()`/`admin_url()`.
 
-## 9. Known Accepted Risks
+## 9. Content Security Policy (production)
 
-- No CSP header yet (inline-script inventory pending) — WP compromise would allow stored XSS on the storefront. Mitigation: WP admin hygiene, plugin minimalism.
+`next.config.ts` sends a CSP on every production response (dev is exempt —
+HMR needs eval). Verified live with `next start`:
+
+| Directive | Value | Why |
+|---|---|---|
+| `default-src` | `'self'` | Everything not listed below is same-origin only |
+| `script-src` | `'self' 'unsafe-inline' js.stripe.com` | Next runtime needs inline; Stripe.js |
+| `connect-src` | `'self' api/r/js.stripe.com + WP host` | Stripe tokenization/telemetry; WP assets |
+| `img-src` | `'self' data: blob: WP host *.stripe.com` | Product images from WP; card brand icons |
+| `frame-src` | `js.stripe.com hooks.stripe.com` | Card element + 3DS iframes |
+| `object-src` / `base-uri` / `form-action` / `frame-ancestors` | `'none'` / `'self'` / `'self'` / `'self'` | Standard lockdown |
+| `upgrade-insecure-requests` | — | Any stray http:// asset auto-upgrades |
+
+The WP host is derived from `NEXT_PUBLIC_WP_SITE_URL` — no hardcoded domain;
+prod/live envs get the right origin automatically. If Stripe checkout breaks
+after a CSP edit, check the browser console for `Content-Security-Policy`
+violations first.
+
+## 10. Known Accepted Risks
+
+- `'unsafe-inline'` remains in script-src (Next.js app-router runtime requirement) — script injection is still constrained by `default-src`, `object-src 'none'`, `base-uri 'self'`, and WP-content escaping in the app. A nonce-based strict CSP is a future hardening step.
 - WP origin (`NEXT_PUBLIC_WP_SITE_URL`) is visible to clients — acceptable; public endpoints only, auth is cookie-gated.
 - `check-email` endpoint reveals whether an email is registered (registration UX trade-off) — consider rate limiting at the edge.

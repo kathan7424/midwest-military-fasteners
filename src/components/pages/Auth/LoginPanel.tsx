@@ -16,7 +16,7 @@ import { useForm, Controller } from "react-hook-form";
 import { FaChevronRight } from "react-icons/fa6";
 import { z } from "zod";
 
-import { Button } from "@/components/base/buttons/button";
+import LoginButton from "@/components/pages/Auth/LoginButton";
 import { Input } from "@/components/base/input/input";
 import { PUBLIC_ROUTES } from "@/config/routes";
 import { login_user } from "@/services/auth-client.service";
@@ -35,9 +35,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const figma_input_wrapper_class =
-  "rounded-none bg-white shadow-none ring-[#bdbdbd] focus-within:ring-blue";
+  "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12  shadow-none";
 const figma_input_text_class =
-  "text-sm text-near-black placeholder:text-[#b0b0b0]";
+  "text-link text-[#989898] placeholder:text-[#989898] shadow-none";
 
 export default function LoginPanel() {
   const router = useRouter();
@@ -101,13 +101,13 @@ export default function LoginPanel() {
   };
 
   return (
-    <div className="bg-white px-8 py-10 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
-      <h2 className="mb-8 text-center font-condensed text-[28px] font-bold uppercase tracking-wide text-blue">
+    <div className="bg-white w-full px-[50px] py-[55px] shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
+      <h2 className="mb-6 text-center font-sans text-h2 font-bold uppercase text-blue">
         Login
       </h2>
 
       <form
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-5"
         onSubmit={handleSubmit(onSubmit)}
         noValidate
       >
@@ -123,7 +123,7 @@ export default function LoginPanel() {
               size="sm"
               isInvalid={Boolean(errors.email)}
               hint={errors.email?.message}
-              className="w-full"
+             className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
               wrapperClassName={figma_input_wrapper_class}
               inputClassName={figma_input_text_class}
             />
@@ -154,7 +154,7 @@ export default function LoginPanel() {
             name="remember"
             control={control}
             render={({ field: { value, onChange, ...field } }) => (
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-near-black">
+              <label className="flex gap-2 text-link font-medium text-blue transition-colors hover:text-navy">
                 <input
                   {...field}
                   type="checkbox"
@@ -169,23 +169,21 @@ export default function LoginPanel() {
 
           <Link
             href={PUBLIC_ROUTES.forgotPassword}
-            className="text-sm font-medium text-blue transition-colors hover:text-navy"
+            className="text-link font-medium text-blue transition-colors hover:text-navy"
           >
             Forgot password?
           </Link>
         </div>
 
-        <div className="flex justify-center pt-3">
-          <Button
+        <div className="flex justify-center">
+        <LoginButton
             type="submit"
-            color="primary"
-            size="md"
-            isDisabled={isSubmitting}
-            className="min-w-[142px] rounded-none bg-amber px-7 py-3 font-condensed text-base font-bold uppercase tracking-wide text-white shadow-none before:rounded-none hover:bg-[#b38600]"
+            disabled={isSubmitting}
+            className="min-w-[167px] h-[47px] rounded-none bg-amber px-8 py-3.5 font-condensed text-[18px] font-bold uppercase text-white hover:bg-[#b38600]"
             iconTrailing={FaChevronRight}
           >
             {isSubmitting ? "Logging in..." : "Login"}
-          </Button>
+          </LoginButton>
         </div>
       </form>
     </div>

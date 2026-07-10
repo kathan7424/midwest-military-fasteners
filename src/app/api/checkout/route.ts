@@ -9,12 +9,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { ENV } from "@/config/env";
 import {
   buildCheckoutCartStateResponse,
-  buildWcStoreHeaders,
-  fetchStoreCart,
   fetchStoreCartWithRecovery,
+  wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 import { formatNoticeMessage } from "@/utils/text.utils";
 
@@ -64,8 +62,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bootstrapResponse = await fetchStoreCart(request);
-
     // WC Store API schema is strict: shipping_address never includes email;
     // billing_address and shipping_address must only contain WC-known keys.
     const billingForWc = pickWcAddress(body.billing_address, true);
@@ -74,22 +70,14 @@ export async function POST(request: NextRequest) {
       false
     );
 
-    const wpResponse = await fetch(
-      `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/checkout`,
-      {
-        method: "POST",
-        headers: buildWcStoreHeaders(request, true, bootstrapResponse),
-        body: JSON.stringify({
-          billing_address: billingForWc,
-          shipping_address: shippingForWc,
-          payment_method: body.payment_method,
-          payment_data: body.payment_data ?? [],
-          customer_note: (body.customer_note ?? "").slice(0, 1000),
-          create_account: body.create_account === true,
-        }),
-        cache: "no-store",
-      }
-    );
+    const wpResponse = await wcStoreMutation(request, "checkout", {
+      billing_address: billingForWc,
+      shipping_address: shippingForWc,
+      payment_method: body.payment_method,
+      payment_data: body.payment_data ?? [],
+      customer_note: (body.customer_note ?? "").slice(0, 1000),
+      create_account: body.create_account === true,
+    });
 
     const raw = (await wpResponse.json().catch(() => null)) as Record<
       string,
