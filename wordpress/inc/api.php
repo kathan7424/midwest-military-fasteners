@@ -674,6 +674,7 @@ function mmf_get_site_settings() {
 		),
 		'footer'      => array(
 			'iso_logo'        => mmf_format_acf_image( get_field( 'iso_logo', 'option' ) ),
+			'iso_title'        => sanitize_text_field( get_field( 'iso_title', 'option' ) ),
 			'content_area'    => wp_kses_post( (string) get_field( 'content_area', 'option' ) ),
 			'copy_right_text' => mmf_format_acf_link( $copy_right_text ),
 			'build_by_text'   => sanitize_text_field( (string) get_field( 'build_by_text', 'option' ) ),

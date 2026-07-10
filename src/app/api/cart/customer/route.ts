@@ -5,6 +5,7 @@
  *              rates (Shippo) and tax — response includes fresh checkout state.
  * Developer: KP-184
  * Created Date: 2026-07-08
+ * Last Modified: 2026-07-10
  */
 
 import { NextRequest } from "next/server";

@@ -6,6 +6,7 @@
  *   Thumbnail strip shown when product has 2+ images.
  * Developer: KP-184
  * Created Date: 2026-07-09
+ * Last Modified: 2026-07-10
  */
 
 "use client";

@@ -5,6 +5,7 @@
  *   Stripe PaymentMethod → POST /wc/store/v1/checkout → success page.
  * Developer: KP-184
  * Created Date: 2026-07-08
+ * Last Modified: 2026-07-10
  */
 
 "use client";
