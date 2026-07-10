@@ -3,7 +3,7 @@
  * Description: Site footer with dynamic settings and footer menu.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-10
  */
 
 import Link from "next/link";
@@ -44,20 +44,20 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
 
   return (
     <footer className="bg-white">
-      {hasTrustSection ? (
-        <div className="mx-auto max-w-[1680px] px-5">
-          <div className="flex flex-col items-center gap-8 py-12 md:flex-row md:items-center md:justify-center md:gap-10">
+      {/* {hasTrustSection ? ( */}
+        {/* <div className="mx-auto max-w-[1680px] px-5"> */}
+          {/* <div className="flex flex-col items-center gap-8 py-12 md:flex-row md:items-center md:justify-center md:gap-10">
             {hasIsoLogo ? (
-              <div className="shrink-0 block">
-                <Image
-                  src={iso_logo!.url}
-                  alt={iso_logo!.alt || "ISO certification logo"}
-                  width={164}
-                  height={144}
-                  className="h-auto w-auto max-w-[164px]"
-                  priority
-                />
-              </div>
+              // <div className="shrink-0 block">
+              //   <Image
+              //     src={iso_logo!.url}
+              //     alt={iso_logo!.alt || "ISO certification logo"}
+              //     width={164}
+              //     height={144}
+              //     className="h-auto w-auto max-w-[164px]"
+              //     priority
+              //   />
+              // </div>
             ) : null}
 
             {hasContentArea ? (
@@ -68,7 +68,7 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
             ) : null}
           </div>
         </div>
-      ) : null}
+      ) : null} */}
 
       {hasBottomBar ? (
         <div className="bg-[#c79a00]">

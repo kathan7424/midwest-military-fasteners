@@ -7,11 +7,9 @@
 
 import { NextRequest } from "next/server";
 
-import { ENV } from "@/config/env";
 import {
   buildCheckoutCartStateResponse,
-  buildWcStoreHeaders,
-  fetchStoreCart,
+  wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 
 export const dynamic = "force-dynamic";
@@ -31,20 +29,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bootstrapResponse = await fetchStoreCart(request);
-
-    const wpResponse = await fetch(
-      `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart/select-shipping-rate`,
-      {
-        method: "POST",
-        headers: buildWcStoreHeaders(request, true, bootstrapResponse),
-        body: JSON.stringify({
-          package_id: body.package_id ?? 0,
-          rate_id: body.rate_id,
-        }),
-        cache: "no-store",
-      }
-    );
+    const wpResponse = await wcStoreMutation(request, "cart/select-shipping-rate", {
+      package_id: body.package_id ?? 0,
+      rate_id: body.rate_id,
+    });
 
     return buildCheckoutCartStateResponse(wpResponse);
   } catch (error) {

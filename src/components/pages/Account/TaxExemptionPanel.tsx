@@ -9,6 +9,9 @@
 
 import { useEffect, useState } from "react";
 
+import { parseDate } from "@internationalized/date";
+
+import { DatePicker } from "@/components/application/date-picker/date-picker";
 import SalesTaxExemptionUpload from "@/components/pages/Auth/SalesTaxExemptionUpload";
 import {
   fetch_tax_exemption_status,
@@ -210,19 +213,17 @@ export default function TaxExemptionPanel({
 
       <form onSubmit={(event) => void handleSubmit(event)} className="max-w-xl space-y-4">
         <div>
-          <label
-            htmlFor="expiry_date"
-            className="mb-1.5 block text-sm font-semibold text-dark-gray"
-          >
+          <p className="mb-1.5 text-sm font-semibold text-dark-gray">
             Expiration Date
-          </label>
-          <input
-            id="expiry_date"
-            type="date"
-            value={expiryDate}
-            onChange={(event) => setExpiryDate(event.target.value)}
-            className="h-10 w-full border border-[#bdbdbd] bg-white px-3 text-sm text-near-black"
-            required
+          </p>
+          <DatePicker
+            aria-label="Certificate expiration date"
+            value={expiryDate ? parseDate(expiryDate) : null}
+            onChange={(date) => setExpiryDate(date ? date.toString() : "")}
+            minValue={parseDate(new Date().toISOString().slice(0, 10))}
+            placeholder="Expiration Date"
+            size="md"
+            buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
           />
         </div>
 

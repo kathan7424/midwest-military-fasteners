@@ -286,6 +286,7 @@
     border: 1px solid var(--c-border);
     padding: 6px 10px;
     font-size: 13px;
+    min-width: 160px;
 }
 
 .mmf-tax-wrap .tablenav .bulkactions input[type="submit"] {
@@ -307,6 +308,12 @@
     font-size: 13px;
 }
 
+/* ── Table scroll container ─────────────────────────── */
+.mmf-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* ── List table ─────────────────────────────────────── */
 .mmf-tax-wrap .wp-list-table {
     background: var(--c-surface);
@@ -315,15 +322,32 @@
     box-shadow: var(--shadow-sm);
     border-spacing: 0;
     border-collapse: separate;
-    overflow: hidden;
+    overflow: visible;
     width: 100%;
+    min-width: 860px;
+}
+
+/* Round the four corners via first/last cell selectors (no overflow:hidden needed). */
+.mmf-tax-wrap .wp-list-table thead tr th:first-child,
+.mmf-tax-wrap .wp-list-table thead tr td:first-child {
+    border-radius: var(--radius-lg) 0 0 0;
+}
+.mmf-tax-wrap .wp-list-table thead tr th:last-child,
+.mmf-tax-wrap .wp-list-table thead tr td:last-child {
+    border-radius: 0 var(--radius-lg) 0 0;
+}
+.mmf-tax-wrap .wp-list-table tbody tr:last-child td:first-child {
+    border-radius: 0 0 0 var(--radius-lg);
+}
+.mmf-tax-wrap .wp-list-table tbody tr:last-child td:last-child {
+    border-radius: 0 0 var(--radius-lg) 0;
 }
 
 .mmf-tax-wrap .wp-list-table thead tr th,
 .mmf-tax-wrap .wp-list-table thead tr td {
     background: #f8f9fa;
     border-bottom: 1px solid var(--c-border);
-    padding: 11px 14px;
+    padding: 10px;
     font-size: 11.5px;
     font-weight: 600;
     text-transform: uppercase;
@@ -348,8 +372,17 @@
 
 .mmf-tax-wrap .wp-list-table thead tr th a:hover { color: var(--c-text); }
 
+/* ── Column widths (keeps all 7 cols visible at ~1050px+) ── */
+.mmf-tax-wrap .wp-list-table .column-cb          { width: 32px;  min-width: 32px; }
+.mmf-tax-wrap .wp-list-table .column-customer    { width: 20%;   min-width: 180px; }
+.mmf-tax-wrap .wp-list-table .column-certificate { width: 80px;  min-width: 80px;  text-align: center; }
+.mmf-tax-wrap .wp-list-table .column-submitted   { width: 100px; min-width: 100px; }
+.mmf-tax-wrap .wp-list-table .column-expiry      { width: 140px; min-width: 130px; }
+.mmf-tax-wrap .wp-list-table .column-status      { width: 125px; min-width: 115px; }
+.mmf-tax-wrap .wp-list-table .column-manage      { width: 270px; min-width: 255px; }
+
 .mmf-tax-wrap .wp-list-table tbody tr td {
-    padding: 14px;
+    padding: 12px 10px;
     border-bottom: 1px solid #f1f3f5;
     vertical-align: middle;
     font-size: 13px;
@@ -552,17 +585,17 @@
 .mmf-quick-edit {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    min-width: 320px;
+    flex-wrap: nowrap;
+    gap: 5px;
+    min-width: 0;
 }
 
 .mmf-quick-edit input[type="date"],
 .mmf-quick-edit select {
     border: 1px solid var(--c-border);
     border-radius: var(--radius-sm);
-    padding: 6px 9px;
-    font-size: 12.5px;
+    padding: 5px 6px;
+    font-size: 12px;
     line-height: 1.4;
     background: var(--c-surface);
     color: var(--c-text);
@@ -570,8 +603,8 @@
     transition: border-color .12s, box-shadow .12s, background .12s, color .12s;
 }
 
-.mmf-quick-edit input[type="date"] { width: 140px; }
-.mmf-quick-edit select { width: 130px; font-weight: 600; }
+.mmf-quick-edit input[type="date"] { width: 118px; flex-shrink: 0; }
+.mmf-quick-edit select { width: 105px; font-weight: 600; flex-shrink: 0; }
 
 .mmf-quick-edit input[type="date"]:focus,
 .mmf-quick-edit select:focus {

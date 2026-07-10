@@ -11,7 +11,7 @@ import { WpPage } from "@/types/page.types";
 
 export async function fetchPageBySlug(slug: string): Promise<WpPage | null> {
   const pages = await fetchWpJson<WpPage[]>(
-    `/wp/v2/pages?slug=${encodeURIComponent(slug)}&_embed=wp:featuredmedia`,
+    `/wp/v2/pages?slug=${encodeURIComponent(slug)}&_embed`,
     { mode: "static", revalidate: 60 }
   );
 

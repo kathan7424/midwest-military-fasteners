@@ -37,6 +37,7 @@ export default function SearchBar({
           type="text"
           value={query}
           placeholder={placeholder}
+          aria-label="Search by part number or keywords"
           onFocus={() => {
             if (suggestions.length > 0) {
               setIsOpen(true);

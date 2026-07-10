@@ -23,7 +23,7 @@ export const HintText = ({ isInvalid, className, size = "md", ...props }: HintTe
 
                 // Size
                 size === "sm" && "text-xs",
-                "in-data-[input-size=sm]:text-xs",
+                 "in-data-[input-size=sm]:text-sm",
 
                 // Invalid state
                 isInvalid && "text-error-primary",

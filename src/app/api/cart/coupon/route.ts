@@ -9,11 +9,9 @@
 
 import { NextRequest } from "next/server";
 
-import { ENV } from "@/config/env";
 import {
   buildCheckoutCartStateResponse,
-  buildWcStoreHeaders,
-  fetchStoreCart,
+  wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 
 export const dynamic = "force-dynamic";
@@ -31,17 +29,7 @@ async function proxyCouponAction(request: NextRequest, endpoint: string) {
     return Response.json({ message: "Coupon code is too long." }, { status: 400 });
   }
 
-  const bootstrapResponse = await fetchStoreCart(request);
-
-  const wpResponse = await fetch(
-    `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart/${endpoint}`,
-    {
-      method: "POST",
-      headers: buildWcStoreHeaders(request, true, bootstrapResponse),
-      body: JSON.stringify({ code }),
-      cache: "no-store",
-    }
-  );
+  const wpResponse = await wcStoreMutation(request, `cart/${endpoint}`, { code });
 
   return buildCheckoutCartStateResponse(wpResponse);
 }

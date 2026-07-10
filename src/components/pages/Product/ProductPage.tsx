@@ -10,7 +10,7 @@
 
  * Created Date: 2026-06-26
 
- * Last Modified: 2026-07-07
+ * Last Modified: 2026-07-10
 
  */
 
@@ -152,11 +152,15 @@ export default function ProductPage({
 
     handleFilterChange,
 
+    handlePageChange,
+
     visibleProducts,
 
     tablePage,
 
     tableTotalPages,
+
+    isPaging,
 
     isPendingSearch,
 
@@ -371,7 +375,7 @@ export default function ProductPage({
 
               aria-label="Filter products"
 
-              className="w-full border border-light-gray px-4 py-3 text-body text-near-black placeholder:text-mid-gray focus:border-blue"
+              className="w-full max-w-[506px] border border-blue px-4 py-3 text-body text-near-black placeholder:text-mid-gray focus:border-blue"
 
             />
 
@@ -389,11 +393,11 @@ export default function ProductPage({
 
 
 
-          <div className={isPendingSearch ? "opacity-70 transition-opacity" : ""}>
+          <div className={isPendingSearch || isPaging ? "opacity-70 transition-opacity" : ""}>
 
             <ProductTable
               data={visibleProducts}
-              isLoading={isPendingSearch && visibleProducts.length === 0}
+              isLoading={(isPendingSearch || isPaging) && visibleProducts.length === 0}
               showTierPricing={showTierPricing}
             />
 
@@ -415,7 +419,11 @@ export default function ProductPage({
 
                 <Link
                   href={build_page_href(tablePage - 1)}
-                  prefetch
+                  prefetch={false}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handlePageChange(tablePage - 1);
+                  }}
                   className="inline-flex min-w-10 items-center justify-center border border-light-gray px-3 py-2 text-sm font-semibold text-blue transition-colors hover:border-blue hover:text-navy"
                 >
 
@@ -450,6 +458,12 @@ export default function ProductPage({
                     <Link
                       href={build_page_href(page)}
                       prefetch={false}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        if (page !== tablePage) {
+                          handlePageChange(page);
+                        }
+                      }}
                       aria-current={page === tablePage ? "page" : undefined}
 
                       className={
@@ -480,7 +494,11 @@ export default function ProductPage({
 
                 <Link
                   href={build_page_href(tablePage + 1)}
-                  prefetch
+                  prefetch={false}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handlePageChange(tablePage + 1);
+                  }}
                   className="inline-flex min-w-10 items-center justify-center border border-light-gray px-3 py-2 text-sm font-semibold text-blue transition-colors hover:border-blue hover:text-navy"
                 >
 

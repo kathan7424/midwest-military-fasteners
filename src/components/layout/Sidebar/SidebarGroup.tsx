@@ -37,6 +37,7 @@ export default function SidebarGroup({
         {group.href ? (
           <Link
             href={group.href}
+            prefetch
             className={`block px-1 py-3 font-normal transition-colors hover:text-dark-gray ${
               isActiveGroup ? "font-bold text-near-black" : "text-blue"
             }`}

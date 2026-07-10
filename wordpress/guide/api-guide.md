@@ -97,8 +97,30 @@ All routes gated by `mmf_cart_permission`. Inputs sanitized (`absint` / `sanitiz
 |---|---|---|
 | `/api/catalog/categories` | `public, max-age=60, s-maxage=120, SWR 600` | Sidebar warmup |
 | `/api/catalog/products` | `public, max-age=30, s-maxage=60, SWR 300` | Client-side table search |
+| `/api/search` | `public, max-age=30, s-maxage=60, SWR 300` (+ per-query 30s WP micro-cache) | Search suggestions |
+| `/api/menu` | `public, max-age=300, SWR 3600` (+ ISR'd WP fetch) | Header/footer nav |
+| `/api/checkout/locations` | `public, max-age=300, SWR 3600` (5-min ISR) | Countries/states + WC settings |
 | `/api/cart/*` | no-store | Cart (per-user) |
 | `/api/auth/*` | no-store | Auth |
+
+## Store API mutation fast path (performance invariant)
+
+Every cart/checkout mutation route goes through `wcStoreMutation()`
+(`src/utils/wc-cart-proxy.utils.ts`) — do NOT reintroduce per-route
+"bootstrap `GET /cart` then mutate" sequences:
+
+- **Fast path (the common case):** the browser already carries the Store API
+  session cookies (nonce + cart token) from a previous cart response → the
+  mutation is ONE WordPress round trip.
+- **Slow path (first request of a session / expired nonce → 401/403):**
+  bootstrap `GET /cart` for a fresh session, retry once with the fresh
+  nonce/cart-token taking precedence over the stale cookies.
+
+Before this helper, every add-to-cart / quantity change / address update /
+coupon / place-order paid TWO sequential WP round trips (~300–800ms wasted
+per call on Pantheon). Routes on the fast path: `cart` (add), `cart/update`,
+`cart/remove`, `cart/coupon`, `cart/select-shipping`, `cart/customer`,
+`checkout` (place order).
 
 ## Security invariants (do not regress)
 

@@ -24,6 +24,7 @@ import {
 
 import CartTaxExemptionNotice from "@/components/pages/Cart/CartTaxExemptionNotice";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
+import { Loader2 } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import {
   apply_coupon,
@@ -83,6 +84,12 @@ const EMPTY_ADDRESS: CheckoutAddress = {
 const INPUT_CLASS =
   "w-full border border-light-gray bg-white px-4 py-3 text-link text-near-black outline-none transition-colors focus:border-blue";
 
+/** WC block checkout shows "Free" for zero-cost shipping rates. */
+function isFreeRate(formattedPrice: string): boolean {
+  const numeric = formattedPrice.replace(/[^\d.]/g, "");
+  return numeric !== "" && parseFloat(numeric) === 0;
+}
+
 function AddressSelectField({
   label,
   name,
@@ -108,7 +115,8 @@ function AddressSelectField({
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold text-near-black">
         {label}
-        {required ? <span className="text-[#E12222]"> *</span> : null}
+        {/* WC block standard: required is the default, optional is marked */}
+        {!required ? <span className="font-normal text-dark-gray"> (optional)</span> : null}
       </span>
       <select
         name={name}
@@ -153,7 +161,8 @@ function AddressField({
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold text-near-black">
         {label}
-        {required ? <span className="text-[#E12222]"> *</span> : null}
+        {/* WC block standard: required is the default, optional is marked */}
+        {!required ? <span className="font-normal text-dark-gray"> (optional)</span> : null}
       </span>
       <input
         type={type}
@@ -174,11 +183,13 @@ function OrderSummary({
   checkout,
   onRemoveCoupon,
   isBusy,
+  isUpdating,
 }: {
   cart: CartData;
   checkout: CheckoutCartState;
   onRemoveCoupon: (code: string) => void;
   isBusy: boolean;
+  isUpdating: boolean;
 }) {
   return (
     <aside className="h-fit border border-light-gray bg-off-white p-6">
@@ -203,40 +214,56 @@ function OrderSummary({
         ))}
       </ul>
 
-      <dl className="space-y-2 text-link">
-        <div className="flex justify-between">
-          <dt className="text-dark-gray">Subtotal</dt>
-          <dd className="text-near-black">{checkout.totals.subtotal}</dd>
-        </div>
-        {checkout.coupons.map((coupon) => (
-          <div key={coupon.code} className="flex justify-between">
-            <dt className="text-dark-gray">
-              Coupon: <span className="uppercase">{coupon.code}</span>{" "}
-              <button
-                type="button"
-                disabled={isBusy}
-                onClick={() => onRemoveCoupon(coupon.code)}
-                className="text-blue underline underline-offset-2 transition-colors hover:text-amber disabled:opacity-50"
-              >
-                [Remove]
-              </button>
-            </dt>
-            <dd className="text-near-black">-{coupon.discount}</dd>
+      {isUpdating ? (
+        <div className="space-y-3" aria-busy="true" aria-label="Updating totals">
+          <div className="flex items-center gap-2 text-sm text-dark-gray">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            Calculating shipping &amp; tax…
           </div>
-        ))}
-        <div className="flex justify-between">
-          <dt className="text-dark-gray">Shipping</dt>
-          <dd className="text-near-black">{checkout.totals.shipping_total}</dd>
+          <SkeletonBlock className="h-4 w-full" />
+          <SkeletonBlock className="h-4 w-3/4" />
+          <SkeletonBlock className="h-4 w-full" />
+          <SkeletonBlock className="h-4 w-full" />
+          <div className="border-t border-light-gray pt-3">
+            <SkeletonBlock className="h-5 w-full" />
+          </div>
         </div>
-        <div className="flex justify-between">
-          <dt className="text-dark-gray">Tax</dt>
-          <dd className="text-near-black">{checkout.totals.tax_total}</dd>
-        </div>
-        <div className="flex justify-between border-t border-light-gray pt-3 text-body font-bold">
-          <dt className="text-near-black">Total</dt>
-          <dd className="text-near-black">{checkout.totals.total}</dd>
-        </div>
-      </dl>
+      ) : (
+        <dl className="space-y-2 text-link">
+          <div className="flex justify-between">
+            <dt className="text-dark-gray">Subtotal</dt>
+            <dd className="text-near-black">{checkout.totals.subtotal}</dd>
+          </div>
+          {checkout.coupons.map((coupon) => (
+            <div key={coupon.code} className="flex justify-between">
+              <dt className="text-dark-gray">
+                Coupon: <span className="uppercase">{coupon.code}</span>{" "}
+                <button
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => onRemoveCoupon(coupon.code)}
+                  className="text-blue underline underline-offset-2 transition-colors hover:text-amber disabled:opacity-50"
+                >
+                  [Remove]
+                </button>
+              </dt>
+              <dd className="text-near-black">-{coupon.discount}</dd>
+            </div>
+          ))}
+          <div className="flex justify-between">
+            <dt className="text-dark-gray">Shipping</dt>
+            <dd className="text-near-black">{checkout.totals.shipping_total}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-dark-gray">Tax</dt>
+            <dd className="text-near-black">{checkout.totals.tax_total}</dd>
+          </div>
+          <div className="flex justify-between border-t border-light-gray pt-3 text-body font-bold">
+            <dt className="text-near-black">Total</dt>
+            <dd className="text-near-black">{checkout.totals.total}</dd>
+          </div>
+        </dl>
+      )}
     </aside>
   );
 }
@@ -258,11 +285,20 @@ function CheckoutForm({
   const [cart, setCartState] = useState<CartData | null>(null);
   const [checkout, setCheckout] = useState<CheckoutCartState | null>(null);
   const [locations, setLocations] = useState<CheckoutLocations | null>(null);
-  const [address, setAddress] = useState<CheckoutAddress>(EMPTY_ADDRESS);
-  // WooCommerce-standard "Ship to a different address?" — unchecked means
-  // shipping = billing (WC default behavior).
-  const [shipToDifferent, setShipToDifferent] = useState(false);
-  const [shippingAddress, setShippingAddress] = useState<CheckoutAddress>(EMPTY_ADDRESS);
+
+  // WC block checkout pattern: shipping is the primary form.
+  // Email lives in "Contact information"; phone belongs to each address
+  // block ("Phone (optional)" next to ZIP — WC block standard).
+  const [email, setEmail] = useState("");
+  const [shipping, setShipping] = useState<CheckoutAddress>(EMPTY_ADDRESS);
+  const [billing, setBilling] = useState<CheckoutAddress>(EMPTY_ADDRESS);
+  // "Use same address for billing" — checked by default (WC block standard).
+  const [sameAsBilling, setSameAsBilling] = useState(true);
+  // WC block standard: apartment field is collapsed behind a
+  // "+ Add apartment, suite, etc." link until opened (or it has a value).
+  const [showShippingApt, setShowShippingApt] = useState(false);
+  const [showBillingApt, setShowBillingApt] = useState(false);
+
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [cardBrand, setCardBrand] = useState("unknown");
@@ -275,20 +311,15 @@ function CheckoutForm({
   const [cardNumberFocused, setCardNumberFocused] = useState(false);
   const [cardExpiryFocused, setCardExpiryFocused] = useState(false);
   const [cardCvcFocused, setCardCvcFocused] = useState(false);
-  // WC → Accounts & Privacy → "Allow customers to create an account during
-  // checkout" — Store API creates the account with the order when true.
   const [createAccount, setCreateAccount] = useState(false);
   const [orderNote, setOrderNote] = useState("");
-  // WooCommerce decides which gateways this customer sees (e.g. Net 30/cod
-  // only for admin-flagged accounts) — we render whatever the cart returns.
   const [selectedGateway, setSelectedGateway] = useState("stripe");
-  // Coupon form (rendered only when WC → "Enable the use of coupon codes").
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [showOrderNotes, setShowOrderNotes] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // WC checkout customizer: company / apartment / phone visibility.
   const { fields } = settings;
 
   const applyState = useCallback(
@@ -304,30 +335,20 @@ function CheckoutForm({
     let active = true;
 
     void (async () => {
-      // Locations (WC allowed countries/states) load in parallel with the cart.
       const [stateResult, locationsResult] = await Promise.all([
         fetch_checkout_state(),
         fetch_checkout_locations(),
       ]);
 
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       if (locationsResult) {
         setLocations(locationsResult);
 
         if (locationsResult.default_country) {
-          setAddress((current) =>
-            current.country
-              ? current
-              : { ...current, country: locationsResult.default_country }
-          );
-          setShippingAddress((current) =>
-            current.country
-              ? current
-              : { ...current, country: locationsResult.default_country }
-          );
+          const def = locationsResult.default_country;
+          setShipping((c) => (c.country ? c : { ...c, country: def }));
+          setBilling((c) => (c.country ? c : { ...c, country: def }));
         }
       }
 
@@ -336,9 +357,31 @@ function CheckoutForm({
       if (ok && "cart" in data) {
         applyState(data);
 
-        const saved = data.checkout.shipping_address;
-        if (saved?.address_1) {
-          setAddress((current) => ({ ...current, ...saved }));
+        // WC standard: prefill from the customer session — logged-in users
+        // get their saved account addresses, returning guests get what they
+        // entered earlier. Email lives on billing per Store API.
+        const savedShipping = data.checkout.shipping_address ?? {};
+        const savedBilling = data.checkout.billing_address ?? {};
+
+        // Strip email (Contact section state) and empty values so a blank
+        // saved country can't wipe the store default.
+        const addressOnly = (a: Partial<CheckoutAddress>): Partial<CheckoutAddress> =>
+          Object.fromEntries(
+            Object.entries(a).filter(([k, v]) => v && k !== "email")
+          ) as Partial<CheckoutAddress>;
+
+        const savedEmail = savedBilling.email || savedShipping.email;
+        if (savedEmail) setEmail(savedEmail);
+
+        // WC falls back to the billing address when no shipping is saved.
+        const shippingSource = savedShipping.address_1 ? savedShipping : savedBilling;
+        if (shippingSource.address_1) {
+          setShipping((c) => ({ ...c, ...addressOnly(shippingSource) }));
+          if (shippingSource.address_2) setShowShippingApt(true);
+        }
+        if (savedBilling.address_1) {
+          setBilling((c) => ({ ...c, ...addressOnly(savedBilling) }));
+          if (savedBilling.address_2) setShowBillingApt(true);
         }
       } else {
         setLoadError(
@@ -351,179 +394,116 @@ function CheckoutForm({
       setIsLoading(false);
     })();
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [applyState]);
-
-  const handleAddressChange = (name: keyof CheckoutAddress, value: string) => {
-    setFormErrors((prev) => ({ ...prev, [`billing_${name}`]: "" }));
-    setAddress((current) => {
-      if (name === "country" && value !== current.country) {
-        return { ...current, country: value, state: "" };
-      }
-      return { ...current, [name]: value };
-    });
-  };
 
   const handleShippingChange = (name: keyof CheckoutAddress, value: string) => {
     setFormErrors((prev) => ({ ...prev, [`shipping_${name}`]: "" }));
-    setShippingAddress((current) => {
-      if (name === "country" && value !== current.country) {
-        return { ...current, country: value, state: "" };
-      }
-      return { ...current, [name]: value };
-    });
+    setShipping((c) =>
+      name === "country" && value !== c.country
+        ? { ...c, country: value, state: "" }
+        : { ...c, [name]: value }
+    );
   };
 
-  const countryStates = locations?.states[address.country] ?? [];
-  const hasStatesList = countryStates.length > 0;
-  // WC → General → "Shipping location(s)" may differ from selling locations —
-  // the shipping form gets its own country/state lists (classic WC behavior).
+  const handleBillingChange = (name: keyof CheckoutAddress, value: string) => {
+    setFormErrors((prev) => ({ ...prev, [`billing_${name}`]: "" }));
+    setBilling((c) =>
+      name === "country" && value !== c.country
+        ? { ...c, country: value, state: "" }
+        : { ...c, [name]: value }
+    );
+  };
+
+  // WC → "Shipping location(s)" may differ from selling locations.
   const shippingCountries = locations?.shipping_countries ?? locations?.countries ?? [];
-  const shippingCountryStates =
-    locations?.shipping_states?.[shippingAddress.country] ??
-    locations?.states[shippingAddress.country] ??
+  const shippingStates =
+    locations?.shipping_states?.[shipping.country] ??
+    locations?.states[shipping.country] ??
     [];
-  const hasShippingStatesList = shippingCountryStates.length > 0;
+  const hasShippingStates = shippingStates.length > 0;
 
-  // WooCommerce rule: rates + tax follow the SHIPPING address.
-  const effectiveShipping = shipToDifferent ? shippingAddress : address;
+  const billingCountries = locations?.countries ?? [];
+  const billingStates = locations?.states[billing.country] ?? [];
+  const hasBillingStates = billingStates.length > 0;
 
-  // isBilling: email + phone requirements only apply to the billing block
-  // (WooCommerce standard — shipping has no email/phone fields).
-  const isAddressComplete = useCallback(
-    (value: CheckoutAddress, isBilling: boolean) =>
-      Boolean(
-        value.first_name &&
-          value.last_name &&
-          value.address_1 &&
-          value.city &&
-          value.state &&
-          value.postcode &&
-          value.country &&
-          (fields.company !== "required" || value.company) &&
-          (!isBilling || value.email) &&
-          (!isBilling || fields.phone !== "required" || value.phone)
-      ),
-    [fields.company, fields.phone]
-  );
+  // Effective addresses sent to WooCommerce.
+  // Email from the Contact section is merged into both addresses.
+  const effectiveShipping: CheckoutAddress = { ...shipping, email };
+  const effectiveBilling: CheckoutAddress = sameAsBilling
+    ? { ...shipping, email }
+    : { ...billing, email };
 
-  const addressReady = useMemo(
+  // WC standard: shipping rates + tax (TaxJar) recalculate as soon as the
+  // shipping LOCATION is known — country/state/city/ZIP. Names, email, and
+  // street are not required for calculation (they're validated at Place Order).
+  const locationReady = useMemo(
     () =>
-      isAddressComplete(address, true) &&
-      (!shipToDifferent || isAddressComplete(shippingAddress, false)),
-    [address, shippingAddress, shipToDifferent, isAddressComplete]
+      Boolean(
+        shipping.country && shipping.state && shipping.city && shipping.postcode
+      ),
+    [shipping.country, shipping.state, shipping.city, shipping.postcode]
   );
 
-  // Address complete → WooCommerce recalculates shipping (Shippo) + tax.
   const refreshRates = useCallback(async () => {
-    if (!addressReady) {
-      return;
-    }
-
+    if (!locationReady) return;
     setIsUpdatingRates(true);
-
     const { ok, data } = await update_checkout_address({
       shipping_address: effectiveShipping,
-      billing_address: address,
+      billing_address: effectiveBilling,
     });
-
-    if (ok && "cart" in data) {
-      applyState(data);
-    } else if ("message" in data && data.message) {
-      notifyError(data.message);
-    }
-
+    if (ok && "cart" in data) applyState(data);
+    else if ("message" in data && data.message) notifyError(data.message);
     setIsUpdatingRates(false);
-  }, [address, effectiveShipping, addressReady, applyState]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationReady, shipping, billing, email, sameAsBilling, applyState]);
 
-  // WooCommerce-style auto-recalculation: when the address is complete,
-  // shipping + tax refresh automatically (debounced) — no button click needed.
   const addressKey = useMemo(
     () =>
       [
-        address.address_1,
-        address.city,
-        address.state,
-        address.postcode,
-        address.country,
-        shipToDifferent ? "ship" : "same",
-        effectiveShipping.address_1,
-        effectiveShipping.city,
-        effectiveShipping.state,
-        effectiveShipping.postcode,
-        effectiveShipping.country,
+        shipping.address_1,
+        shipping.city,
+        shipping.state,
+        shipping.postcode,
+        shipping.country,
+        sameAsBilling ? "same" : [billing.city, billing.state, billing.postcode, billing.country].join(","),
       ].join("|"),
-    [address, effectiveShipping, shipToDifferent]
+    [shipping, billing, sameAsBilling]
   );
 
   useEffect(() => {
-    if (!addressReady || isLoading) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      void refreshRates();
-    }, 800);
-
-    return () => window.clearTimeout(timeoutId);
+    if (!locationReady || isLoading) return;
+    const id = window.setTimeout(() => { void refreshRates(); }, 800);
+    return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addressKey, addressReady, isLoading]);
+  }, [addressKey, locationReady, isLoading]);
 
-  const handleSelectRate = async (
-    package_id: number | string,
-    rate_id: string
-  ) => {
+  const handleSelectRate = async (package_id: number | string, rate_id: string) => {
     setIsUpdatingRates(true);
-
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
-
-    if (ok && "cart" in data) {
-      applyState(data);
-    } else if ("message" in data && data.message) {
-      notifyError(data.message);
-    }
-
+    if (ok && "cart" in data) applyState(data);
+    else if ("message" in data && data.message) notifyError(data.message);
     setIsUpdatingRates(false);
   };
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim();
-
-    if (!code) {
-      notifyError("Enter a coupon code.");
-      return;
-    }
-
+    if (!code) { notifyError("Enter a coupon code."); return; }
     setIsApplyingCoupon(true);
-
     const { ok, data } = await apply_coupon(code);
-
     if (ok && "cart" in data) {
-      applyState(data);
-      setCouponCode("");
-      setCouponOpen(false);
-      notifySuccess("Coupon applied.");
+      applyState(data); setCouponCode(""); setCouponOpen(false); notifySuccess("Coupon applied.");
     } else {
       notifyError(("message" in data && data.message) || "Coupon could not be applied.");
     }
-
     setIsApplyingCoupon(false);
   };
 
   const handleRemoveCoupon = async (code: string) => {
     setIsApplyingCoupon(true);
-
     const { ok, data } = await remove_coupon(code);
-
-    if (ok && "cart" in data) {
-      applyState(data);
-      notifySuccess("Coupon removed.");
-    } else {
-      notifyError(("message" in data && data.message) || "Coupon could not be removed.");
-    }
-
+    if (ok && "cart" in data) { applyState(data); notifySuccess("Coupon removed."); }
+    else notifyError(("message" in data && data.message) || "Coupon could not be removed.");
     setIsApplyingCoupon(false);
   };
 
@@ -532,15 +512,11 @@ function CheckoutForm({
     return methods.length > 0 ? methods : ["stripe"];
   }, [checkout?.payment_methods]);
 
-  // Derived, not synced: if WooCommerce stops offering the selected gateway,
-  // fall back to the first available one without an effect.
   const activeGateway = availableGateways.includes(selectedGateway)
     ? selectedGateway
     : availableGateways[0];
-
   const isNet30 = activeGateway === "cod";
 
-  // Show error toast AND scroll to top so user sees it above the long form.
   const checkoutError = (message: string) => {
     notifyError(message);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -549,52 +525,56 @@ function CheckoutForm({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!address.first_name.trim()) errors.billing_first_name = "First name is a required field.";
-    if (!address.last_name.trim()) errors.billing_last_name = "Last name is a required field.";
-    if (!address.address_1.trim()) errors.billing_address_1 = "Street address is a required field.";
-    if (!address.city.trim()) errors.billing_city = "City is a required field.";
-    if (!address.state.trim()) errors.billing_state = "State is a required field.";
-    if (!address.postcode.trim()) errors.billing_postcode = "Postcode / ZIP is a required field.";
-    if (!address.country.trim()) errors.billing_country = "Country is a required field.";
-
-    if (!address.email?.trim()) {
-      errors.billing_email = "Email address is a required field.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address.email.trim())) {
-      errors.billing_email = "Please enter a valid email address.";
+    if (!email.trim()) {
+      errors.email = "Email address is a required field.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      errors.email = "Please enter a valid email address.";
     }
+    if (!shipping.first_name.trim()) errors.shipping_first_name = "First name is a required field.";
+    if (!shipping.last_name.trim()) errors.shipping_last_name = "Last name is a required field.";
+    if (!shipping.address_1.trim()) errors.shipping_address_1 = "Address is a required field.";
+    if (!shipping.city.trim()) errors.shipping_city = "City is a required field.";
+    if (!shipping.state.trim()) errors.shipping_state = "State is a required field.";
+    if (!shipping.postcode.trim()) errors.shipping_postcode = "ZIP Code is a required field.";
+    if (!shipping.country.trim()) errors.shipping_country = "Country is a required field.";
+    if (fields.company === "required" && !shipping.company?.trim()) errors.shipping_company = "Company name is a required field.";
+    if (fields.phone === "required" && !shipping.phone?.trim()) errors.shipping_phone = "Phone is a required field.";
 
-    if (fields.company === "required" && !address.company?.trim()) {
-      errors.billing_company = "Company name is a required field.";
-    }
-    if (fields.phone === "required" && !address.phone?.trim()) {
-      errors.billing_phone = "Phone is a required field.";
-    }
-
-    if (shipToDifferent) {
-      if (!shippingAddress.first_name.trim()) errors.shipping_first_name = "First name is a required field.";
-      if (!shippingAddress.last_name.trim()) errors.shipping_last_name = "Last name is a required field.";
-      if (!shippingAddress.address_1.trim()) errors.shipping_address_1 = "Street address is a required field.";
-      if (!shippingAddress.city.trim()) errors.shipping_city = "City is a required field.";
-      if (!shippingAddress.state.trim()) errors.shipping_state = "State is a required field.";
-      if (!shippingAddress.postcode.trim()) errors.shipping_postcode = "Postcode / ZIP is a required field.";
-      if (!shippingAddress.country.trim()) errors.shipping_country = "Country is a required field.";
+    if (!sameAsBilling) {
+      if (!billing.first_name.trim()) errors.billing_first_name = "First name is a required field.";
+      if (!billing.last_name.trim()) errors.billing_last_name = "Last name is a required field.";
+      if (!billing.address_1.trim()) errors.billing_address_1 = "Address is a required field.";
+      if (!billing.city.trim()) errors.billing_city = "City is a required field.";
+      if (!billing.state.trim()) errors.billing_state = "State is a required field.";
+      if (!billing.postcode.trim()) errors.billing_postcode = "ZIP Code is a required field.";
+      if (!billing.country.trim()) errors.billing_country = "Country is a required field.";
+      if (fields.company === "required" && !billing.company?.trim()) errors.billing_company = "Company name is a required field.";
+      if (fields.phone === "required" && !billing.phone?.trim()) errors.billing_phone = "Phone is a required field.";
     }
 
     setFormErrors(errors);
-
     if (Object.keys(errors).length > 0) {
       checkoutError("Please fill in all required checkout fields.");
       return false;
     }
-
     return true;
   };
 
   const handlePlaceOrder = async (event: React.FormEvent) => {
     event.preventDefault();
-
     if (!validateForm()) return;
 
+    // WC standard: an order that needs shipping cannot be placed without a
+    // selected shipping option.
+    if (
+      checkout?.needs_shipping &&
+      !checkout.shipping_packages.some((pkg) =>
+        pkg.shipping_rates.some((rate) => rate.selected)
+      )
+    ) {
+      checkoutError("Please select a shipping option before placing your order.");
+      return;
+    }
     setIsPlacingOrder(true);
 
     try {
@@ -606,46 +586,30 @@ function CheckoutForm({
           return;
         }
 
-        // Validate all three card fields before calling Stripe.
         let cardValid = true;
-        if (!cardNumberComplete) {
-          setCardNumberError("Enter your card number.");
-          cardValid = false;
-        }
-        if (!cardExpiryComplete) {
-          setCardExpiryError("Enter the expiration date.");
-          cardValid = false;
-        }
-        if (!cardCvcComplete) {
-          setCardCvcError("Enter the security code.");
-          cardValid = false;
-        }
-        if (!cardValid) {
-          setIsPlacingOrder(false);
-          return;
-        }
+        if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
+        if (!cardExpiryComplete) { setCardExpiryError("Enter the expiration date."); cardValid = false; }
+        if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
+        if (!cardValid) { setIsPlacingOrder(false); return; }
 
         const cardNumberElement = elements.getElement(CardNumberElement);
+        if (!cardNumberElement) { checkoutError("Card details are required."); return; }
 
-        if (!cardNumberElement) {
-          checkoutError("Card details are required.");
-          return;
-        }
-
+        const billingAddr = effectiveBilling;
         const { paymentMethod, error } = await stripe.createPaymentMethod({
           type: "card",
           card: cardNumberElement,
           billing_details: {
-            name: `${address.first_name} ${address.last_name}`.trim(),
-            email: address.email,
-            phone: address.phone || undefined,
+            name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
+            email,
+            phone: billingAddr.phone || undefined,
             address: {
-              line1: address.address_1,
-              line2: address.address_2 || undefined,
-              city: address.city,
-              state: address.state,
-              postal_code: address.postcode,
-              country: address.country,
+              line1: billingAddr.address_1,
+              line2: billingAddr.address_2 || undefined,
+              city: billingAddr.city,
+              state: billingAddr.state,
+              postal_code: billingAddr.postcode,
+              country: billingAddr.country,
             },
           },
         });
@@ -655,7 +619,6 @@ function CheckoutForm({
           return;
         }
 
-        // Keys required by the WooCommerce Stripe Gateway (UPE/deferred intent).
         paymentData = [
           { key: "payment_method", value: "stripe" },
           { key: "wc-stripe-payment-method", value: paymentMethod.id },
@@ -664,7 +627,7 @@ function CheckoutForm({
       }
 
       const { ok, data } = await place_order({
-        billing_address: address,
+        billing_address: effectiveBilling,
         shipping_address: effectiveShipping,
         payment_method: isNet30 ? "cod" : "stripe",
         payment_data: paymentData,
@@ -681,15 +644,10 @@ function CheckoutForm({
       const paymentStatus = paymentResult?.payment_status;
       const redirectUrl = paymentResult?.redirect_url ?? "";
 
-      // 3D Secure: the gateway signals it via a confirm hash in redirect_url
-      // (#wc-stripe-confirm-pi:<order>:<client_secret>:<nonce>).
       const secretMatch = redirectUrl.match(/confirm-pi:[^:]*:((pi|seti)_[^:#]+_secret_[^:#]+)/);
 
       if (secretMatch && stripe && !isNet30) {
-        const { error: confirmError } = await stripe.confirmCardPayment(
-          secretMatch[1]
-        );
-
+        const { error: confirmError } = await stripe.confirmCardPayment(secretMatch[1]);
         if (confirmError) {
           checkoutError(confirmError.message || "Card authentication failed.");
           return;
@@ -704,7 +662,7 @@ function CheckoutForm({
       const successParams = new URLSearchParams({
         order_id: String(data.order_id),
         total: checkout?.totals.total ?? "",
-        email: address.email ?? "",
+        email,
         method: isNet30 ? "net30" : "card",
       });
 
@@ -765,8 +723,6 @@ function CheckoutForm({
 
   return (
     <>
-      {/* WC → Accounts & Privacy: "Allow customers to log into an existing
-          account during checkout" — classic checkout login notice. */}
       {settings.login_reminder && !isLoggedIn ? (
         <p className="mb-4 max-w-[805px] border-l-4 border-blue bg-[#eef6fb] px-4 py-3 text-link text-black sm:px-5">
           Returning customer?{" "}
@@ -779,34 +735,27 @@ function CheckoutForm({
         </p>
       ) : null}
 
-      {/* WC → General: "Enable the use of coupon codes". */}
       {settings.coupons_enabled ? (
         <div className="mb-6 max-w-[805px] border-l-4 border-amber bg-[#eef6fb] px-4 py-3 text-link text-black sm:px-5">
           <p className="mb-0">
             Have a coupon?{" "}
             <button
               type="button"
-              onClick={() => setCouponOpen((open) => !open)}
+              onClick={() => setCouponOpen((o) => !o)}
               className="font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
             >
               Click here to enter your code
             </button>
           </p>
-
           {couponOpen ? (
             <div className="mt-3 flex max-w-[420px] gap-2 border-t border-[#c9dcea] pt-3">
               <input
                 type="text"
                 value={couponCode}
-                onChange={(event) => setCouponCode(event.target.value)}
+                onChange={(e) => setCouponCode(e.target.value)}
                 placeholder="Coupon code"
                 className="min-w-0 flex-1 border border-light-gray bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleApplyCoupon();
-                  }
-                }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
               />
               <button
                 type="button"
@@ -821,291 +770,279 @@ function CheckoutForm({
         </div>
       ) : null}
 
-    <form
-      onSubmit={handlePlaceOrder}
-      noValidate
-      className="grid gap-10 lg:grid-cols-[1fr_380px]"
-    >
-      <div>
-        <section className="mb-10">
-          <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
-            Billing details
-          </h2>
+      <form
+        onSubmit={handlePlaceOrder}
+        noValidate
+        className="grid gap-10 lg:grid-cols-[1fr_380px]"
+      >
+        <div>
+          {/* ── Contact information ── */}
+          <section className="mb-10">
+            <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
+              Contact information
+            </h2>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <AddressField label="First name" name="first_name" value={address.first_name} onChange={handleAddressChange} required autoComplete="given-name" error={formErrors.billing_first_name} />
-            <AddressField label="Last name" name="last_name" value={address.last_name} onChange={handleAddressChange} required autoComplete="family-name" error={formErrors.billing_last_name} />
-            {fields.company !== "hidden" ? (
-              <div className="sm:col-span-2">
-                <AddressField label="Company" name="company" value={address.company ?? ""} onChange={handleAddressChange} required={fields.company === "required"} autoComplete="organization" error={formErrors.billing_company} />
-              </div>
-            ) : null}
-            <div className="sm:col-span-2">
-              <AddressField label="Street address" name="address_1" value={address.address_1} onChange={handleAddressChange} required autoComplete="address-line1" error={formErrors.billing_address_1} />
-            </div>
-            {fields.address_2 !== "hidden" ? (
-              <div className="sm:col-span-2">
-                <AddressField label="Apartment, suite, etc." name="address_2" value={address.address_2 ?? ""} onChange={handleAddressChange} required={fields.address_2 === "required"} autoComplete="address-line2" />
-              </div>
-            ) : null}
-            {locations ? (
-              <AddressSelectField
-                label="Country"
-                name="country"
-                value={address.country}
-                options={locations.countries}
-                onChange={handleAddressChange}
-                required
-                autoComplete="country"
-                error={formErrors.billing_country}
-              />
-            ) : (
-              <AddressField label="Country" name="country" value={address.country} onChange={handleAddressChange} required autoComplete="country" error={formErrors.billing_country} />
-            )}
-            {hasStatesList ? (
-              <AddressSelectField
-                label="State"
-                name="state"
-                value={address.state}
-                options={countryStates}
-                onChange={handleAddressChange}
-                required
-                autoComplete="address-level1"
-                error={formErrors.billing_state}
-              />
-            ) : (
-              <AddressField label="State / Province" name="state" value={address.state} onChange={handleAddressChange} required autoComplete="address-level1" error={formErrors.billing_state} />
-            )}
-            <AddressField label="City" name="city" value={address.city} onChange={handleAddressChange} required autoComplete="address-level2" error={formErrors.billing_city} />
-            <AddressField label="ZIP code" name="postcode" value={address.postcode} onChange={handleAddressChange} required autoComplete="postal-code" error={formErrors.billing_postcode} />
-            <AddressField label="Email" name="email" type="email" value={address.email ?? ""} onChange={handleAddressChange} required autoComplete="email" error={formErrors.billing_email} />
-            {fields.phone !== "hidden" ? (
-              <AddressField label="Phone" name="phone" type="tel" value={address.phone ?? ""} onChange={handleAddressChange} required={fields.phone === "required"} autoComplete="tel" error={formErrors.billing_phone} />
-            ) : null}
-          </div>
-
-          {/* WC → Accounts & Privacy: "Allow customers to create an account
-              during checkout" — classic checkout "Create an account?" box. */}
-          {settings.signup_enabled && !isLoggedIn ? (
-            <label className="mt-6 flex cursor-pointer items-center gap-3 text-link text-near-black">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-near-black">
+                Email address
+              </span>
               <input
-                type="checkbox"
-                checked={createAccount}
-                onChange={(event) => setCreateAccount(event.target.checked)}
-                className="h-4 w-4 accent-amber"
+                type="email"
+                value={email}
+                autoComplete="email"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFormErrors((p) => ({ ...p, email: "" }));
+                }}
+                className={`${INPUT_CLASS} ${formErrors.email ? "border-red-400" : ""}`}
               />
-              Create an account?
+              {formErrors.email ? <p className="mt-1 text-xs text-red-600">{formErrors.email}</p> : null}
             </label>
-          ) : null}
 
-          {/* WooCommerce-standard "Ship to a different address?" */}
-          <label className="mt-6 flex cursor-pointer items-center gap-3 text-body font-bold uppercase text-near-black">
-            <input
-              type="checkbox"
-              checked={shipToDifferent}
-              onChange={(event) => setShipToDifferent(event.target.checked)}
-              className="h-4 w-4 accent-amber"
-            />
-            Ship to a different address?
-          </label>
+            {settings.signup_enabled && !isLoggedIn ? (
+              <label className="mt-4 flex cursor-pointer items-center gap-3 text-link text-near-black">
+                <input
+                  type="checkbox"
+                  checked={createAccount}
+                  onChange={(e) => setCreateAccount(e.target.checked)}
+                  className="h-4 w-4 accent-amber"
+                />
+                Create an account?
+              </label>
+            ) : null}
+          </section>
 
-          {shipToDifferent ? (
-            <div className="mt-5 grid gap-4 border-t border-light-gray pt-5 sm:grid-cols-2">
-              <AddressField label="First name" name="first_name" value={shippingAddress.first_name} onChange={handleShippingChange} required autoComplete="shipping given-name" error={formErrors.shipping_first_name} />
-              <AddressField label="Last name" name="last_name" value={shippingAddress.last_name} onChange={handleShippingChange} required autoComplete="shipping family-name" error={formErrors.shipping_last_name} />
+          {/* ── Shipping address ── */}
+          <section className="mb-10">
+            <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
+              Shipping address
+            </h2>
+
+            {/* Country/Region — always the first field (WC block standard).
+                Rendered outside the 2-col grid so it is unambiguously first
+                in the DOM regardless of grid/col-span behaviour. */}
+            <div className="mb-4">
+              {shippingCountries.length > 0 ? (
+                <AddressSelectField label="Country/Region" name="country" value={shipping.country} options={shippingCountries} onChange={handleShippingChange} required autoComplete="shipping country" error={formErrors.shipping_country} />
+              ) : (
+                <AddressField label="Country/Region" name="country" value={shipping.country} onChange={handleShippingChange} required autoComplete="shipping country" error={formErrors.shipping_country} />
+              )}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <AddressField label="First name" name="first_name" value={shipping.first_name} onChange={handleShippingChange} required autoComplete="shipping given-name" error={formErrors.shipping_first_name} />
+              <AddressField label="Last name" name="last_name" value={shipping.last_name} onChange={handleShippingChange} required autoComplete="shipping family-name" error={formErrors.shipping_last_name} />
               {fields.company !== "hidden" ? (
                 <div className="sm:col-span-2">
-                  <AddressField label="Company" name="company" value={shippingAddress.company ?? ""} onChange={handleShippingChange} required={fields.company === "required"} autoComplete="shipping organization" />
+                  <AddressField label="Company" name="company" value={shipping.company ?? ""} onChange={handleShippingChange} required={fields.company === "required"} autoComplete="shipping organization" error={formErrors.shipping_company} />
                 </div>
               ) : null}
               <div className="sm:col-span-2">
-                <AddressField label="Street address" name="address_1" value={shippingAddress.address_1} onChange={handleShippingChange} required autoComplete="shipping address-line1" error={formErrors.shipping_address_1} />
+                <AddressField label="Address" name="address_1" value={shipping.address_1} onChange={handleShippingChange} required autoComplete="shipping address-line1" error={formErrors.shipping_address_1} />
               </div>
               {fields.address_2 !== "hidden" ? (
                 <div className="sm:col-span-2">
-                  <AddressField label="Apartment, suite, etc." name="address_2" value={shippingAddress.address_2 ?? ""} onChange={handleShippingChange} required={fields.address_2 === "required"} autoComplete="shipping address-line2" />
+                  {showShippingApt || fields.address_2 === "required" ? (
+                    <AddressField label="Apartment, suite, etc." name="address_2" value={shipping.address_2 ?? ""} onChange={handleShippingChange} required={fields.address_2 === "required"} autoComplete="shipping address-line2" />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowShippingApt(true)}
+                      className="text-sm text-blue underline-offset-2 transition-colors hover:text-amber hover:underline"
+                    >
+                      + Add apartment, suite, etc.
+                    </button>
+                  )}
                 </div>
               ) : null}
-              {locations ? (
-                <AddressSelectField
-                  label="Country"
-                  name="country"
-                  value={shippingAddress.country}
-                  options={shippingCountries}
-                  onChange={handleShippingChange}
-                  required
-                  autoComplete="shipping country"
-                  error={formErrors.shipping_country}
-                />
+              <AddressField label="City" name="city" value={shipping.city} onChange={handleShippingChange} required autoComplete="shipping address-level2" error={formErrors.shipping_city} />
+              {hasShippingStates ? (
+                <AddressSelectField label="State" name="state" value={shipping.state} options={shippingStates} onChange={handleShippingChange} required autoComplete="shipping address-level1" error={formErrors.shipping_state} />
               ) : (
-                <AddressField label="Country" name="country" value={shippingAddress.country} onChange={handleShippingChange} required autoComplete="shipping country" error={formErrors.shipping_country} />
+                <AddressField label="State / Province" name="state" value={shipping.state} onChange={handleShippingChange} required autoComplete="shipping address-level1" error={formErrors.shipping_state} />
               )}
-              {hasShippingStatesList ? (
-                <AddressSelectField
-                  label="State"
-                  name="state"
-                  value={shippingAddress.state}
-                  options={shippingCountryStates}
-                  onChange={handleShippingChange}
-                  required
-                  autoComplete="shipping address-level1"
-                  error={formErrors.shipping_state}
-                />
-              ) : (
-                <AddressField label="State / Province" name="state" value={shippingAddress.state} onChange={handleShippingChange} required autoComplete="shipping address-level1" error={formErrors.shipping_state} />
-              )}
-              <AddressField label="City" name="city" value={shippingAddress.city} onChange={handleShippingChange} required autoComplete="shipping address-level2" error={formErrors.shipping_city} />
-              <AddressField label="ZIP code" name="postcode" value={shippingAddress.postcode} onChange={handleShippingChange} required autoComplete="shipping postal-code" error={formErrors.shipping_postcode} />
+              <AddressField label="ZIP Code" name="postcode" value={shipping.postcode} onChange={handleShippingChange} required autoComplete="shipping postal-code" error={formErrors.shipping_postcode} />
+              {fields.phone !== "hidden" ? (
+                <AddressField label="Phone" name="phone" type="tel" value={shipping.phone ?? ""} onChange={handleShippingChange} required={fields.phone === "required"} autoComplete="shipping tel" error={formErrors.shipping_phone} />
+              ) : null}
             </div>
-          ) : null}
 
-          {isUpdatingRates ? (
-            <p className="mt-4 text-link text-dark-gray" role="status">
-              Updating shipping &amp; tax for your address...
-            </p>
-          ) : null}
-
-          {settings.order_notes_enabled !== false ? (
-            <label className="mt-6 block">
-              <span className="mb-1.5 block text-sm font-semibold text-near-black">
-                Order notes (optional)
-              </span>
-              <textarea
-                value={orderNote}
-                onChange={(event) => setOrderNote(event.target.value)}
-                rows={3}
-                placeholder="Notes about your order, e.g. special delivery instructions."
-                className={`${INPUT_CLASS} resize-y`}
+            {/* "Use same address for billing" — WC block checkout standard */}
+            <label className="mt-6 flex cursor-pointer items-center gap-3 text-link text-near-black">
+              <input
+                type="checkbox"
+                checked={sameAsBilling}
+                onChange={(e) => setSameAsBilling(e.target.checked)}
+                className="h-4 w-4 accent-amber"
               />
+              Use same address for billing
             </label>
-          ) : null}
-        </section>
 
-        {checkout.needs_shipping && shippingRates.length > 0 ? (
-          <section className="mb-10">
+            {/* Billing address — shown only when different */}
+            {!sameAsBilling ? (
+              <div className="mt-5 border-t border-light-gray pt-5">
+                <h3 className="mb-4 text-body font-bold text-near-black">
+                  Billing address
+                </h3>
+                {/* Country/Region — first field in billing too (WC block standard) */}
+                <div className="mb-4">
+                  {billingCountries.length > 0 ? (
+                    <AddressSelectField label="Country/Region" name="country" value={billing.country} options={billingCountries} onChange={handleBillingChange} required autoComplete="billing country" error={formErrors.billing_country} />
+                  ) : (
+                    <AddressField label="Country/Region" name="country" value={billing.country} onChange={handleBillingChange} required autoComplete="billing country" error={formErrors.billing_country} />
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <AddressField label="First name" name="first_name" value={billing.first_name} onChange={handleBillingChange} required autoComplete="billing given-name" error={formErrors.billing_first_name} />
+                  <AddressField label="Last name" name="last_name" value={billing.last_name} onChange={handleBillingChange} required autoComplete="billing family-name" error={formErrors.billing_last_name} />
+                  {fields.company !== "hidden" ? (
+                    <div className="sm:col-span-2">
+                      <AddressField label="Company" name="company" value={billing.company ?? ""} onChange={handleBillingChange} required={fields.company === "required"} autoComplete="billing organization" error={formErrors.billing_company} />
+                    </div>
+                  ) : null}
+                  <div className="sm:col-span-2">
+                    <AddressField label="Address" name="address_1" value={billing.address_1} onChange={handleBillingChange} required autoComplete="billing address-line1" error={formErrors.billing_address_1} />
+                  </div>
+                  {fields.address_2 !== "hidden" ? (
+                    <div className="sm:col-span-2">
+                      {showBillingApt || fields.address_2 === "required" ? (
+                        <AddressField label="Apartment, suite, etc." name="address_2" value={billing.address_2 ?? ""} onChange={handleBillingChange} required={fields.address_2 === "required"} autoComplete="billing address-line2" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setShowBillingApt(true)}
+                          className="text-sm text-blue underline-offset-2 transition-colors hover:text-amber hover:underline"
+                        >
+                          + Add apartment, suite, etc.
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+                  <AddressField label="City" name="city" value={billing.city} onChange={handleBillingChange} required autoComplete="billing address-level2" error={formErrors.billing_city} />
+                  {hasBillingStates ? (
+                    <AddressSelectField label="State" name="state" value={billing.state} options={billingStates} onChange={handleBillingChange} required autoComplete="billing address-level1" error={formErrors.billing_state} />
+                  ) : (
+                    <AddressField label="State / Province" name="state" value={billing.state} onChange={handleBillingChange} required autoComplete="billing address-level1" error={formErrors.billing_state} />
+                  )}
+                  <AddressField label="ZIP Code" name="postcode" value={billing.postcode} onChange={handleBillingChange} required autoComplete="billing postal-code" error={formErrors.billing_postcode} />
+                  {fields.phone !== "hidden" ? (
+                    <AddressField label="Phone" name="phone" type="tel" value={billing.phone ?? ""} onChange={handleBillingChange} required={fields.phone === "required"} autoComplete="billing tel" error={formErrors.billing_phone} />
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          {/* ── Shipping method — WC block standard: section always visible
+              when the order needs shipping, with address-first placeholder,
+              updating state, and no-options message. ── */}
+          {checkout.needs_shipping ? (
+            <section className="mb-10">
+              <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
+                Shipping options
+              </h2>
+
+              {isUpdatingRates ? (
+                <div className="flex items-center gap-2 border border-light-gray bg-off-white px-4 py-3 text-link text-dark-gray" aria-busy="true">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Loading shipping options…
+                </div>
+              ) : shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
+                shippingRates.map((pkg) => (
+                  <ul key={pkg.package_id} className="space-y-2">
+                    {pkg.shipping_rates.map((rate) => (
+                      <li key={rate.rate_id}>
+                        <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
+                          <span className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name={`shipping-${pkg.package_id}`}
+                              checked={rate.selected}
+                              disabled={isUpdatingRates}
+                              onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
+                            />
+                            <span className="text-link text-near-black">{rate.name}</span>
+                          </span>
+                          <span className="text-link font-semibold text-near-black">
+                            {isFreeRate(rate.price) ? "Free" : rate.price}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                ))
+              ) : locationReady ? (
+                <p className="border-l-4 border-amber bg-[#fdf6e7] px-4 py-3 text-link text-near-black">
+                  There are no shipping options available for this address.
+                  Please verify the address is correct or contact us for help.
+                </p>
+              ) : (
+                <p className="border border-light-gray bg-off-white px-4 py-3 text-link text-dark-gray">
+                  Enter your shipping address to view shipping options.
+                </p>
+              )}
+            </section>
+          ) : null}
+
+          {/* ── Payment ── */}
+          <section>
             <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
-              Shipping Method
+              Payment options
             </h2>
 
-            {shippingRates.map((pkg) => (
-              <ul key={pkg.package_id} className="space-y-2">
-                {pkg.shipping_rates.map((rate) => (
-                  <li key={rate.rate_id}>
-                    <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
-                      <span className="flex items-center gap-3">
-                        <input
-                          type="radio"
-                          name={`shipping-${pkg.package_id}`}
-                          checked={rate.selected}
-                          disabled={isUpdatingRates}
-                          onChange={() =>
-                            void handleSelectRate(pkg.package_id, rate.rate_id)
-                          }
-                        />
-                        <span className="text-link text-near-black">
-                          {rate.name}
-                        </span>
-                      </span>
+            {availableGateways.length > 1 ? (
+              <ul className="mb-4 flex flex-col gap-2">
+                {availableGateways.map((gateway) => (
+                  <li key={gateway}>
+                    <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
+                      <input
+                        type="radio"
+                        name="payment_gateway"
+                        value={gateway}
+                        checked={activeGateway === gateway}
+                        onChange={() => setSelectedGateway(gateway)}
+                        className="h-4 w-4 accent-amber"
+                      />
                       <span className="text-link font-semibold text-near-black">
-                        {rate.price}
+                        {gateway === "cod" ? "Net 30 — Purchase Order Terms" : gateway === "stripe" ? "Credit Card" : gateway}
                       </span>
                     </label>
                   </li>
                 ))}
               </ul>
-            ))}
-          </section>
-        ) : null}
+            ) : null}
 
-        <section>
-          <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
-            Payment
-          </h2>
-
-          {/* Gateways come from WooCommerce per customer — Net 30 (cod) only
-              appears for admin-flagged accounts. */}
-          {availableGateways.length > 1 ? (
-            <ul className="mb-4 flex flex-col gap-2">
-              {availableGateways.map((gateway) => (
-                <li key={gateway}>
-                  <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
-                    <input
-                      type="radio"
-                      name="payment_gateway"
-                      value={gateway}
-                      checked={activeGateway === gateway}
-                      onChange={() => setSelectedGateway(gateway)}
-                      className="h-4 w-4 accent-amber"
-                    />
-                    <span className="text-link font-semibold text-near-black">
-                      {gateway === "cod"
-                        ? "Net 30 — Purchase Order Terms"
-                        : gateway === "stripe"
-                          ? "Credit Card"
-                          : gateway}
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {isNet30 ? (
-            <p className="border border-light-gray bg-off-white p-4 text-link text-dark-gray">
-              Your order will be placed on Net 30 payment terms. An invoice will
-              be included with your order — payment is due within 30 days.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {/* Card number */}
-              <div>
-                <span className="mb-1.5 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-near-black">
-                    Card number <span className="text-[#E12222]">*</span>
-                  </span>
-                  <CardBrandRow detected={cardBrand} />
-                </span>
+            {isNet30 ? (
+              <p className="border border-light-gray bg-off-white p-4 text-link text-dark-gray">
+                Your order will be placed on Net 30 payment terms. An invoice will
+                be included with your order — payment is due within 30 days.
+              </p>
+            ) : (
+              <div className="space-y-3">
                 <div
-                  className={`border bg-white px-4 py-3 transition-colors ${
-                    cardNumberFocused
-                      ? "border-blue"
-                      : cardNumberError
-                        ? "border-red-400"
+                  className={`flex items-stretch overflow-hidden border bg-white transition-colors ${
+                    cardNumberError || cardExpiryError || cardCvcError
+                      ? "border-red-400"
+                      : cardNumberFocused || cardExpiryFocused || cardCvcFocused
+                        ? "border-blue"
                         : "border-light-gray"
                   }`}
                 >
-                  <CardNumberElement
-                    options={{ ...STRIPE_ELEMENT_STYLE, showIcon: true }}
-                    onFocus={() => setCardNumberFocused(true)}
-                    onBlur={() => setCardNumberFocused(false)}
-                    onChange={(e) => {
-                      setCardBrand(e.brand ?? "unknown");
-                      setCardNumberComplete(e.complete);
-                      if (e.error) setCardNumberError(e.error.message);
-                      else if (e.complete) setCardNumberError("");
-                    }}
-                  />
-                </div>
-                {cardNumberError ? (
-                  <p className="mt-1 text-xs text-red-600">{cardNumberError}</p>
-                ) : null}
-              </div>
-
-              {/* Expiry + CVC side by side */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="mb-1.5 block text-sm font-semibold text-near-black">
-                    Expiration date <span className="text-[#E12222]">*</span>
-                  </span>
-                  <div
-                    className={`border bg-white px-4 py-3 transition-colors ${
-                      cardExpiryFocused
-                        ? "border-blue"
-                        : cardExpiryError
-                          ? "border-red-400"
-                          : "border-light-gray"
-                    }`}
-                  >
+                  <div className="flex-1 border-r border-light-gray px-4 py-3">
+                    <CardNumberElement
+                      options={{ ...STRIPE_ELEMENT_STYLE, showIcon: false }}
+                      onFocus={() => setCardNumberFocused(true)}
+                      onBlur={() => setCardNumberFocused(false)}
+                      onChange={(e) => {
+                        setCardBrand(e.brand ?? "unknown");
+                        setCardNumberComplete(e.complete);
+                        if (e.error) setCardNumberError(e.error.message);
+                        else if (e.complete) setCardNumberError("");
+                      }}
+                    />
+                  </div>
+                  <div className="w-[130px] border-r border-light-gray px-3 py-3">
                     <CardExpiryElement
                       options={STRIPE_ELEMENT_STYLE}
                       onFocus={() => setCardExpiryFocused(true)}
@@ -1117,24 +1054,7 @@ function CheckoutForm({
                       }}
                     />
                   </div>
-                  {cardExpiryError ? (
-                    <p className="mt-1 text-xs text-red-600">{cardExpiryError}</p>
-                  ) : null}
-                </div>
-
-                <div>
-                  <span className="mb-1.5 block text-sm font-semibold text-near-black">
-                    Security code <span className="text-[#E12222]">*</span>
-                  </span>
-                  <div
-                    className={`border bg-white px-4 py-3 transition-colors ${
-                      cardCvcFocused
-                        ? "border-blue"
-                        : cardCvcError
-                          ? "border-red-400"
-                          : "border-light-gray"
-                    }`}
-                  >
+                  <div className="w-[110px] px-3 py-3">
                     <CardCvcElement
                       options={STRIPE_ELEMENT_STYLE}
                       onFocus={() => setCardCvcFocused(true)}
@@ -1146,31 +1066,82 @@ function CheckoutForm({
                       }}
                     />
                   </div>
-                  {cardCvcError ? (
-                    <p className="mt-1 text-xs text-red-600">{cardCvcError}</p>
-                  ) : null}
                 </div>
+
+                {cardNumberError || cardExpiryError || cardCvcError ? (
+                  <div className="space-y-0.5">
+                    {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
+                    {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
+                    {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
+                  </div>
+                ) : null}
+
+                <CardBrandRow detected={cardBrand} />
               </div>
+            )}
+
+            {settings.order_notes_enabled !== false ? (
+              <div className="mt-5 border-t border-light-gray pt-5">
+                <label className="flex cursor-pointer items-center gap-3 text-link text-near-black">
+                  <input
+                    type="checkbox"
+                    checked={showOrderNotes}
+                    onChange={(e) => setShowOrderNotes(e.target.checked)}
+                    className="h-4 w-4 accent-amber"
+                  />
+                  Add a note to your order
+                </label>
+                {showOrderNotes ? (
+                  <textarea
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    rows={3}
+                    placeholder="Notes about your order, e.g. special delivery instructions."
+                    className={`${INPUT_CLASS} mt-3 resize-y`}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
+            {settings.terms_page_path ? (
+              <p className="mt-5 border-t border-light-gray pt-5 text-sm text-dark-gray">
+                By proceeding with your purchase you agree to our{" "}
+                <a href={settings.terms_page_path} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue underline-offset-2 transition-colors hover:text-amber">
+                  Terms and Conditions
+                </a>
+                {settings.privacy_page_path ? (
+                  <>{" "}and{" "}<a href={settings.privacy_page_path} target="_blank" rel="noopener noreferrer" className="font-semibold text-blue underline-offset-2 transition-colors hover:text-amber">Privacy Policy</a></>
+                ) : null}
+              </p>
+            ) : null}
+
+            <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              <button
+                type="submit"
+                disabled={isPlacingOrder || isUpdatingRates}
+                className="inline-flex w-full items-center justify-center bg-amber px-8 py-4 text-body font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50 sm:w-auto"
+              >
+                {isPlacingOrder ? "Placing Order..." : `Place Order — ${checkout.totals.total}`}
+              </button>
+              {/* WC block checkout standard: Return to Cart link below CTA */}
+              <Link
+                href="/cart"
+                className="text-link font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
+              >
+                Return to Cart
+              </Link>
             </div>
-          )}
+          </section>
+        </div>
 
-          <button
-            type="submit"
-            disabled={isPlacingOrder}
-            className="mt-6 inline-flex w-full items-center justify-center bg-amber px-8 py-4 text-body font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50 sm:w-auto"
-          >
-            {isPlacingOrder ? "Placing Order..." : `Place Order — ${checkout.totals.total}`}
-          </button>
-        </section>
-      </div>
-
-      <OrderSummary
-        cart={cart}
-        checkout={checkout}
-        onRemoveCoupon={(code) => void handleRemoveCoupon(code)}
-        isBusy={isApplyingCoupon || isPlacingOrder}
-      />
-    </form>
+        <OrderSummary
+          cart={cart}
+          checkout={checkout}
+          onRemoveCoupon={(code) => void handleRemoveCoupon(code)}
+          isBusy={isApplyingCoupon || isPlacingOrder}
+          isUpdating={isUpdatingRates}
+        />
+      </form>
     </>
   );
 }

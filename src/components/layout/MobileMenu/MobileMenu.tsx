@@ -8,8 +8,7 @@
  * Last Modified: 2026-07-07
  */
 
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiMenu, HiX } from "react-icons/hi";
@@ -22,8 +21,6 @@ import {
 
 import { MenuItem } from "@/types/menu.types";
 import { normalizeTel, normalizeWpUrl } from "@/utils/url.utils";
-
-const emptySubscribe = () => () => {};
 
 interface NavLinkProps {
   href: string;
@@ -55,25 +52,34 @@ export default function MobileMenu({
   showMobileCartLink = true,
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [menuTop, setMenuTop] = useState(0);
-  // true after hydration on the client, false during SSR — without an effect.
-  const mounted = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const [prevPathname, setPrevPathname] = useState(pathname);
-
-  // Close the menu on navigation (adjust state during render instead of an effect).
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    setOpen(false);
-  }
 
   const closeMenu = () => setOpen(false);
+  const hasAboutLink = items.some((item) => {
+    const normalizedUrl = normalizeWpUrl(item.url).toLowerCase();
+    const slug = item.slug?.toLowerCase();
+
+    return (
+      slug === "about" ||
+      slug === "about-us" ||
+      normalizedUrl === "/about" ||
+      normalizedUrl === "/about-us"
+    );
+  });
+  const navItems = hasAboutLink
+    ? items
+    : [...items, { id: 999999, title: "ABOUT", slug: "about", url: "/about", type: "custom", parent: 0 }];
   const hasContact = Boolean(phone || email);
   const hasAuthButtons = showRegister || showLogin;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handlePageShow = () => {
@@ -88,65 +94,33 @@ export default function MobileMenu({
   }, []);
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const updateMenuPosition = () => {
-      const header = document.querySelector("header");
-      if (header) {
-        setMenuTop(header.getBoundingClientRect().bottom);
-      }
-    };
+    if (!open) return;
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
+      if (event.key === "Escape") setOpen(false);
     };
 
-    updateMenuPosition();
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
     document.addEventListener("keydown", handleEscape);
-
-    return () => {
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-      document.removeEventListener("keydown", handleEscape);
-    };
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [open]);
 
   if (items.length === 0) {
     return null;
   }
 
-  const menuPanel =
-    open && mounted ? (
-      <>
-        <button
-          type="button"
-          aria-label="Close menu overlay"
-          onClick={closeMenu}
-          className="fixed inset-0 z-[60] bg-transparent"
-        />
-
-        <div
-          className="fixed left-0 right-0 z-[61] overflow-y-auto border-t border-light-gray bg-white shadow-lg"
-          style={{
-            top: menuTop,
-            maxHeight: `calc(100vh - ${menuTop}px)`,
-          }}
-        >
-          <nav aria-label="Mobile navigation">
-            <ul className="flex flex-col px-4 py-2">
-              {items.map((item) => (
+  const menuPanel = open && mounted ? (
+    <>
+      <div className="absolute top-full left-0 right-0 bg-white border-t border-light-gray shadow-lg z-50">
+        
+        <nav aria-label="Mobile navigation">
+          <ul className="flex flex-col px-4 py-2">
+              {navItems.map((item) => (
                 <li key={item.id}>
                   <Link
                     href={normalizeWpUrl(item.url)}
                     prefetch={false}
                     onClick={closeMenu}
-                    className="block border-b border-light-gray py-3 text-sm font-semibold uppercase tracking-wide text-near-black transition-colors hover:text-blue"
+                    className="block border-b border-light-gray py-3 text-near-black font-normal text-link uppercase hover:text-blue transition-colors"
                   >
                     {item.title}
                   </Link>
@@ -154,11 +128,11 @@ export default function MobileMenu({
               ))}
 
               {hasContact ? (
-                <li className="flex flex-col gap-2 border-b border-light-gray py-3">
+                <li className="flex flex-col gap-5 border-b border-light-gray py-3">
                   {phone ? (
                     <a
                       href={`tel:${normalizeTel(phone)}`}
-                      className="flex items-center gap-2 text-sm text-dark-gray"
+                      className="flex items-center gap-2 text-link text-blue hover:text-navy transition-colors"
                     >
                       <FaPhone size={13} />
                       {phone}
@@ -167,7 +141,7 @@ export default function MobileMenu({
                   {email ? (
                     <a
                       href={`mailto:${email}`}
-                      className="text-sm font-medium uppercase tracking-wide text-amber"
+                      className="text-link text-blue uppercase hover:text-navy transition-colors"
                     >
                       {email}
                     </a>
@@ -183,9 +157,9 @@ export default function MobileMenu({
                       target={registerLink.target}
                       title={registerLink.title}
                       onClick={closeMenu}
-                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-2 text-link font-semibold text-white transition-colors hover:bg-navy"
+                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
                     >
-                      <FaUser size={13} />
+                      <svg width="13" height="16" viewBox="0 0 13 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M6.5 7.5C4.4375 7.5 2.75 5.8125 2.75 3.75C2.75 1.6875 4.4375 0 6.5 0C8.5625 0 10.25 1.6875 10.25 3.75C10.25 5.8125 8.5625 7.5 6.5 7.5ZM13 15.75H0L2 9.25H11L13 15.75Z" fill="white"/> </svg> 
                       {registerLink.title ?? "REGISTER"}
                     </Link>
                   ) : null}
@@ -195,9 +169,9 @@ export default function MobileMenu({
                       target={loginLink.target}
                       title={loginLink.title}
                       onClick={closeMenu}
-                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-2 text-link font-semibold text-white transition-colors hover:bg-navy"
+                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
                     >
-                      <FaArrowRightToBracket size={13} />
+                      <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M11 2H10V0H16V14H10V12H14V2H11ZM10.7188 7.71875L6 12.4062L4.59375 11C4.78125 10.8125 5.78125 9.8125 7.59375 8H0V6H7.59375L4.59375 3L6 1.59375L6.71875 2.28125L10.7188 6.28125L11.4062 7L10.7188 7.71875Z" fill="white"/> </svg> 
                       {loginLink.title ?? "LOGIN"}
                     </Link>
                   ) : null}
@@ -205,13 +179,14 @@ export default function MobileMenu({
               ) : null}
 
               {isLoggedIn ? (
-                <li className="flex flex-col gap-3 pb-3 pt-4">
+                <li className="flex gap-3 pb-3 pt-4">
                   <Link
                     href="/my-account"
                     onClick={closeMenu}
                     className="flex items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
                   >
-                    <FaUser size={13} />
+                    <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M4.5 4C4.5 5.375 5.625 6.5 7 6.5C8.375 6.5 9.5 5.375 9.5 4C9.5 2.625 8.375 1.5 7 1.5C5.625 1.5 4.5 2.625 4.5 4ZM1.5625 16H0L2 9.5H12L14 16H12.4375L10.9062 11H3.09375L1.5625 16ZM7 8C4.78125 8 3 6.21875 3 4C3 1.78125 4.78125 0 7 0C9.21875 0 11 1.78125 11 4C11 6.21875 9.21875 8 7 8Z" fill="currentColor"/></svg>
+
                     ACCOUNT
                   </Link>
                   {showMobileCartLink ? (
@@ -229,8 +204,8 @@ export default function MobileMenu({
             </ul>
           </nav>
         </div>
-      </>
-    ) : null;
+    </>
+  ) : null;
 
   return (
     <div className="lg:hidden">
@@ -239,7 +214,7 @@ export default function MobileMenu({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="text-blue transition-colors hover:text-navy"
+        className="text-blue hover:text-blue transition-colors"
       >
         {open ? (
           <HiX className="h-10 w-10" />
@@ -248,7 +223,7 @@ export default function MobileMenu({
         )}
       </button>
 
-      {menuPanel && mounted ? createPortal(menuPanel, document.body) : null}
+      {menuPanel}
     </div>
   );
 }

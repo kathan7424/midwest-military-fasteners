@@ -34,23 +34,35 @@ export default async function CatalogListingPage({
 }: CatalogListingPageProps) {
   const current_page = Math.max(1, Number(searchParams.page) || 1);
 
-  const [sidebar_categories, products_response, settings, logged_in] =
-    await Promise.all([
-      fetch_sidebar_categories(),
-      fetch_spec_parts_products({
-        search: searchParams.search,
-        series: searchParams.series,
-        per_page: 10,
-        page: current_page,
-      }),
-      fetchSiteSettings().catch(() => null),
-      isUserLoggedIn(),
-    ]);
+  // The shop page slug is "shop" on this site — fetch it in parallel
+  // optimistically instead of waiting for settings first (avoids a serial
+  // WP roundtrip). Only refetch in the rare case the slug differs.
+  const [
+    sidebar_categories,
+    products_response,
+    settings,
+    logged_in,
+    default_shop_page,
+  ] = await Promise.all([
+    fetch_sidebar_categories(),
+    fetch_spec_parts_products({
+      search: searchParams.search,
+      series: searchParams.series,
+      per_page: 10,
+      page: current_page,
+    }),
+    fetchSiteSettings().catch(() => null),
+    isUserLoggedIn(),
+    fetchPageBySlug("shop").catch(() => null),
+  ]);
 
   // WC Shop page content drives the hero (title/description/image are
   // edited in WP admin — the frontend never hardcodes them).
   const shop_page_slug = settings?.woocommerce?.shop_page_slug || "shop";
-  const shop_page = await fetchPageBySlug(shop_page_slug).catch(() => null);
+  const shop_page =
+    shop_page_slug === "shop"
+      ? default_shop_page
+      : await fetchPageBySlug(shop_page_slug).catch(() => null);
 
   const hero_title = shop_page?.title?.rendered
     ? decodeHtmlEntities(shop_page.title.rendered)

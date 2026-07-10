@@ -116,6 +116,14 @@
     padding: 0;
   }
 
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  a[role="button"]:focus-visible, a:focus-visible, a:focus {
+      outline: 1px dashed var(--color-blue);
+      outline-offset: 0px;
+      box-shadow: none;
+  }
+
   /* --- Base body --- */
   body {
     background: var(--color-white);

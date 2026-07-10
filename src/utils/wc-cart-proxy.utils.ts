@@ -320,7 +320,7 @@ export function buildWcStoreHeaders(
   request: NextRequest,
   includeJson = false,
   bootstrapResponse?: Response,
-  options: { skipSessionCookies?: boolean } = {}
+  options: { skipSessionCookies?: boolean; preferBootstrap?: boolean } = {}
 ): HeadersInit {
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -328,12 +328,15 @@ export function buildWcStoreHeaders(
   };
 
   if (!options.skipSessionCookies) {
-    const nonce =
-      request.cookies.get(WC_STORE_NONCE_COOKIE)?.value ||
-      (bootstrapResponse ? getHeaderValue(bootstrapResponse, "nonce") : null);
-    const cartToken =
-      request.cookies.get(WC_CART_TOKEN_COOKIE)?.value ||
-      (bootstrapResponse ? getHeaderValue(bootstrapResponse, "cart-token") : null);
+    const cookieNonce = request.cookies.get(WC_STORE_NONCE_COOKIE)?.value || null;
+    const cookieToken = request.cookies.get(WC_CART_TOKEN_COOKIE)?.value || null;
+    const bootNonce = bootstrapResponse ? getHeaderValue(bootstrapResponse, "nonce") : null;
+    const bootToken = bootstrapResponse ? getHeaderValue(bootstrapResponse, "cart-token") : null;
+
+    // preferBootstrap: retry path after a 401/403 — the request cookie is the
+    // stale value that just failed, so the fresh bootstrap session must win.
+    const nonce = options.preferBootstrap ? bootNonce || cookieNonce : cookieNonce || bootNonce;
+    const cartToken = options.preferBootstrap ? bootToken || cookieToken : cookieToken || bootToken;
 
     if (nonce) {
       headers.Nonce = nonce;
@@ -349,6 +352,48 @@ export function buildWcStoreHeaders(
   }
 
   return headers;
+}
+
+/**
+ * POST to a WC Store API endpoint with the fewest possible WP round trips.
+ *
+ * Fast path (the common case): the browser already carries the Store API
+ * session cookies (nonce + cart token) from a previous cart response — call
+ * the endpoint directly, ONE round trip.
+ *
+ * Slow path (first request of a session, or an expired nonce → 401/403):
+ * bootstrap a fresh session via GET /cart, then retry once with the fresh
+ * nonce/cart-token taking precedence over the stale request cookies.
+ */
+export async function wcStoreMutation(
+  request: NextRequest,
+  path: string,
+  payload: unknown
+): Promise<Response> {
+  const url = `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/${path}`;
+  const body = JSON.stringify(payload);
+
+  if (request.cookies.get(WC_STORE_NONCE_COOKIE)?.value) {
+    const direct = await fetch(url, {
+      method: "POST",
+      headers: buildWcStoreHeaders(request, true),
+      body,
+      cache: "no-store",
+    });
+
+    if (direct.status !== 401 && direct.status !== 403) {
+      return direct;
+    }
+  }
+
+  const bootstrapResponse = await fetchStoreCart(request);
+
+  return fetch(url, {
+    method: "POST",
+    headers: buildWcStoreHeaders(request, true, bootstrapResponse, { preferBootstrap: true }),
+    body,
+    cache: "no-store",
+  });
 }
 
 export async function buildStoreCartResponse(
@@ -461,7 +506,14 @@ export async function fetchStoreCart(
   request: NextRequest,
   options: { skipSessionCookies?: boolean } = {}
 ): Promise<Response> {
-  return fetch(`${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart`, {
+  // ?_nc busts Pantheon's Varnish cache: the cart endpoint is served with
+  // Cache-Control: public, max-age=604800 and Vary doesn't include Cart-Token,
+  // so Varnish returns a stale empty cart for every guest. A unique query param
+  // forces a cache MISS on every request. The functions.php rest_post_dispatch
+  // filter adds Cache-Control: no-store server-side once deployed; this is the
+  // client-side safety net.
+  const url = `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart?_nc=${Date.now()}`;
+  return fetch(url, {
     method: "GET",
     headers: buildWcStoreHeaders(request, false, undefined, options),
     cache: "no-store",

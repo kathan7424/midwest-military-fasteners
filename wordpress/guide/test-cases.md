@@ -35,6 +35,10 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-21 | As a guest, open `{wp}/wp-login.php` and `{wp}/wp-json/` | Both still work — login page loads, REST responds (redirect must not touch admin/API traffic) |
 | PDP-22 | As a GUEST, open /shop, a category page, and a product detail | Only the 1 PKG price shows — no 3/5/10 PKG columns (tables) or rows (spec table) |
 | PDP-23 | Log in, revisit the same pages | 3/5/10 PKG tier prices appear everywhere |
+| PDP-24 | Shop/category page: click a pagination number, Prev, or Next | Table swaps in place (dims briefly, scrolls to top) — NO full page reload; URL `?page=` updates; browser back keeps the page usable |
+| PDP-25 | Click page 3, then click page 3 again within ~30s | Second visit is near-instant (cached) |
+| PDP-26 | Middle-click / ctrl-click a pagination number | Opens the correct `?page=N` URL in a new tab |
+| PDP-27 | Open a sidebar accordion group, hover briefly, click a series link | Navigation feels near-instant (links prefetch); first-ever visit may flash the skeleton briefly |
 
 ## TC-IMP — CSV Import
 
@@ -59,6 +63,10 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | AUTH-07 | Logout | Session + WC cart cookies cleared; /my-account redirects to login |
 | AUTH-08 | Direct GET `/my-account` while logged out | 307 → /login?redirect=/my-account |
 | AUTH-09 | Forgot password with unknown email | Same generic success message as known email (no enumeration) |
+| AUTH-10 | Register with certificate uploaded but expiry date EMPTY | Inline error "Expiration date is required when uploading a certificate." — no account created. Bypassing the client (API POST) → 400 |
+| AUTH-11 | Register with certificate + PAST expiry date | Rejected client-side (future-date rule) and server-side (400 "must be a future date") |
+| AUTH-12 | Register with NO certificate and NO expiry | Succeeds — expiry only required when a certificate is attached |
+| AUTH-13 | Register page expiry field | Same segmented MM/DD/YYYY React Aria picker as Documents tab (typing + calendar popover) — not a native date input |
 
 ## TC-CART — Cart
 
@@ -70,6 +78,10 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CART-04 | API: POST /api/cart with quantity 999999999 | Clamped to 9999 |
 | CART-05 | Remove item | Row disappears, totals recalc |
 | CART-06 | Cart persists across reload / login | Same items after refresh; guest cart merges per WC session rules |
+| CART-07 | As a GUEST (incognito): add product → navigate to /cart | Items appear on cart page (not "Your cart is empty") — guest cart is session-persisted via Cart-Token cookie |
+| CART-08 | As a GUEST with WC guest checkout OFF: add to cart → /cart → proceed to checkout | Cart shows items; /checkout redirects to login |
+| CART-09 | As a GUEST: add 5 packages of a product with 5-pkg tier pricing | Cart line = 5 × the 1 PKG price (NO tier discount — guests pay the price they were shown) |
+| CART-10 | Log in, add 5 packages of the same tiered product | Cart line = 5 × the 5-pkg tier price (tier discount applies to logged-in customers) |
 
 ## TC-CHK — Checkout
 
@@ -77,9 +89,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 |---|---|---|
 | CHK-01 | Guest visits /checkout with WC "guest checkout" ON | Page loads (no login redirect); "Returning customer? Click here to login" notice shows |
 | CHK-02 | WC Accounts & Privacy → guest checkout OFF → guest visits /checkout | Redirect to login |
-| CHK-03 | Fill full US address (street+city+ZIP+state) | Shipping rates appear ~1s after address complete (debounced); tax recalculates (TaxJar needs FULL address) |
+| CHK-03 | Fill country + state + city + ZIP only (no name/email/street yet) | Shipping rates + tax (TaxJar) appear ~1s after location complete (debounced) — WC standard: calculation needs only the location; name/email/street are validated at Place Order |
 | CHK-04 | Michigan address | Tax > 0 (MI nexus). Delaware address → Tax $0.00 (no sales tax — NOT a bug) |
-| CHK-05 | Check "Ship to a different address?", fill shipping | Rates + tax follow the SHIPPING address (WC rule) |
+| CHK-05 | Uncheck "Use same address for billing", fill billing form | Billing form appears below the checkbox; rates + tax still follow the SHIPPING address (WC rule); order in WC admin has distinct billing vs shipping |
 | CHK-06 | Select different shipping rate | Total updates instantly |
 | CHK-07 | Place Order with all card fields empty | Inline errors under all three fields at once; no API call |
 | CHK-08 | Invalid card number (4242 4242 4242 4241) | Stripe inline error under card field, red border |
@@ -87,11 +99,17 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-10 | Decline card 4000...0002 | Clear error, order not completed, cart intact |
 | CHK-11 | 3DS card 4000 0027 6000 3184 | Stripe authentication modal → success page after confirm |
 | CHK-12 | Order notes filled | Note appears on WC admin order |
-| CHK-13 | WC customizer: set Phone = hidden | Phone field disappears at checkout; required = blocks order until filled |
+| CHK-13 | WC customizer: set Phone = hidden | Phone field (next to ZIP Code in the address blocks) disappears; required = blocks order until filled; optional = shows "(optional)" label |
+| CHK-13b | Apartment field (WC customizer: optional) | Collapsed "+ Add apartment, suite, etc." link shown; clicking expands the field; prefilled address_2 auto-expands it; required = always visible |
 | CHK-14 | WC → Accounts & Privacy → "Enable log-in during checkout" OFF | "Returning customer?" notice does NOT render (allow 5-min ISR in prod) |
 | CHK-15 | WC → "Allow customers to create an account" during checkout ON → guest checkout | "Create an account?" checkbox shows below billing fields; checked → order creates WP customer account + password setup email |
 | CHK-16 | Same setting OFF (default) | No "Create an account?" checkbox; logged-in users never see it either way |
-| CHK-17 | WC → General → Shipping location(s) = specific countries ≠ selling countries | "Ship to a different address?" country dropdown lists SHIPPING countries; billing dropdown lists SELLING countries |
+| CHK-17 | WC → General → Shipping location(s) = specific countries ≠ selling countries | Shipping address country dropdown lists SHIPPING countries; billing dropdown (when "Use same address for billing" unchecked) lists SELLING countries |
+| CHK-18 | Visit /checkout before filling address (shippable cart) | Shipping method section visible with "Enter your shipping address to view shipping options." placeholder |
+| CHK-21 | Logged-in customer with saved account addresses visits /checkout | Email + phone prefilled in Contact information; shipping form prefilled from saved shipping address (falls back to billing when no shipping saved); rates + tax auto-calculate from the prefilled address (WC standard) |
+| CHK-22 | Guest fills address, leaves, returns to /checkout in same session | Previously entered address restored from the WC session (WC standard) |
+| CHK-19 | Fill address matching NO shipping zone | Warning: "There are no shipping options available for this address."; Place Order blocked with "Please select a shipping option" error |
+| CHK-20 | Free shipping rate offered | Rate price displays "Free" (not $0.00); Place Order button disabled while rates recalculate |
 
 ## TC-COUPON — Coupons
 
@@ -117,6 +135,8 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | TAX-05c | Admin clicks APPROVE button **twice** (idempotent) | Second click shows "status was already set — no change made"; no duplicate email sent |
 | TAX-06 | Admin changes status via Users → Edit → dropdown → Update | Customer email sent (approved/rejected) — only when status actually changed |
 | TAX-07 | Approved + valid expiry → place order | Tax = $0 at checkout (WC/TaxJar exempt) |
+| TAX-07b | Approved cert whose expiry date has PASSED (or set expiry to yesterday via admin) → checkout with taxable address (e.g. MI) | Tax IS charged — exempt flag re-syncs live on every totals calculation, even mid-session without re-login |
+| TAX-07c | Cert expires while user stays logged in; admin then re-approves with future expiry | Next cart/checkout recalculation returns to $0 tax — no logout/login needed |
 | TAX-08 | Expiry within 30 days (set via admin) | Daily cron sends "expires soon" email once; banner shows "about to expire" |
 | TAX-09 | Certificate URL from another user's account (logged in as user B) | 403 — download is owner-or-admin only |
 | TAX-10 | Certificate attachment via /wp-json/wp/v2/media (logged out) | Not listed (private post status) |
@@ -238,6 +258,17 @@ address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
 | SET-03 | Add/remove shipping method in zone | Rate options at checkout follow |
 | SET-04 | Enable/disable a payment gateway | Checkout options follow per customer |
 
+## TC-PERF — API Performance (run after ANY proxy-route change)
+
+| ID | Steps | Expected |
+|---|---|---|
+| PERF-01 | With an existing cart session (cookies set), add to cart / change qty / update address / apply coupon — watch the Network tab | Each `/api/cart/*` call completes in ONE WP round trip (no preceding cart GET inside the proxy); noticeably faster than before |
+| PERF-02 | Fresh browser (no cookies) → first add to cart | Works — proxy bootstraps a session (2 round trips, first request only), cart cookie + nonce set for subsequent calls |
+| PERF-03 | Delete/corrupt the `wc_store_nonce` cookie value → change cart qty | Still works — proxy gets 401/403, bootstraps a fresh session, retries once transparently |
+| PERF-04 | Type in search box repeatedly (same query) | Repeat lookups return fast (30s per-query micro-cache + shared 60s CDN cache); results still fresh within ~1 min of WP changes |
+| PERF-05 | Load any page twice | `/api/menu` served from cache on repeat (5-min TTL); menu edits appear within 5 min in prod, instantly in dev |
+| PERF-06 | Place order end-to-end (Stripe test card) | Order succeeds — place-order also uses the single-round-trip fast path |
+
 ## TC-SEC — Security Regression (run after ANY auth/upload/API change)
 
 | ID | Steps | Expected |
@@ -250,6 +281,8 @@ address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
 | SEC-06 | `/wp-json/custom/v1/orders` as user A vs B | Each sees only own orders |
 | SEC-07 | REST request with wrong X-MMF-Proxy value (when MMF_PROXY_SECRET defined) | Treated as unauthenticated |
 | SEC-08 | Response headers on any page | HSTS, X-Frame-Options, nosniff, Referrer-Policy present |
+| SEC-08b | Response headers on any PROD page (`next start`, not dev) | `Content-Security-Policy` present — script-src limited to self + js.stripe.com; frame-src Stripe only; object-src 'none' |
+| SEC-08c | Checkout with CSP active (prod build) | Stripe card fields render + test order succeeds — no CSP violations in browser console |
 | SEC-09 | GET `/api/orders/123` as different user | 403 Forbidden (order belongs to another customer) |
 | SEC-10 | POST `/api/account/details` with another user's email | 409 "email already in use" (no data leak) |
 | SEC-11 | POST `/api/account/password` with wrong current password | 403 "current password is incorrect" |

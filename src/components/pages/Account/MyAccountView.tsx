@@ -89,40 +89,63 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
   return (
     <div className="mx-auto w-full max-w-[1320px] px-4 py-8 xl:px-5 xl:py-[40px]">
       <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
-        {/* Sidebar */}
-        <aside className="h-fit w-full shrink-0 border-2 border-blue bg-white p-5 lg:w-[230px]">
-          <h2 className="mb-4 text-body font-bold text-near-black">My Account</h2>
+        {/* Sidebar — Figma design: top 6px blue border, neutral-50 bg */}
+        <aside className="h-fit w-full shrink-0 border-t-[6px] border-[#336699] bg-neutral-50 px-[27px] pb-[27px] pt-[23px] lg:w-[295px]">
+          <h2 className="mb-[18px] text-xl font-bold text-[#14151c]">My Account</h2>
 
           <nav aria-label="Account sections">
-            {NAV_GROUPS.map((group, groupIndex) => (
-              <ul
-                key={groupIndex}
-                className={`space-y-2.5 ${
-                  groupIndex > 0 ? "mt-4 border-t border-light-gray pt-4" : ""
-                }`}
-              >
-                {group.map((key) => (
-                  <li key={key}>
-                    <button
-                      type="button"
-                      onClick={() => navigateTo(key)}
-                      aria-current={section === key && !isViewingOrder ? "page" : undefined}
-                      className={`text-link transition-colors hover:text-blue ${
-                        section === key && !isViewingOrder
-                          ? "font-semibold text-blue"
-                          : "text-amber"
-                      }`}
-                    >
-                      {SECTION_TITLES[key]}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ))}
+            <ul className="flex flex-col gap-4">
+              {/* Group 1 */}
+              {(NAV_GROUPS[0] ?? []).filter((k) => k !== "dashboard").map((key) => (
+                <li key={key}>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo(key)}
+                    aria-current={section === key && !isViewingOrder ? "page" : undefined}
+                    className={`text-lg transition-colors hover:opacity-80 ${
+                      section === key && !isViewingOrder
+                        ? "font-bold text-[#14151c]"
+                        : "text-[#cc9900]"
+                    }`}
+                  >
+                    {SECTION_TITLES[key]}
+                  </button>
+                </li>
+              ))}
 
-            <div className="mt-4 border-t border-light-gray pt-4">
-              <LogoutButton />
-            </div>
+              {/* Divider */}
+              <li aria-hidden="true">
+                <hr className="border-t border-[#CCCACA]" />
+              </li>
+
+              {/* Group 2 */}
+              {(NAV_GROUPS[1] ?? []).map((key) => (
+                <li key={key}>
+                  <button
+                    type="button"
+                    onClick={() => navigateTo(key)}
+                    aria-current={section === key && !isViewingOrder ? "page" : undefined}
+                    className={`text-lg transition-colors hover:opacity-80 ${
+                      section === key && !isViewingOrder
+                        ? "font-bold text-[#14151c]"
+                        : "text-[#cc9900]"
+                    }`}
+                  >
+                    {SECTION_TITLES[key]}
+                  </button>
+                </li>
+              ))}
+
+              {/* Divider */}
+              <li aria-hidden="true">
+                <hr className="border-t border-[#CCCACA]" />
+              </li>
+
+              {/* Logout */}
+              <li>
+                <LogoutButton className="text-lg text-[#336699] transition-colors hover:opacity-80" />
+              </li>
+            </ul>
           </nav>
         </aside>
 

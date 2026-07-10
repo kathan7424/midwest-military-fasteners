@@ -130,7 +130,8 @@ export async function fetch_spec_parts_products_fallback(
 
   try {
     wp_response = await fetchWpJsonWithHeaders<Array<{ id: number }>>(
-      `/wp/v2/product?${wp_params.toString()}`
+      `/wp/v2/product?${wp_params.toString()}`,
+      { mode: "static", revalidate: 60 }
     );
   } catch {
     return empty_products_response(params);
@@ -151,7 +152,10 @@ export async function fetch_spec_parts_products_fallback(
   const products = (
     await Promise.all(
       product_ids.map((id) =>
-        fetchWpJsonOptional<SpecPartsProduct>(`/spec-parts/v1/products/${id}`)
+        fetchWpJsonOptional<SpecPartsProduct>(`/spec-parts/v1/products/${id}`, {
+          mode: "static",
+          revalidate: 60,
+        })
       )
     )
   ).filter((product): product is SpecPartsProduct => Boolean(product));

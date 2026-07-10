@@ -101,7 +101,7 @@ export const InputDateBase = ({
                 cx(
                     "group/input relative flex w-full flex-row place-content-center place-items-center rounded-lg bg-primary shadow-xs ring-1 ring-primary transition-shadow duration-100 ease-linear ring-inset",
 
-                    isFocusWithin && !isDisabled && "ring-2 ring-brand",
+                    isFocusWithin && !isDisabled && "ring-1 ring-brand",
 
                     // Disabled state styles
                     isDisabled && "cursor-not-allowed opacity-50 in-data-input-wrapper:opacity-100",
@@ -112,8 +112,8 @@ export const InputDateBase = ({
                     "group-invalid:ring-error_subtle",
 
                     // Invalid state with focus-within styles
-                    isInvalid && isFocusWithin && "ring-2 ring-error",
-                    isFocusWithin && "group-invalid:ring-2 group-invalid:ring-error",
+                    isInvalid && isFocusWithin && "ring-1 ring-error",
+                    isFocusWithin && "group-invalid:ring-1 group-invalid:ring-error",
 
                     context?.wrapperClassName,
                     wrapperClassName,

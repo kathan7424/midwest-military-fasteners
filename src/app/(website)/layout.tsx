@@ -3,7 +3,7 @@
  * Description: Website layout shell with header, footer, cart, and toasts.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-10
  */
 
 import Header from "@/components/layout/Header/Header";
@@ -37,6 +37,7 @@ export default async function WebsiteLayout({
   const iso_section = shell.settings?.footer
     ? {
         logo: shell.settings.footer.iso_logo,
+        iso_title: shell.settings.footer.iso_title || null,
         contentHtml: shell.settings.footer.content_area || "",
       }
     : null;
@@ -61,7 +62,7 @@ export default async function WebsiteLayout({
             isLoggedIn={shell.is_logged_in}
           />
 
-          <main className="min-h-screen">{children}</main>
+          <main className="">{children}</main>
 
           <Footer footerMenu={shell.footer_menu} settings={shell.settings} />
         </CartProvider>

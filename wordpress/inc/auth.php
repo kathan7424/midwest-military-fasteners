@@ -644,6 +644,26 @@ function mmf_auth_register( WP_REST_Request $request ) {
 			return $validation;
 		}
 
+		// A certificate without an expiry date can never be validated for
+		// tax-free checkout — require it whenever a certificate is uploaded.
+		$normalized_expiry = mmf_normalize_tax_exemption_expiry( $expiry );
+
+		if ( '' === $normalized_expiry ) {
+			return new WP_Error(
+				'missing_expiry',
+				'Expiration date is required when uploading a certificate.',
+				array( 'status' => 400 )
+			);
+		}
+
+		if ( strtotime( $normalized_expiry . ' 23:59:59' ) < time() ) {
+			return new WP_Error(
+				'expiry_in_past',
+				'Certificate expiration date must be a future date.',
+				array( 'status' => 400 )
+			);
+		}
+
 		$files['input_6'] = $_FILES['certificate'];
 	}
 

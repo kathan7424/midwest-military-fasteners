@@ -23,7 +23,8 @@ add_action( 'show_user_profile', 'mmf_render_tax_exemption_user_fields' );
 add_action( 'edit_user_profile', 'mmf_render_tax_exemption_user_fields' );
 add_action( 'personal_options_update', 'mmf_save_tax_exemption_user_fields' );
 add_action( 'edit_user_profile_update', 'mmf_save_tax_exemption_user_fields' );
-add_filter( 'woocommerce_customer_is_tax_exempt', 'mmf_filter_customer_tax_exempt', 20, 2 );
+add_filter( 'woocommerce_customer_is_vat_exempt', 'mmf_filter_customer_tax_exempt', 20, 2 );
+add_action( 'woocommerce_before_calculate_totals', 'mmf_refresh_session_tax_exempt_flag', 5 );
 add_action( 'wp_login', 'mmf_sync_customer_tax_exempt_flag', 10, 2 );
 add_action( 'woocommerce_created_customer', 'mmf_sync_customer_tax_exempt_flag_on_id', 10, 1 );
 
@@ -432,20 +433,39 @@ function mmf_handle_tax_cert_download(): void {
 }
 
 /**
- * WooCommerce tax exempt filter for TaxJar and core tax.
+ * WooCommerce `woocommerce_customer_is_vat_exempt` filter (WC_Customer::is_vat_exempt()).
  *
- * @param bool        $is_exempt Current value.
- * @param WC_Customer $customer  Customer.
+ * @param bool             $is_exempt Current value.
+ * @param WC_Customer|null $customer  Customer (passed by WC core when available).
  * @return bool
  */
-function mmf_filter_customer_tax_exempt( bool $is_exempt, $customer ): bool {
-	if ( $is_exempt ) {
-		return true;
+function mmf_filter_customer_tax_exempt( bool $is_exempt, $customer = null ): bool {
+	$user_id = $customer instanceof WC_Customer ? (int) $customer->get_id() : get_current_user_id();
+
+	// Always re-check live cert status for known WC customers — the stored
+	// is_vat_exempt flag may be stale if the certificate expired after login.
+	if ( $user_id > 0 ) {
+		return mmf_is_tax_exempt_customer( $user_id );
 	}
 
-	$user_id = $customer instanceof WC_Customer ? (int) $customer->get_id() : 0;
+	return $is_exempt;
+}
 
-	return mmf_is_tax_exempt_customer( $user_id );
+/**
+ * Re-sync the session customer's exempt flag before every totals calculation.
+ *
+ * WC_Cart_Totals reads the RAW stored flag (get_is_vat_exempt()), not the
+ * filtered is_vat_exempt() — so the filter alone cannot un-exempt a customer
+ * whose certificate expired mid-session. Setting the flag here makes every
+ * cart/checkout/Store API calculation use the live certificate status.
+ */
+function mmf_refresh_session_tax_exempt_flag(): void {
+	if ( ! function_exists( 'WC' ) || null === WC()->customer ) {
+		return;
+	}
+
+	$user_id = get_current_user_id();
+	WC()->customer->set_is_vat_exempt( $user_id > 0 && mmf_is_tax_exempt_customer( $user_id ) );
 }
 
 /**

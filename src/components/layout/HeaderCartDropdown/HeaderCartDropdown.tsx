@@ -3,7 +3,7 @@
  * Description: Your Order mini-cart dropdown — Figma design.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-10
  */
 
 "use client";
@@ -150,7 +150,7 @@ export default function HeaderCartDropdown({
               type="button"
               aria-label="Close cart panel"
               onClick={() => setIsOpen(false)}
-              className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+              className="fixed inset-0 z-51 bg-black/30 lg:hidden"
             />
           ) : null}
 
@@ -159,7 +159,7 @@ export default function HeaderCartDropdown({
             aria-label="Your order"
             className={cn(
               variant === "compact"
-                ? "fixed inset-y-0 right-0 z-50 w-[calc(100vw-2rem)] max-w-[520px] overflow-y-auto border-l border-amber bg-white p-4 shadow-2xl lg:hidden"
+                ? "fixed inset-y-0 right-0 z-51 w-[calc(100vw-2rem)] max-w-[520px] overflow-y-auto border-l border-amber bg-white p-4 shadow-2xl lg:hidden"
                 : "absolute right-0 top-full z-50 w-[512px] max-w-[calc(100vw-2rem)]"
             )}
           >
@@ -170,7 +170,7 @@ export default function HeaderCartDropdown({
             <div
               className={cn(
                 variant === "compact"
-                  ? ""
+                  ? "flex flex-col h-full"
                   : "mt-[-1px] border border-amber bg-white p-4 shadow-xl"
               )}
             >
@@ -210,11 +210,11 @@ export default function HeaderCartDropdown({
               </p>
             )}
 
-            <div className="mt-5 flex items-center justify-between gap-4 xl:mt-[28px]">
+            <div className="mt-auto border-t border-light-gray pt-5 flex items-center justify-between gap-4 xl:mt-[28px]">
               <Link
                 href="/cart"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2 text-link text-blue transition-colors hover:text-amber"
+                className="flex items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
               >
                 <svg
                   className="h-auto w-[18px]"

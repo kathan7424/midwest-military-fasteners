@@ -26,14 +26,14 @@ function mmf_enqueue_tax_certificate_admin_assets( string $hook ): void {
 		'mmf-tax-admin',
 		get_template_directory_uri() . '/assets/css/tax-admin.css',
 		array(),
-		'2.1.0'
+		'2.1.2'
 	);
 
 	wp_enqueue_script(
 		'mmf-tax-admin',
 		get_template_directory_uri() . '/assets/js/tax-admin.js',
 		array(),
-		'2.1.0',
+		'2.1.2',
 		true
 	);
 }
@@ -658,7 +658,9 @@ function mmf_render_tax_certificate_admin_page(): void {
 		</form>
 
 		<form method="post">
-			<?php $table->display(); ?>
+			<div class="mmf-table-scroll">
+				<?php $table->display(); ?>
+			</div>
 		</form>
 	</div>
 	<?php

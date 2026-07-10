@@ -20,6 +20,23 @@ if ( ! defined( '_S_VERSION' ) ) {
 // ============================================================
 add_filter( 'woocommerce_defer_transactional_emails', '__return_true' );
 
+// ============================================================
+// DISABLE CDN/VARNISH CACHING FOR WC STORE API
+// Pantheon Varnish caches /wc/store/ GET responses with Cache-Control:
+// public, max-age=604800 (7 days) without varying on Cart-Token. This
+// means all guests see the same cached empty cart regardless of their
+// token. Force no-store on every Store API response so the cart is
+// always fetched fresh from WooCommerce.
+// ============================================================
+add_filter( 'rest_post_dispatch', function ( $response, $server, $request ) {
+	if ( strpos( $request->get_route(), '/wc/store/' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0' );
+		$response->header( 'Pragma', 'no-cache' );
+		$response->header( 'Surrogate-Control', 'no-store' );
+	}
+	return $response;
+}, 10, 3 );
+
 /**
  * Sets up theme defaults and registers support for various WordPress features.
  *
@@ -412,22 +429,39 @@ add_action('acf/save_post', function ($post_id) {
 
 // ============================================================
 // DYNAMIC CART PRICING: applies package tier price at checkout
+// Tier discounts are a logged-in B2B benefit — guests only ever see
+// the 1 PKG price on the storefront, so they are charged exactly that
+// price per package at any quantity. Logged-in customers get the
+// matching volume tier.
 // ============================================================
 add_action('woocommerce_before_calculate_totals', function ($cart) {
     if (is_admin() && !defined('DOING_AJAX')) return;
+
+    $is_guest = ! is_user_logged_in();
 
     foreach ($cart->get_cart() as $item) {
         $pricing = parts_catalog_get_product_package_pricing($item['product_id']);
         if (empty($pricing)) continue;
 
-        // Sort descending so first match wins
-        usort($pricing, function($a, $b) { return $b['qty'] - $a['qty']; });
-
         $matched = null;
-        foreach ($pricing as $tier) {
-            if ($item['quantity'] >= $tier['qty']) {
-                $matched = floatval($tier['price']);
-                break;
+
+        if ($is_guest) {
+            // Guests pay the displayed 1 PKG (base tier) price regardless of quantity.
+            foreach ($pricing as $tier) {
+                if (1 === (int) $tier['qty']) {
+                    $matched = floatval($tier['price']);
+                    break;
+                }
+            }
+        } else {
+            // Sort descending so first match wins
+            usort($pricing, function($a, $b) { return $b['qty'] - $a['qty']; });
+
+            foreach ($pricing as $tier) {
+                if ($item['quantity'] >= $tier['qty']) {
+                    $matched = floatval($tier['price']);
+                    break;
+                }
             }
         }
 

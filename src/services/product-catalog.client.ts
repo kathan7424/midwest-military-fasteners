@@ -30,11 +30,13 @@ export async function fetch_catalog_products_client(
   });
 
   const query = search_params.toString();
+  // Default cache mode: the API route sends Cache-Control max-age=30, so
+  // repeating a query (typo backspace, page toggle) is served from the
+  // browser cache instantly instead of a new proxy roundtrip.
   const response = await fetch(
     query ? `/api/catalog/products?${query}` : "/api/catalog/products",
     {
       method: "GET",
-      cache: "no-store",
       signal: params.signal,
     }
   );

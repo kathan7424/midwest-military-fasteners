@@ -10,9 +10,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { fetchSearchResults } from "@/services/search.service";
 
+// No fetchCache override here — the search service uses a per-query 30s
+// micro-cache (fetchWpJson revalidate:30) and force-no-store would defeat it.
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   // Cap query length — WP search gains nothing past this and long strings
@@ -38,9 +38,11 @@ export async function GET(request: NextRequest) {
   try {
     const results = await fetchSearchResults(query, 15, scope);
 
+    // Public catalog search — identical for every visitor. A short shared
+    // cache absorbs repeated suggestion lookups while staying fresh.
     return NextResponse.json(results, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
       },
     });
   } catch (error) {

@@ -202,7 +202,7 @@ export const FileUploadDropZone = ({
             onDrop={handleDrop}
             className={cx(
                 "relative flex flex-col items-center gap-3 rounded-xl bg-primary px-6 py-4 text-tertiary ring-1 ring-secondary transition duration-100 ease-linear ring-inset",
-                isDraggingOver && "ring-2 ring-brand",
+                isDraggingOver && "ring-1 ring-brand",
                 isDisabled && "cursor-not-allowed bg-secondary",
                 className,
             )}
@@ -265,7 +265,7 @@ export const FileListItemProgressBar = ({ name, size, progress, failed, type, fi
             layout="position"
             className={cx(
                 "relative flex gap-3 rounded-xl bg-primary p-4 ring-1 ring-secondary transition-shadow duration-100 ease-linear ring-inset",
-                failed && "ring-2 ring-error",
+                failed && "ring-1 ring-error",
                 className,
             )}
         >
@@ -332,7 +332,7 @@ export const FileListItemProgressFill = ({ name, size, progress, failed, type, f
             <div
                 className={cx(
                     "absolute inset-0 size-full rounded-[inherit] ring-1 ring-secondary transition duration-100 ease-linear ring-inset",
-                    failed && "ring-2 ring-error",
+                    failed && "ring-1 ring-error",
                 )}
             />
             <FileTypeIcon className="relative size-10 shrink-0 dark:hidden" type={type ?? "empty"} theme="light" variant={fileIconVariant ?? "solid"} />

@@ -30,14 +30,14 @@ export default async function LoginPage() {
   const canRegister = settings.registration_enabled !== false;
 
   return (
-    <section className="bg-off-white px-5 py-12 lg:py-16">
-      <div className="mx-auto flex w-full max-w-md flex-col items-center">
+    <section className="bg-white px-5 py-12 lg:py-[150px]">
+      <div className="mx-auto flex w-full max-w-[434px] flex-col items-center">
         <Suspense fallback={null}>
           <LoginPanel />
         </Suspense>
 
         {canRegister ? (
-          <p className="mt-6 text-center text-sm text-dark-gray">
+          <p className="mt-6 text-center text-link text-dark-gray">
             Don&apos;t have an account?{" "}
             <Link
               href="/register"

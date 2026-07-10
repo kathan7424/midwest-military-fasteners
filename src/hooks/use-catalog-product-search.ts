@@ -113,6 +113,58 @@ export function useCatalogProductSearch({
     [resetToBaseline]
   );
 
+  // Client-side pagination: fetch the page from the catalog API and sync the
+  // URL with pushState — no server component re-render, so page changes are
+  // as fast as the (ISR-cached) API response instead of a full navigation.
+  const [isPaging, setIsPaging] = useState(false);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      const requestId = ++requestIdRef.current;
+      setIsPaging(true);
+
+      const params = new URLSearchParams(window.location.search);
+      if (page <= 1) {
+        params.delete("page");
+      } else {
+        params.set("page", String(page));
+      }
+      const next_url = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+      window.history.pushState(null, "", next_url);
+
+      fetch_catalog_products_client({
+        search: debouncedSearch.trim() || undefined,
+        category: categorySlug,
+        series: seriesSlug,
+        page,
+        per_page: 10,
+      })
+        .then((response) => {
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+
+          setTableProducts(
+            response.products.map(map_spec_parts_product_to_table_product)
+          );
+          setTablePage(response.page);
+          setTableTotalPages(response.pages);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        })
+        .catch((error) => {
+          console.error("Catalog pagination failed:", error);
+        })
+        .finally(() => {
+          if (requestId === requestIdRef.current) {
+            setIsPaging(false);
+          }
+        });
+    },
+    [pathname, debouncedSearch, categorySlug, seriesSlug]
+  );
+
   useEffect(() => {
     const query = debouncedSearch.trim();
 
@@ -182,10 +234,12 @@ export function useCatalogProductSearch({
   return {
     filter,
     handleFilterChange,
+    handlePageChange,
     visibleProducts,
     tablePage,
     tableTotalPages,
     isSearching,
+    isPaging,
     isPendingSearch,
   };
 }

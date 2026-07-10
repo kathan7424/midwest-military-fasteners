@@ -9,11 +9,9 @@
 
 import { NextRequest } from "next/server";
 
-import { ENV } from "@/config/env";
 import {
   buildCheckoutCartStateResponse,
-  buildWcStoreHeaders,
-  fetchStoreCart,
+  wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +26,15 @@ function pickWcAddress(
 ): Record<string, string> {
   const keys = isBilling ? WC_BILLING_KEYS : WC_SHIPPING_KEYS;
   const out: Record<string, string> = {};
-  for (const k of keys) if (k in addr) out[k] = addr[k] ?? "";
+  for (const k of keys) {
+    // cart/update-customer is a partial merge — only send fields the user has
+    // actually filled in. WC validates every field that IS sent (phone format,
+    // postcode format, email format, etc.), so skipping empty strings prevents
+    // spurious 400s when location-only recalculation fires before the full
+    // address is typed. WC preserves any previously-saved values for omitted
+    // fields, so nothing is lost.
+    if (addr[k]) out[k] = addr[k];
+  }
   return out;
 }
 
@@ -46,26 +52,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bootstrapResponse = await fetchStoreCart(request);
-
-    const wpResponse = await fetch(
-      `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart/update-customer`,
-      {
-        method: "POST",
-        headers: buildWcStoreHeaders(request, true, bootstrapResponse),
-        body: JSON.stringify({
-          billing_address: pickWcAddress(
-            (body.billing_address ?? body.shipping_address) as Record<string, string>,
-            true
-          ),
-          shipping_address: pickWcAddress(
-            (body.shipping_address ?? body.billing_address) as Record<string, string>,
-            false
-          ),
-        }),
-        cache: "no-store",
-      }
-    );
+    const wpResponse = await wcStoreMutation(request, "cart/update-customer", {
+      billing_address: pickWcAddress(
+        (body.billing_address ?? body.shipping_address) as Record<string, string>,
+        true
+      ),
+      shipping_address: pickWcAddress(
+        (body.shipping_address ?? body.billing_address) as Record<string, string>,
+        false
+      ),
+    });
 
     return buildCheckoutCartStateResponse(wpResponse);
   } catch (error) {

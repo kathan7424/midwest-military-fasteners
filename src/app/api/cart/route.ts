@@ -8,14 +8,12 @@
 
 import { NextRequest } from "next/server";
 
-import { ENV } from "@/config/env";
 import {
   buildStoreCartMutationResponse,
   buildStoreCartResponse,
-  buildWcStoreHeaders,
-  fetchStoreCart,
   fetchStoreCartWithRecovery,
   resolveProductIdBySku,
+  wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 
 export const dynamic = "force-dynamic";
@@ -57,20 +55,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const bootstrapResponse = await fetchStoreCart(request);
-
-    const wpResponse = await fetch(
-      `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/cart/add-item`,
-      {
-        method: "POST",
-        headers: buildWcStoreHeaders(request, true, bootstrapResponse),
-        body: JSON.stringify({
-          id: productId,
-          quantity,
-        }),
-        cache: "no-store",
-      }
-    );
+    const wpResponse = await wcStoreMutation(request, "cart/add-item", {
+      id: productId,
+      quantity,
+    });
 
     return buildStoreCartMutationResponse(
       wpResponse,

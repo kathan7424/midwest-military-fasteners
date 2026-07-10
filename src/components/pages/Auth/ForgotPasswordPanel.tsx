@@ -13,7 +13,7 @@ import { useForm, Controller } from "react-hook-form";
 import { FaChevronRight } from "react-icons/fa6";
 import { z } from "zod";
 
-import { Button } from "@/components/base/buttons/button";
+import LoginButton from "@/components/pages/Auth/LoginButton";
 import { Input } from "@/components/base/input/input";
 import { forgot_password_request } from "@/services/auth-client.service";
 import { notifyError, notifySuccess } from "@/utils/notifications";
@@ -29,9 +29,9 @@ const forgotPasswordSchema = z.object({
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 const figma_input_wrapper_class =
-  "rounded-none bg-white shadow-none ring-[#bdbdbd] focus-within:ring-blue";
+  "rounded-none bg-white shadow-none border border-[#666666] px-3 py-3 h-12 shadow-none";
 const figma_input_text_class =
-  "text-sm text-near-black placeholder:text-[#b0b0b0]";
+  "text-link text-[#989898] placeholder:text-[#989898] shadow-none";
 
 export default function ForgotPasswordPanel() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,7 +106,7 @@ export default function ForgotPasswordPanel() {
               size="sm"
               isInvalid={Boolean(errors.email)}
               hint={errors.email?.message}
-              className="w-full"
+              className="w-full focus:outline-none ring-0 focus:ring-0 shadow-none"
               wrapperClassName={figma_input_wrapper_class}
               inputClassName={figma_input_text_class}
             />
@@ -114,16 +114,14 @@ export default function ForgotPasswordPanel() {
         />
 
         <div className="flex justify-center pt-3">
-          <Button
+        <LoginButton
             type="submit"
-            color="primary"
-            size="md"
-            isDisabled={isSubmitting}
-            className="min-w-[180px] rounded-none bg-amber px-7 py-3 font-condensed text-base font-bold uppercase tracking-wide text-white shadow-none before:rounded-none hover:bg-[#b38600]"
+            disabled={isSubmitting}
+            className="min-w-[167px] h-[47px] rounded-none bg-amber px-8 py-3.5 font-condensed text-[18px] font-bold uppercase text-white hover:bg-[#b38600]"
             iconTrailing={FaChevronRight}
           >
             {isSubmitting ? "Sending..." : "Send Reset Link"}
-          </Button>
+          </LoginButton>
         </div>
       </form>
     </div>
