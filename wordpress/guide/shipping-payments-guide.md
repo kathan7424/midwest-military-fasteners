@@ -59,6 +59,21 @@ block convention: required fields are plain, optional fields show
    (UPE / deferred intent) requires:
    `payment_method: "stripe"`, `wc-stripe-payment-method: pm_...`,
    `wc-stripe-is-deferred-intent: true`
+
+   **Saved payment methods** (WC → Payments → Stripe → "Enable saved payment
+   methods", `saved_cards` in `woocommerce_stripe_settings`, exposed via
+   `/custom/v1/checkout/locations` → `checkout.saved_cards`):
+   - Logged-in customers see their cards stored at Stripe (same list as
+     My Account → Payment Methods) as radio options above the card fields;
+     the first card is preselected, "Use a new payment method" reopens the
+     Stripe Elements fields. Paying with a saved card sends the stored
+     `pm_...` id as `wc-stripe-payment-method` — no card entry, no card data
+     through the store.
+   - New-card entry shows "Save payment information to my account for future
+     purchases." (logged-in only). Checked → `wc-stripe-new-payment-method:
+     true` is added and the gateway attaches the card to the Stripe customer.
+   - Setting OFF or guest checkout → no saved-card list, no save checkbox
+     (plain card entry only).
 6. 3D Secure cards: the gateway returns a confirm hash in `redirect_url` —
    the checkout runs `stripe.confirmCardPayment()` in the browser, then continues
 7. Order created in WooCommerce → customer lands on `/checkout/success` — a

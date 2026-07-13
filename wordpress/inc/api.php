@@ -295,6 +295,13 @@ function mmf_get_checkout_locations() {
 			'coupons_enabled'      => wc_coupons_enabled(),
 			// General → "Enable the use of order notes".
 			'order_notes_enabled'  => 'yes' === get_option( 'woocommerce_enable_order_comments', 'yes' ),
+			// WC → Payments → Stripe → "Enable saved payment methods" (saved_cards).
+			// Returning customers can pay with a card stored at Stripe and save
+			// new cards during checkout. No card data touches the store.
+			'saved_cards'          => ( function() {
+				$stripe = get_option( 'woocommerce_stripe_settings', array() );
+				return isset( $stripe['saved_cards'] ) && 'yes' === $stripe['saved_cards'];
+			} )(),
 			// Appearance → Customize → WooCommerce → Checkout field visibility.
 			'fields'               => array(
 				'company'   => get_option( 'woocommerce_checkout_company_field', 'optional' ),
