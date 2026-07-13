@@ -478,6 +478,28 @@ function CheckoutForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressKey, locationReady, isLoading]);
 
+  // When cart total changes from a header mutation, re-fetch checkout state
+  // so Order Summary Subtotal/Shipping/Tax/Total stay in sync.
+  useEffect(() => {
+    if (
+      !cart ||
+      !checkout ||
+      isLoading ||
+      isUpdatingRates ||
+      isApplyingCoupon ||
+      isPlacingOrder ||
+      cart.total === checkout.totals.total
+    ) return;
+
+    let cancelled = false;
+    void (async () => {
+      const { ok, data } = await fetch_checkout_state();
+      if (!cancelled && ok && 'cart' in data) applyState(data as CheckoutStateResponse);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart?.total]);
+
   const handleSelectRate = async (package_id: number | string, rate_id: string) => {
     setIsUpdatingRates(true);
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
