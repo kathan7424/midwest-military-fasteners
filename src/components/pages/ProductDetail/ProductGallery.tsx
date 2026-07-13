@@ -79,7 +79,15 @@ export default function ProductGallery({
     setLightbox(true);
   }, [active, allImages]);
 
-  const closeLightbox = useCallback(() => setLightbox(false), []);
+  // Standard lightbox behavior: closing keeps the image you navigated to —
+  // the main image + active thumbnail sync to the last viewed slide.
+  const closeLightbox = useCallback(() => {
+    const viewed = allImages[lightboxIdx];
+    if (viewed) {
+      setActive(viewed);
+    }
+    setLightbox(false);
+  }, [allImages, lightboxIdx]);
 
   const lightboxPrev = useCallback(
     (e: React.MouseEvent) => {
@@ -119,6 +127,54 @@ export default function ProductGallery({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, hasMultiple, allImages.length, closeLightbox]);
+
+  // Standard modal behavior: lock body scroll while the lightbox is open.
+  useEffect(() => {
+    if (!lightbox) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [lightbox]);
+
+  // Preload the adjacent slides so prev/next feels instant.
+  useEffect(() => {
+    if (!lightbox || !hasMultiple) return;
+    [
+      allImages[(lightboxIdx + 1) % allImages.length],
+      allImages[(lightboxIdx - 1 + allImages.length) % allImages.length],
+    ].forEach((src) => {
+      if (src) {
+        const img = new window.Image();
+        img.src = src;
+      }
+    });
+  }, [lightbox, lightboxIdx, hasMultiple, allImages]);
+
+  // Touch swipe (standard mobile lightbox nav): left → next, right → prev.
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartX.current === null || !hasMultiple) return;
+      const deltaX = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
+      touchStartX.current = null;
+      if (Math.abs(deltaX) < 50) return;
+      setLbError(false);
+      setLbLoading(true);
+      setLightboxIdx((i) =>
+        deltaX < 0
+          ? (i + 1) % allImages.length
+          : (i - 1 + allImages.length) % allImages.length
+      );
+    },
+    [hasMultiple, allImages.length]
+  );
 
   // Use active (already error-corrected) when the original URL failed to load.
   const lightboxSrc = lbError
@@ -229,6 +285,16 @@ export default function ProductGallery({
           aria-modal="true"
           aria-label="Image preview"
         >
+          {/* Image counter — standard "2 / 5" position, top-left */}
+          {hasMultiple ? (
+            <span
+              className="absolute left-4 top-4 rounded bg-white/10 px-2.5 py-1 text-sm font-semibold text-white"
+              aria-live="polite"
+            >
+              {lightboxIdx + 1} / {allImages.length}
+            </span>
+          ) : null}
+
           {/* Close */}
           <button
             type="button"
@@ -255,6 +321,8 @@ export default function ProductGallery({
           <div
             className="relative mx-20 max-h-[90vh] max-w-[90vw] h-[600px] w-[800px]"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
             {/* Loader — shown until the full-size image finishes loading */}
             {lbLoading ? (

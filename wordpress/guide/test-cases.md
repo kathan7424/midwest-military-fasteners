@@ -43,6 +43,11 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-29 | Product with a broken/missing image (placeholder art) | No hover zoom at all — default cursor, no zoom icon; clicking still opens the lightbox with the placeholder |
 | PDP-30 | WP page title containing `&` (e.g. "Shipping & Returns") | Renders "Shipping & Returns" — never the raw `&#038;` entity; same for category names, search suggestions, order item names, and checkout state/country dropdowns |
 | PDP-31 | Open the lightbox (click main image), then Prev/Next between images | White spinner shows centered until the full-size image loads, then image fades in; no blank dark frame while loading |
+| PDP-31a | Lightbox open — page behind | Body scroll is LOCKED (mouse wheel doesn't scroll the page); restored on close |
+| PDP-31b | Lightbox with 2+ images | "2 / 5"-style counter shows top-left; updates with prev/next/dots/keyboard |
+| PDP-31c | Navigate to image 3 in lightbox, press Escape or click backdrop | Lightbox closes AND the main image + active thumbnail are now image 3 (synced to last viewed slide) |
+| PDP-31d | Mobile: swipe left/right on the lightbox image | Swipe left → next image, swipe right → previous (≥50px swipe); short taps don't navigate |
+| PDP-31e | Prev/Next through all images and wrap around | Navigation loops (last → first, first → last); adjacent images preload so the spinner is brief/absent on revisit |
 | PDP-32 | WP backend hangs (unreachable/very slow) | Pages fail over to their error/fallback path within ~15s — never an indefinite skeleton (WP fetches have a 15s timeout) |
 
 ## TC-IMP — CSV Import
