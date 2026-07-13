@@ -15,7 +15,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Loader2, ZoomIn } from "lucide-react";
 
 import {
   PRODUCT_PLACEHOLDER_IMAGE,
@@ -48,6 +48,8 @@ export default function ProductGallery({
   // When the main image errors out (active -> placeholder), track it so the
   // lightbox uses the same corrected src instead of the original broken URL.
   const [lbError, setLbError] = useState(false);
+  // Full-size lightbox image loads on demand — show a spinner until it lands.
+  const [lbLoading, setLbLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasMultiple = allImages.length > 1;
   // Placeholder art has no detail to magnify — disable hover zoom for it.
@@ -73,6 +75,7 @@ export default function ProductGallery({
     const idx = allImages.indexOf(active);
     setLightboxIdx(idx >= 0 ? idx : 0);
     setLbError(false);
+    setLbLoading(true);
     setLightbox(true);
   }, [active, allImages]);
 
@@ -82,6 +85,7 @@ export default function ProductGallery({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setLbError(false);
+      setLbLoading(true);
       setLightboxIdx((i) => (i - 1 + allImages.length) % allImages.length);
     },
     [allImages.length]
@@ -91,6 +95,7 @@ export default function ProductGallery({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setLbError(false);
+      setLbLoading(true);
       setLightboxIdx((i) => (i + 1) % allImages.length);
     },
     [allImages.length]
@@ -102,10 +107,12 @@ export default function ProductGallery({
       if (e.key === "Escape") closeLightbox();
       if (e.key === "ArrowLeft" && hasMultiple) {
         setLbError(false);
+        setLbLoading(true);
         setLightboxIdx((i) => (i - 1 + allImages.length) % allImages.length);
       }
       if (e.key === "ArrowRight" && hasMultiple) {
         setLbError(false);
+        setLbLoading(true);
         setLightboxIdx((i) => (i + 1) % allImages.length);
       }
     };
@@ -249,13 +256,30 @@ export default function ProductGallery({
             className="relative mx-20 max-h-[90vh] max-w-[90vw] h-[600px] w-[800px]"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Loader — shown until the full-size image finishes loading */}
+            {lbLoading ? (
+              <span
+                className="absolute inset-0 z-10 flex items-center justify-center"
+                role="status"
+                aria-label="Loading image"
+              >
+                <Loader2 className="h-10 w-10 animate-spin text-white/80" aria-hidden="true" />
+              </span>
+            ) : null}
             <Image
               src={lightboxSrc}
               alt={alt}
               fill
-              className="object-contain"
+              className={[
+                "object-contain transition-opacity duration-150",
+                lbLoading ? "opacity-0" : "opacity-100",
+              ].join(" ")}
               sizes="90vw"
-              onError={() => setLbError(true)}
+              onLoad={() => setLbLoading(false)}
+              onError={() => {
+                setLbError(true);
+                setLbLoading(false);
+              }}
             />
           </div>
 
@@ -281,6 +305,7 @@ export default function ProductGallery({
                   onClick={(e) => {
                     e.stopPropagation();
                     setLbError(false);
+                    setLbLoading(i !== lightboxIdx);
                     setLightboxIdx(i);
                   }}
                   aria-label={`Go to image ${i + 1}`}

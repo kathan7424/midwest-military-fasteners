@@ -42,6 +42,8 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-28 | Hover the main product image (real photo) | Image magnifies 2.5× INSIDE the same box, following the cursor; leaving the image smoothly zooms back out; NO floating pane over other content |
 | PDP-29 | Product with a broken/missing image (placeholder art) | No hover zoom at all — default cursor, no zoom icon; clicking still opens the lightbox with the placeholder |
 | PDP-30 | WP page title containing `&` (e.g. "Shipping & Returns") | Renders "Shipping & Returns" — never the raw `&#038;` entity; same for category names, search suggestions, order item names, and checkout state/country dropdowns |
+| PDP-31 | Open the lightbox (click main image), then Prev/Next between images | White spinner shows centered until the full-size image loads, then image fades in; no blank dark frame while loading |
+| PDP-32 | WP backend hangs (unreachable/very slow) | Pages fail over to their error/fallback path within ~15s — never an indefinite skeleton (WP fetches have a 15s timeout) |
 
 ## TC-IMP — CSV Import
 

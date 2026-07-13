@@ -3,10 +3,14 @@
  * Description: Shared WordPress REST API fetch helper.
  * Developer: KP-184
  * Created Date: 2026-06-25
- * Last Modified: 2026-06-25
+ * Last Modified: 2026-07-13
  */
 
 import { ENV } from "@/config/env";
+
+// A hung WP request must never hang the page stream — fail fast and let the
+// caller's fallback/error path run instead of leaving shoppers on a skeleton.
+const WP_FETCH_TIMEOUT_MS = 15_000;
 
 const WP_DYNAMIC_FETCH_OPTIONS: RequestInit = {
   cache: "no-store",
@@ -34,7 +38,7 @@ const IS_DEV = process.env.NODE_ENV === "development";
 // Next Data Cache it dies with the dev server, so backend changes show up
 // after at most DEV_CACHE_TTL_MS — while repeat navigation (sidebar clicks,
 // pagination, filters) stays fast instead of paying a ~1s WP roundtrip each.
-const DEV_CACHE_TTL_MS = 30_000;
+const DEV_CACHE_TTL_MS = 120_000;
 const dev_cache = new Map<
   string,
   { expires: number; body: unknown; total: number; total_pages: number }
@@ -111,7 +115,10 @@ export async function fetchWpJson<T>(
       ? build_static_fetch_options(options.revalidate, options.tags)
       : WP_DYNAMIC_FETCH_OPTIONS;
 
-  const res = await fetch(url, fetch_options);
+  const res = await fetch(url, {
+    ...fetch_options,
+    signal: AbortSignal.timeout(WP_FETCH_TIMEOUT_MS),
+  });
 
   if (!res.ok) {
     throw new Error(`WP API failed (${endpoint}): ${res.status}`);
@@ -166,7 +173,10 @@ export async function fetchWpJsonWithHeaders<T>(
       ? build_static_fetch_options(options.revalidate, options.tags)
       : WP_DYNAMIC_FETCH_OPTIONS;
 
-  const res = await fetch(url, fetch_options);
+  const res = await fetch(url, {
+    ...fetch_options,
+    signal: AbortSignal.timeout(WP_FETCH_TIMEOUT_MS),
+  });
 
   if (!res.ok) {
     throw new Error(`WP API failed (${endpoint}): ${res.status}`);
