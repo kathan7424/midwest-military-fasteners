@@ -317,6 +317,7 @@ function CheckoutForm({
   const [selectedGateway, setSelectedGateway] = useState("stripe");
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showOrderNotes, setShowOrderNotes] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -510,13 +511,14 @@ function CheckoutForm({
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim();
-    if (!code) { notifyError("Enter a coupon code."); return; }
+    if (!code) { setCouponError("Please enter a coupon code."); return; }
+    setCouponError("");
     setIsApplyingCoupon(true);
     const { ok, data } = await apply_coupon(code);
     if (ok && "cart" in data) {
       applyState(data); setCouponCode(""); setCouponOpen(false); notifySuccess("Coupon applied.");
     } else {
-      notifyError(("message" in data && data.message) || "Coupon could not be applied.");
+      setCouponError(("message" in data && data.message) || "Coupon code is invalid.");
     }
     setIsApplyingCoupon(false);
   };
@@ -560,7 +562,14 @@ function CheckoutForm({
     if (!shipping.postcode.trim()) errors.shipping_postcode = "ZIP Code is a required field.";
     if (!shipping.country.trim()) errors.shipping_country = "Country is a required field.";
     if (fields.company === "required" && !shipping.company?.trim()) errors.shipping_company = "Company name is a required field.";
-    if (fields.phone === "required" && !shipping.phone?.trim()) errors.shipping_phone = "Phone is a required field.";
+    if (fields.phone !== "hidden") {
+      const sp = shipping.phone?.trim() ?? "";
+      if (fields.phone === "required" && !sp) {
+        errors.shipping_phone = "Phone is a required field.";
+      } else if (sp && !/^[\d\s\-+().]{7,20}$/.test(sp)) {
+        errors.shipping_phone = "Please enter a valid phone number.";
+      }
+    }
 
     if (!sameAsBilling) {
       if (!billing.first_name.trim()) errors.billing_first_name = "First name is a required field.";
@@ -571,7 +580,14 @@ function CheckoutForm({
       if (!billing.postcode.trim()) errors.billing_postcode = "ZIP Code is a required field.";
       if (!billing.country.trim()) errors.billing_country = "Country is a required field.";
       if (fields.company === "required" && !billing.company?.trim()) errors.billing_company = "Company name is a required field.";
-      if (fields.phone === "required" && !billing.phone?.trim()) errors.billing_phone = "Phone is a required field.";
+      if (fields.phone !== "hidden") {
+        const bp = billing.phone?.trim() ?? "";
+        if (fields.phone === "required" && !bp) {
+          errors.billing_phone = "Phone is a required field.";
+        } else if (bp && !/^[\d\s\-+().]{7,20}$/.test(bp)) {
+          errors.billing_phone = "Please enter a valid phone number.";
+        }
+      }
     }
 
     setFormErrors(errors);
@@ -763,30 +779,36 @@ function CheckoutForm({
             Have a coupon?{" "}
             <button
               type="button"
-              onClick={() => setCouponOpen((o) => !o)}
+              onClick={() => { setCouponOpen((o) => !o); setCouponError(""); }}
               className="font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
             >
               Click here to enter your code
             </button>
           </p>
           {couponOpen ? (
-            <div className="mt-3 flex max-w-[420px] gap-2 border-t border-[#c9dcea] pt-3">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Coupon code"
-                className="min-w-0 flex-1 border border-light-gray bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue"
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
-              />
-              <button
-                type="button"
-                disabled={isApplyingCoupon}
-                onClick={() => void handleApplyCoupon()}
-                className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
-              >
-                {isApplyingCoupon ? "Applying..." : "Apply coupon"}
-              </button>
+            <div className="mt-3 border-t border-[#c9dcea] pt-3">
+              <div className="flex max-w-[420px] gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }}
+                  placeholder="Coupon code"
+                  aria-describedby={couponError ? "coupon-error" : undefined}
+                  className={`min-w-0 flex-1 border bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue ${couponError ? "border-[#b81c23]" : "border-light-gray"}`}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
+                />
+                <button
+                  type="button"
+                  disabled={isApplyingCoupon}
+                  onClick={() => void handleApplyCoupon()}
+                  className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
+                >
+                  {isApplyingCoupon ? "Applying..." : "Apply coupon"}
+                </button>
+              </div>
+              {couponError ? (
+                <p id="coupon-error" className="mt-2 text-sm text-[#b81c23]">{couponError}</p>
+              ) : null}
             </div>
           ) : null}
         </div>
