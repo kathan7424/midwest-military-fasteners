@@ -3,6 +3,7 @@
  * Description: My Account — post-purchase spec sheets + product certificates.
  * Developer: KP-184
  * Created Date: 2026-07-07
+ * Last Modified: 2026-07-13
  */
 
 "use client";
@@ -13,9 +14,59 @@ import { Download } from "lucide-react";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import { fetch_order_documents } from "@/services/order-documents.client";
 import type { OrderDocumentsGroup } from "@/types/order-documents.types";
-import { has_product_document } from "@/utils/spec-parts.utils";
+import {
+  has_product_document,
+  map_product_spec_href,
+} from "@/utils/spec-parts.utils";
 
 type DocumentFilter = "all" | "spec" | "certificate";
+
+/**
+ * Forced-download link: cross-origin WP file URLs are routed through the
+ * same-origin /api/download proxy (Content-Disposition: attachment), so the
+ * browser downloads instead of opening a new tab.
+ */
+function DocumentDownloadLink({ fileUrl }: { fileUrl?: string | null }) {
+  if (!has_product_document(fileUrl)) {
+    return <span className="text-mid-gray">—</span>;
+  }
+
+  return (
+    <a
+      href={map_product_spec_href(fileUrl)}
+      download
+      className="inline-flex items-center gap-1.5 font-condensed text-sm font-bold uppercase text-amber hover:underline"
+    >
+      <Download className="size-4" />
+      Download
+    </a>
+  );
+}
+
+/**
+ * Spec sheets are product-level documents — the same product bought in two
+ * orders has ONE spec sheet. Dedupe items across orders (orders come newest
+ * first, so the first occurrence wins) and drop order groups left empty.
+ * Certificates stay per-order: each order can carry its own certificate.
+ */
+function dedupe_spec_items(orders: OrderDocumentsGroup[]): OrderDocumentsGroup[] {
+  const seen = new Set<string>();
+
+  return orders
+    .map((order) => ({
+      ...order,
+      items: order.items.filter((item) => {
+        const doc_key =
+          item.spec_file_url?.trim() || `${item.product_id}-${item.sku}`;
+        if (seen.has(doc_key)) {
+          return false;
+        }
+        seen.add(doc_key);
+        return true;
+      }),
+    }))
+    .filter((order) => order.items.length > 0);
+}
 
 export default function OrderDocumentsPanel({
   filter = "all",
@@ -38,7 +89,7 @@ export default function OrderDocumentsPanel({
   const showCert = filter !== "spec";
 
   // With a single-type filter, hide orders that have none of that type.
-  const visibleOrders =
+  const filteredOrders =
     filter === "all"
       ? orders
       : orders
@@ -51,6 +102,9 @@ export default function OrderDocumentsPanel({
             ),
           }))
           .filter((order) => order.items.length > 0);
+
+  const visibleOrders =
+    filter === "spec" ? dedupe_spec_items(filteredOrders) : filteredOrders;
 
   if (isLoading) {
     const skeletonGroups = filter === "all" ? 2 : 1;
@@ -121,36 +175,12 @@ export default function OrderDocumentsPanel({
                     <td className="px-4 py-3 uppercase text-near-black">{item.name}</td>
                     {showSpec ? (
                       <td className="px-4 py-3 text-center">
-                        {has_product_document(item.spec_file_url) ? (
-                          <a
-                            href={item.spec_file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 font-condensed text-sm font-bold uppercase text-amber hover:underline"
-                          >
-                            <Download className="size-4" />
-                            Download
-                          </a>
-                        ) : (
-                          <span className="text-mid-gray">—</span>
-                        )}
+                        <DocumentDownloadLink fileUrl={item.spec_file_url} />
                       </td>
                     ) : null}
                     {showCert ? (
                       <td className="px-4 py-3 text-center">
-                        {has_product_document(item.certificate_file_url) ? (
-                          <a
-                            href={item.certificate_file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 font-condensed text-sm font-bold uppercase text-amber hover:underline"
-                          >
-                            <Download className="size-4" />
-                            Download
-                          </a>
-                        ) : (
-                          <span className="text-mid-gray">—</span>
-                        )}
+                        <DocumentDownloadLink fileUrl={item.certificate_file_url} />
                       </td>
                     ) : null}
                   </tr>
