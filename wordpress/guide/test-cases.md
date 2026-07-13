@@ -234,7 +234,8 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | ACC-27 | Currency displays | Order totals show `$160.00` (decoded) — never `&#36;160.00` |
 | ACC-28 | Order detail — cert visibility | Certificates column shows download only for shipped/completed orders; shows "—" for processing orders |
 | ACC-29 | Spec Sheets tab — same product bought in 2+ orders | The spec sheet appears ONCE (under the most recent order) — spec sheets are product-level docs, not per-order; an order left with no unique spec sheets disappears from the tab |
-| ACC-30 | Spec Sheets / Certifications / Order detail — click Download | File DOWNLOADS via `/api/download` (no new tab) — same behavior as the shop table and product detail page |
+| ACC-30 | Spec Sheets / Certifications / Order detail — click Download | File DOWNLOADS via `/api/download` (no new tab) — same behavior as the shop table and product detail page; downloaded file keeps its REAL name/extension (e.g. `cert.svg`, `spec.pdf`) — a `download.json` file means the proxy rejected the URL (check host + extension allowlist) |
+| ACC-31 | Certifications / Spec Sheets — order date | US format MM-DD-YY (e.g. `07-13-26`) next to the order number — never raw `2026-07-13` |
 
 ## TC-CHK-VAL — Checkout Validation
 

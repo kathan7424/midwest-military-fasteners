@@ -16,7 +16,10 @@ import { ENV } from "@/config/env";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_EXTENSIONS = /\.(pdf|png|jpe?g|webp|gif|doc|docx|xls|xlsx|csv|txt)$/i;
+// svg/zip included: product certificates and spec assets are uploaded in
+// these formats too. Served with Content-Disposition: attachment, so an SVG
+// can never execute in the page context.
+const ALLOWED_EXTENSIONS = /\.(pdf|png|jpe?g|webp|gif|svg|zip|doc|docx|xls|xlsx|csv|txt)$/i;
 
 export async function GET(request: NextRequest) {
   const rawUrl = request.nextUrl.searchParams.get("url") ?? "";
