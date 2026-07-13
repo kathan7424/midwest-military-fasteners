@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
+import { map_product_spec_href } from "@/utils/spec-parts.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 export interface OrderHistoryItem {
   name: string;
@@ -195,9 +197,8 @@ function OrderRow({
         <td className="whitespace-nowrap px-4 py-3.5">
           {certificates.length > 0 ? (
             <a
-              href={certificates[0]}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={map_product_spec_href(certificates[0])}
+              download
               className="inline-flex items-center gap-1.5 text-blue transition-colors hover:text-amber"
             >
               <Download className="size-4" aria-hidden="true" />
@@ -232,7 +233,7 @@ function OrderRow({
             <ul className="space-y-1">
               {order.items.map((item) => (
                 <li key={`${order.order_id}-${item.name}`} className="text-near-black">
-                  {item.name} × {item.quantity}
+                  {decodeHtmlEntities(item.name)} × {item.quantity}
                 </li>
               ))}
             </ul>
@@ -241,9 +242,8 @@ function OrderRow({
                 {certificates.map((url, index) => (
                   <a
                     key={url}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={map_product_spec_href(url)}
+                    download
                     className="inline-flex items-center gap-1.5 text-blue transition-colors hover:text-amber"
                   >
                     <Download className="size-4" aria-hidden="true" />

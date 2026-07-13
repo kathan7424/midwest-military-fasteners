@@ -19,6 +19,7 @@ import { MenuItem } from "@/types/menu.types";
 import { is_catalog_listing_slug } from "@/utils/catalog-path.utils";
 import { findMenuItemBySlug } from "@/utils/menu.utils";
 import { buildYoastMetadata } from "@/utils/seo.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 type Props = {
   params: Promise<{
@@ -66,7 +67,11 @@ export default async function Page({ params, searchParams }: Props) {
     notFound();
   }
 
-  const page_title = wp_page?.title.rendered ?? menu_item?.title ?? "";
+  // WP returns titles HTML-encoded ("Shipping &#038; Returns") — decode for
+  // the JSX text node (React never interprets runtime entity strings).
+  const page_title = decodeHtmlEntities(
+    wp_page?.title.rendered ?? menu_item?.title ?? ""
+  );
   const page_content = wp_page?.content.rendered;
 
   if (!page_title && !page_content) {

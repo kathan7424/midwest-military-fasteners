@@ -12,6 +12,7 @@ import {
   CategorySectionData,
 } from "@/types/product-catalog.types";
 import { build_product_path, extract_product_slug_from_permalink } from "@/utils/catalog-url.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 import { isUsableLink, normalizeWpUrl } from "@/utils/url.utils";
 
 /**
@@ -53,13 +54,13 @@ export function mapCatalogToCategorySections(
 ): CategorySectionData[] {
   return catalog
     .map((row) => ({
-      title: row.parent_category.name,
+      title: decodeHtmlEntities(row.parent_category.name),
       columns: row.child_categories
         .map((child) => ({
-          title: child.category.name,
+          title: decodeHtmlEntities(child.category.name),
           items: child.products.map((product) => ({
             id: product.id,
-            label: product.sku || product.name,
+            label: decodeHtmlEntities(product.sku || product.name),
             href: build_home_catalog_product_href(product),
           })),
         }))

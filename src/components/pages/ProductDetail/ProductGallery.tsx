@@ -1,10 +1,11 @@
 ﻿/**
  * File Name: ProductGallery.tsx
  * Description: Product image gallery - WooCommerce-style.
- *   Hover over main image -> side-by-side magnifier: a lens tracks the cursor
- *   on the image and a zoom pane beside it shows the magnified region.
+ *   Hover over main image -> in-place magnifier (2.5x zoom inside the same
+ *   image box, tracks cursor — WC single-product hover zoom).
  *   Click main image -> lightbox with full-size view + prev/next nav.
  *   Thumbnail strip shown when product has 2+ images.
+ *   Placeholder images never zoom (nothing to magnify).
  * Developer: KP-184
  * Created Date: 2026-07-09
  * Last Modified: 2026-07-13
@@ -49,6 +50,8 @@ export default function ProductGallery({
   const [lbError, setLbError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasMultiple = allImages.length > 1;
+  // Placeholder art has no detail to magnify — disable hover zoom for it.
+  const isPlaceholder = active === PRODUCT_PLACEHOLDER_IMAGE;
 
   // -- Zoom -------------------------------------------------------
   const handleMouseMove = useCallback(
@@ -117,81 +120,64 @@ export default function ProductGallery({
 
   return (
     <>
-      <div className="relative">
-        {/* -- Main image + magnifier lens ------------------------- */}
+      <div>
+        {/* -- Main image + in-place zoom -------------------------- */}
         <div
           ref={containerRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+          onMouseMove={isPlaceholder ? undefined : handleMouseMove}
+          onMouseLeave={isPlaceholder ? undefined : handleMouseLeave}
           onClick={openLightbox}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === "Enter" && openLightbox()}
           aria-label="Zoom / enlarge image"
-          className="group relative h-[199px] w-[298px] cursor-zoom-in overflow-hidden border border-light-gray bg-white xl:h-[240px] xl:w-[360px]"
+          className={[
+            "group relative h-[199px] w-[298px] overflow-hidden border border-light-gray bg-white xl:h-[240px] xl:w-[360px]",
+            isPlaceholder ? "cursor-default" : "cursor-zoom-in",
+          ].join(" ")}
         >
-          <Image
-            src={active}
-            alt={alt}
-            fill
-            className="object-contain"
-            priority
-            sizes="(min-width: 1280px) 360px, 298px"
-            onError={() => setActive(PRODUCT_PLACEHOLDER_IMAGE)}
-          />
-
-          {/* Magnifier lens — marks the region shown in the zoom pane.
-              left/top mirror the transform-origin window math of the pane:
-              at origin (x%, y%) and scale s, the visible window starts at
-              x*(1 - 1/s)% and spans 100/s%. */}
-          {zoomPos ? (
-            <span
-              className="pointer-events-none absolute hidden border border-white bg-white/25 shadow-[0_0_0_1px_rgba(0,0,0,0.2)] lg:block"
-              style={{
-                left: `${zoomPos.x * (1 - 1 / ZOOM_SCALE)}%`,
-                top: `${zoomPos.y * (1 - 1 / ZOOM_SCALE)}%`,
-                width: `${100 / ZOOM_SCALE}%`,
-                height: `${100 / ZOOM_SCALE}%`,
+          {/* Zoomed image layer — scales inside the same box, following the cursor */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={
+              zoomPos
+                ? {
+                    transform: `scale(${ZOOM_SCALE})`,
+                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+                  }
+                : {
+                    transform: "scale(1)",
+                    transition: "transform 0.15s ease-out",
+                  }
+            }
+          >
+            <Image
+              src={active}
+              alt={alt}
+              fill
+              className="object-contain"
+              priority
+              sizes="(min-width: 1280px) 360px, 298px"
+              onError={() => {
+                setZoomPos(null);
+                setActive(PRODUCT_PLACEHOLDER_IMAGE);
               }}
-              aria-hidden="true"
             />
-          ) : null}
+          </div>
 
           {/* Zoom icon hint (shown on hover, hidden while zooming) */}
-          <span
-            className={[
-              "pointer-events-none absolute bottom-2 right-2 rounded bg-white/90 p-1 shadow-sm transition-opacity",
-              zoomPos ? "opacity-0" : "opacity-0 group-hover:opacity-100",
-            ].join(" ")}
-            aria-hidden="true"
-          >
-            <ZoomIn className="h-4 w-4 text-mid-gray" />
-          </span>
-        </div>
-
-        {/* -- Side-by-side zoom pane (desktop only) --------------- */}
-        {zoomPos ? (
-          <div
-            className="pointer-events-none absolute left-full top-0 z-20 ml-4 hidden h-[300px] w-[450px] overflow-hidden border border-light-gray bg-white shadow-lg lg:block"
-            aria-hidden="true"
-          >
-            <div
-              className="absolute inset-0"
-              style={{
-                transform: `scale(${ZOOM_SCALE})`,
-                transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-              }}
+          {!isPlaceholder ? (
+            <span
+              className={[
+                "pointer-events-none absolute bottom-2 right-2 rounded bg-white/90 p-1 shadow-sm transition-opacity",
+                zoomPos ? "opacity-0" : "opacity-0 group-hover:opacity-100",
+              ].join(" ")}
+              aria-hidden="true"
             >
-              <Image
-                src={active}
-                alt=""
-                fill
-                className="object-contain"
-                sizes="450px"
-              />
-            </div>
-          </div>
-        ) : null}
+              <ZoomIn className="h-4 w-4 text-mid-gray" />
+            </span>
+          ) : null}
+        </div>
 
         {/* -- Thumbnail strip ------------------------------------ */}
         {hasMultiple ? (
