@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SearchSuggestion } from "@/types/hero.types";
 import { SearchApiResponse } from "@/types/search.types";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 import { normalizeWpUrl } from "@/utils/url.utils";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -30,8 +31,8 @@ const TAXONOMY_LABELS: Record<string, string> = {
 function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
   const posts: SearchSuggestion[] = data.posts.map((post) => ({
     id: `post-${post.id}`,
-    code: post.product?.sku || TYPE_LABELS[post.type] || post.type,
-    title: post.title,
+    code: decodeHtmlEntities(post.product?.sku || TYPE_LABELS[post.type] || post.type),
+    title: decodeHtmlEntities(post.title),
     url: normalizeWpUrl(post.url),
     type:
       post.type === "product" || post.type === "page" || post.type === "post"
@@ -42,7 +43,7 @@ function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
   const terms: SearchSuggestion[] = data.terms.map((term) => ({
     id: `term-${term.id}-${term.taxonomy}`,
     code: TAXONOMY_LABELS[term.taxonomy] || "Term",
-    title: term.name,
+    title: decodeHtmlEntities(term.name),
     url: normalizeWpUrl(term.url),
     type: "term",
   }));

@@ -39,9 +39,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-25 | Click page 3, then click page 3 again within ~30s | Second visit is near-instant (cached) |
 | PDP-26 | Middle-click / ctrl-click a pagination number | Opens the correct `?page=N` URL in a new tab |
 | PDP-27 | Open a sidebar accordion group, hover briefly, click a series link | Navigation feels near-instant (links prefetch); first-ever visit may flash the skeleton briefly |
-| PDP-28 | Desktop: hover the main product image | Side-by-side magnifier: a lens rectangle tracks the cursor ON the image; a zoom pane appears to the RIGHT showing the magnified region (2.5×); leaving the image hides both |
-| PDP-29 | Move cursor to image corners while magnifying | Lens stays inside the image bounds; zoom pane region always matches what the lens covers |
-| PDP-30 | Mobile / tablet (below lg): tap the main image | No lens or side pane (desktop-only) — tap opens the lightbox directly |
+| PDP-28 | Hover the main product image (real photo) | Image magnifies 2.5× INSIDE the same box, following the cursor; leaving the image smoothly zooms back out; NO floating pane over other content |
+| PDP-29 | Product with a broken/missing image (placeholder art) | No hover zoom at all — default cursor, no zoom icon; clicking still opens the lightbox with the placeholder |
+| PDP-30 | WP page title containing `&` (e.g. "Shipping & Returns") | Renders "Shipping & Returns" — never the raw `&#038;` entity; same for category names, search suggestions, order item names, and checkout state/country dropdowns |
 
 ## TC-IMP — CSV Import
 

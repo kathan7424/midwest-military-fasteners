@@ -46,6 +46,7 @@ import type {
 } from "@/types/checkout.types";
 import { CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
 import { notifyError, notifySuccess } from "@/utils/notifications";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 const STRIPE_PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
@@ -130,7 +131,7 @@ function AddressSelectField({
         <option value="">{placeholder ?? `Select ${label.toLowerCase()}...`}</option>
         {options.map((option) => (
           <option key={option.code} value={option.code}>
-            {option.name}
+            {decodeHtmlEntities(option.name)}
           </option>
         ))}
       </select>

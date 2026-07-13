@@ -18,6 +18,7 @@ import {
   has_product_document,
   map_product_spec_href,
 } from "@/utils/spec-parts.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 type DocumentFilter = "all" | "spec" | "certificate";
 
@@ -171,8 +172,12 @@ export default function OrderDocumentsPanel({
               <tbody>
                 {order.items.map((item) => (
                   <tr key={`${order.order_id}-${item.product_id}-${item.sku}`} className="border-t border-light-gray">
-                    <td className="px-4 py-3 font-semibold text-amber">{item.sku}</td>
-                    <td className="px-4 py-3 uppercase text-near-black">{item.name}</td>
+                    <td className="px-4 py-3 font-semibold text-amber">
+                      {decodeHtmlEntities(item.sku)}
+                    </td>
+                    <td className="px-4 py-3 uppercase text-near-black">
+                      {decodeHtmlEntities(item.name)}
+                    </td>
                     {showSpec ? (
                       <td className="px-4 py-3 text-center">
                         <DocumentDownloadLink fileUrl={item.spec_file_url} />
