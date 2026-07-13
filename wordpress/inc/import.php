@@ -1248,11 +1248,15 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
             $product->set_stock_status( 'instock' );
         }
 
-        // Weight + dimensions: tier-1 CSV shipping data → WC native for Shippo
+        // Weight + dimensions: tier-1 CSV shipping data → WC native for Shippo.
+        // WC weight is PER PACKAGE (cart quantity = number of packages), so the
+        // per-piece fallback must be multiplied by the package quantity — a raw
+        // piece weight would under-weigh the parcel by the pkg_qty factor.
         if ( $ship_weight_tier1 > 0 ) {
             $product->set_weight( $ship_weight_tier1 );
         } elseif ( $piece_wt !== '' && floatval( $piece_wt ) > 0 ) {
-            $product->set_weight( floatval( $piece_wt ) );
+            $pieces_per_pkg = $pkg_qty > 0 ? $pkg_qty : 1;
+            $product->set_weight( floatval( $piece_wt ) * $pieces_per_pkg );
         }
         specparts_apply_wc_shipping_dims( $product, $ship_dims_tier1 );
 

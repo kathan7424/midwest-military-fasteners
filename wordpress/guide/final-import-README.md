@@ -68,7 +68,9 @@ Every product row includes:
   Process / Test certs = Y, manufacturer name
 - **Internal-only** — lot number, cost per each, physical cert location
   (never shown to customers)
-- **Piece weight** (col 33) — per-unit weight, fallback when shipping weight blank
+- **Piece weight** (col 33) — per-unit weight; when SHIPPING WEIGHT (col 9) is
+  blank the importer uses `piece weight × PACKAGE QTY` as the WC weight (WC
+  weight is always PER PACKAGE — cart quantity means number of packages)
 - **Media** — product image, spec PDF, cert PDF (all named by P/N convention)
 
 ### Media files this CSV expects (upload first)
