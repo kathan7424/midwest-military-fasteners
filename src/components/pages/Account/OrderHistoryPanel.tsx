@@ -1,19 +1,18 @@
 /**
  * File Name: OrderHistoryPanel.tsx
  * Description: My Account → Orders — table per Figma design with skeleton
- *   loading. Clicking order # or View opens the order detail panel.
+ *   loading. Clicking order # or the Action column View opens the order
+ *   detail panel. Certificates live in the Certifications tab (per product).
  * Developer: KP-184
  * Created Date: 2026-07-08
- * Last Modified: 2026-07-09
+ * Last Modified: 2026-07-13
  */
 
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download } from "lucide-react";
 
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
-import { map_product_spec_href } from "@/utils/spec-parts.utils";
 import { decodeHtmlEntities } from "@/utils/text.utils";
 
 export interface OrderHistoryItem {
@@ -58,8 +57,8 @@ function OrderTableSkeleton() {
             <th className="px-4 py-3 font-semibold uppercase">Order</th>
             <th className="px-4 py-3 font-semibold uppercase">Date</th>
             <th className="px-4 py-3 font-semibold uppercase">Status</th>
-            <th className="px-4 py-3 font-semibold uppercase">Certifications</th>
             <th className="px-4 py-3 font-semibold uppercase">Total</th>
+            <th className="px-4 py-3 font-semibold uppercase">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -68,8 +67,8 @@ function OrderTableSkeleton() {
               <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-20" /></td>
               <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-32" /></td>
               <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-24" /></td>
-              <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-20" /></td>
               <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-28" /></td>
+              <td className="px-4 py-3.5"><SkeletonBlock className="h-4 w-12" /></td>
             </tr>
           ))}
         </tbody>
@@ -123,20 +122,18 @@ export default function OrderHistoryPanel({
             <th className="px-4 py-3 font-semibold uppercase">Order</th>
             <th className="px-4 py-3 font-semibold uppercase">Date</th>
             <th className="px-4 py-3 font-semibold uppercase">Status</th>
-            <th className="px-4 py-3 font-semibold uppercase">Certifications</th>
             <th className="px-4 py-3 font-semibold uppercase">Total</th>
+            <th className="px-4 py-3 font-semibold uppercase">Action</th>
           </tr>
         </thead>
         <tbody>
           {orders.map((order) => {
             const isExpanded = expandedId === order.order_id;
-            const certificates = order.certificates ?? [];
 
             return (
               <OrderRow
                 key={order.order_id}
                 order={order}
-                certificates={certificates}
                 isExpanded={isExpanded}
                 onToggle={() =>
                   setExpandedId(isExpanded ? null : order.order_id)
@@ -153,13 +150,11 @@ export default function OrderHistoryPanel({
 
 function OrderRow({
   order,
-  certificates,
   isExpanded,
   onToggle,
   onViewOrder,
 }: {
   order: OrderHistoryEntry;
-  certificates: string[];
   isExpanded: boolean;
   onToggle: () => void;
   onViewOrder?: (orderId: number) => void;
@@ -195,29 +190,16 @@ function OrderRow({
           </span>
         </td>
         <td className="whitespace-nowrap px-4 py-3.5">
-          {certificates.length > 0 ? (
-            <a
-              href={map_product_spec_href(certificates[0])}
-              download
-              className="inline-flex items-center gap-1.5 text-blue transition-colors hover:text-amber"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              Download
-              {certificates.length > 1 ? ` (${certificates.length})` : ""}
-            </a>
-          ) : (
-            <span className="text-mid-gray">—</span>
-          )}
-        </td>
-        <td className="whitespace-nowrap px-4 py-3.5">
           <span className="font-bold text-near-black">{order.total}</span>
           <span className="ml-3 text-dark-gray">
             {order.item_count} {order.item_count === 1 ? "item" : "items"}
           </span>
+        </td>
+        <td className="whitespace-nowrap px-4 py-3.5">
           <button
             type="button"
             onClick={handleOrderClick}
-            className="ml-4 text-blue underline underline-offset-2 transition-colors hover:text-amber"
+            className="text-blue underline underline-offset-2 transition-colors hover:text-amber"
           >
             View
           </button>
@@ -237,21 +219,6 @@ function OrderRow({
                 </li>
               ))}
             </ul>
-            {certificates.length > 1 ? (
-              <div className="mt-3 flex flex-wrap gap-4">
-                {certificates.map((url, index) => (
-                  <a
-                    key={url}
-                    href={map_product_spec_href(url)}
-                    download
-                    className="inline-flex items-center gap-1.5 text-blue transition-colors hover:text-amber"
-                  >
-                    <Download className="size-4" aria-hidden="true" />
-                    Certificate {index + 1}
-                  </a>
-                ))}
-              </div>
-            ) : null}
           </td>
         </tr>
       ) : null}

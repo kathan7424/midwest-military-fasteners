@@ -105,6 +105,7 @@ the response body usually names the real cause.
 - Cart badge count updates after the API response (~200ms) — a brief lag is normal; a stuck count is a bug.
 - **My Account default tab is Dashboard** — /my-account opens to the Dashboard ("My Account") section, not Orders. The Dashboard shows recent orders + address cards. This is the WooCommerce standard landing page.
 - **Documents tab = Tax Exemption Certificate** — not product order documents. Certifications + Spec Sheets tabs have the order-based product documents.
+- **Orders table has NO Certifications column** — columns are Order / Date / Status / Total / Action (View button). Product certificates are downloaded ONLY from the Certifications tab, listed per product per order. A cert download link inside the Orders table IS a regression.
 - **Product detail heading format** — shows `{SUB-CATEGORY} {PART-NUMBER}` (e.g. "HEX CAP SCREWS MS35307-303"). The sub-category label is normal weight/gray; the part number is bold. This is by design — not a broken breadcrumb.
 - **Certificates only show after shipped/completed** — a "Processing" order's cert column shows "—". This is by design (customer receives the physical product first). Spec sheets are available immediately.
 - **Checkout validation fires on Place Order click** — required fields show inline red errors below each field. Errors clear as the user types. This matches WooCommerce standard behavior. The form has `noValidate` so browser-native "Please fill out this field." tooltips never appear — if you see one, the form is missing `noValidate`.
