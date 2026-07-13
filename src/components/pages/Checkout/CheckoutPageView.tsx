@@ -44,7 +44,7 @@ import type {
   CheckoutLocations,
   WcCheckoutSettings,
 } from "@/types/checkout.types";
-import { CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
+import { CardBrandIcon, CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
 import { notifyError, notifySuccess } from "@/utils/notifications";
 import { decodeHtmlEntities } from "@/utils/text.utils";
 
@@ -85,6 +85,34 @@ const EMPTY_ADDRESS: CheckoutAddress = {
 
 const INPUT_CLASS =
   "w-full border border-light-gray bg-white px-4 py-3 text-link text-near-black outline-none transition-colors focus:border-blue";
+
+/** Saved Stripe card offered at checkout (WC Stripe "saved payment methods"). */
+interface SavedCheckoutCard {
+  id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
+/** Sentinel for the "Use a new payment method" option. */
+const NEW_CARD_ID = "new";
+
+function saved_card_label(card: SavedCheckoutCard): string {
+  const brands: Record<string, string> = {
+    visa: "Visa",
+    mastercard: "Mastercard",
+    amex: "American Express",
+    discover: "Discover",
+    diners: "Diners Club",
+    jcb: "JCB",
+    unionpay: "UnionPay",
+  };
+  const brand = brands[card.brand.toLowerCase()] ?? card.brand;
+  const exp = `${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}`;
+
+  return `${brand} ending in ${card.last4} (expires ${exp})`;
+}
 
 /** WC block checkout shows "Free" for zero-cost shipping rates. */
 function isFreeRate(formattedPrice: string): boolean {
@@ -316,6 +344,11 @@ function CheckoutForm({
   const [createAccount, setCreateAccount] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [selectedGateway, setSelectedGateway] = useState("stripe");
+  // WC Stripe "Enable saved payment methods": returning customers pay with a
+  // card stored at Stripe; new cards can be saved for future purchases.
+  const [savedCards, setSavedCards] = useState<SavedCheckoutCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string>(NEW_CARD_ID);
+  const [saveNewCard, setSaveNewCard] = useState(false);
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -402,6 +435,31 @@ function CheckoutForm({
 
     return () => { active = false; };
   }, [applyState]);
+
+  // WC Stripe "Enable saved payment methods": load the customer's cards
+  // stored at Stripe. Guests and disabled setting → new-card entry only.
+  useEffect(() => {
+    if (!isLoggedIn || !settings.saved_cards) return;
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/account/payment-methods", { cache: "no-store" });
+        if (!res.ok || !active) return;
+        const data = (await res.json()) as { payment_methods?: SavedCheckoutCard[] };
+        const cards = data.payment_methods ?? [];
+        if (!active || cards.length === 0) return;
+        setSavedCards(cards);
+        // WC standard: the saved card is preselected for returning customers.
+        setSelectedCardId(cards[0].id);
+      } catch {
+        // Card list is a convenience — checkout works without it.
+      }
+    })();
+
+    return () => { active = false; };
+  }, [isLoggedIn, settings.saved_cards]);
 
   const handleShippingChange = (name: keyof CheckoutAddress, value: string) => {
     setFormErrors((prev) => ({ ...prev, [`shipping_${name}`]: "" }));
@@ -545,6 +603,7 @@ function CheckoutForm({
     ? selectedGateway
     : availableGateways[0];
   const isNet30 = activeGateway === "cod";
+  const usingSavedCard = savedCards.some((card) => card.id === selectedCardId);
 
   const checkoutError = (message: string) => {
     notifyError(message);
@@ -629,44 +688,59 @@ function CheckoutForm({
           return;
         }
 
-        let cardValid = true;
-        if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
-        if (!cardExpiryComplete) { setCardExpiryError("Enter the expiration date."); cardValid = false; }
-        if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
-        if (!cardValid) { setIsPlacingOrder(false); return; }
+        if (usingSavedCard) {
+          // WC Stripe "saved payment methods": pay with the card stored at
+          // Stripe — no card entry, no card data through the store.
+          paymentData = [
+            { key: "payment_method", value: "stripe" },
+            { key: "wc-stripe-payment-method", value: selectedCardId },
+            { key: "wc-stripe-is-deferred-intent", value: true },
+          ];
+        } else {
+          let cardValid = true;
+          if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
+          if (!cardExpiryComplete) { setCardExpiryError("Enter the expiration date."); cardValid = false; }
+          if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
+          if (!cardValid) { setIsPlacingOrder(false); return; }
 
-        const cardNumberElement = elements.getElement(CardNumberElement);
-        if (!cardNumberElement) { checkoutError("Card details are required."); return; }
+          const cardNumberElement = elements.getElement(CardNumberElement);
+          if (!cardNumberElement) { checkoutError("Card details are required."); return; }
 
-        const billingAddr = effectiveBilling;
-        const { paymentMethod, error } = await stripe.createPaymentMethod({
-          type: "card",
-          card: cardNumberElement,
-          billing_details: {
-            name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
-            email,
-            phone: billingAddr.phone || undefined,
-            address: {
-              line1: billingAddr.address_1,
-              line2: billingAddr.address_2 || undefined,
-              city: billingAddr.city,
-              state: billingAddr.state,
-              postal_code: billingAddr.postcode,
-              country: billingAddr.country,
+          const billingAddr = effectiveBilling;
+          const { paymentMethod, error } = await stripe.createPaymentMethod({
+            type: "card",
+            card: cardNumberElement,
+            billing_details: {
+              name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
+              email,
+              phone: billingAddr.phone || undefined,
+              address: {
+                line1: billingAddr.address_1,
+                line2: billingAddr.address_2 || undefined,
+                city: billingAddr.city,
+                state: billingAddr.state,
+                postal_code: billingAddr.postcode,
+                country: billingAddr.country,
+              },
             },
-          },
-        });
+          });
 
-        if (error || !paymentMethod) {
-          checkoutError(error?.message || "Card could not be processed.");
-          return;
+          if (error || !paymentMethod) {
+            checkoutError(error?.message || "Card could not be processed.");
+            return;
+          }
+
+          paymentData = [
+            { key: "payment_method", value: "stripe" },
+            { key: "wc-stripe-payment-method", value: paymentMethod.id },
+            { key: "wc-stripe-is-deferred-intent", value: true },
+          ];
+
+          // "Save payment information to my account for future purchases."
+          if (isLoggedIn && settings.saved_cards && saveNewCard) {
+            paymentData.push({ key: "wc-stripe-new-payment-method", value: true });
+          }
         }
-
-        paymentData = [
-          { key: "payment_method", value: "stripe" },
-          { key: "wc-stripe-payment-method", value: paymentMethod.id },
-          { key: "wc-stripe-is-deferred-intent", value: true },
-        ];
       }
 
       const { ok, data } = await place_order({
@@ -1088,6 +1162,48 @@ function CheckoutForm({
               </p>
             ) : (
               <div className="space-y-3">
+                {/* WC Stripe "saved payment methods" — returning customers pick a
+                    stored card or enter a new one. */}
+                {savedCards.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {savedCards.map((card) => (
+                      <li key={card.id}>
+                        <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
+                          <input
+                            type="radio"
+                            name="saved_payment_method"
+                            value={card.id}
+                            checked={selectedCardId === card.id}
+                            onChange={() => setSelectedCardId(card.id)}
+                            className="h-4 w-4 accent-amber"
+                          />
+                          <CardBrandIcon brand={card.brand} size="sm" />
+                          <span className="text-link text-near-black">
+                            {saved_card_label(card)}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                    <li>
+                      <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
+                        <input
+                          type="radio"
+                          name="saved_payment_method"
+                          value={NEW_CARD_ID}
+                          checked={!usingSavedCard}
+                          onChange={() => setSelectedCardId(NEW_CARD_ID)}
+                          className="h-4 w-4 accent-amber"
+                        />
+                        <span className="text-link text-near-black">
+                          Use a new payment method
+                        </span>
+                      </label>
+                    </li>
+                  </ul>
+                ) : null}
+
+                {usingSavedCard ? null : (
+                <>
                 <div
                   className={`flex items-stretch overflow-hidden border bg-white transition-colors ${
                     cardNumberError || cardExpiryError || cardCvcError
@@ -1145,6 +1261,22 @@ function CheckoutForm({
                 ) : null}
 
                 <CardBrandRow detected={cardBrand} />
+
+                {/* WC Stripe: "Save payment information to my account for
+                    future purchases." — logged-in customers, setting on. */}
+                {isLoggedIn && settings.saved_cards ? (
+                  <label className="flex cursor-pointer items-center gap-3 pt-1 text-link text-near-black">
+                    <input
+                      type="checkbox"
+                      checked={saveNewCard}
+                      onChange={(e) => setSaveNewCard(e.target.checked)}
+                      className="h-4 w-4 accent-amber"
+                    />
+                    Save payment information to my account for future purchases.
+                  </label>
+                ) : null}
+                </>
+                )}
               </div>
             )}
 

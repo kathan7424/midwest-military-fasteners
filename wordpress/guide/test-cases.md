@@ -121,6 +121,10 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-19 | Fill address matching NO shipping zone | Warning: "There are no shipping options available for this address."; Place Order blocked with "Please select a shipping option" error |
 | CHK-20 | Free shipping rate offered | Rate price displays "Free" (not $0.00); Place Order button disabled while rates recalculate |
 | CHK-23 | Place a successful order and watch the transition | Checkout swaps to a centered "Order received — taking you to your confirmation…" spinner, then the success page loads — NO flash of "Checkout unavailable" or the empty-cart screen in between |
+| CHK-24 | WC → Payments → Stripe → "Enable saved payment methods" ON → logged-in customer with saved cards opens /checkout | Saved cards listed as radio options (brand badge + "Visa ending in 4242 (expires 12/26)"), first card preselected; "Use a new payment method" option below reopens the card fields |
+| CHK-25 | Pay with a selected saved card | Order places without entering card details; card fields hidden while a saved card is selected; 3DS still prompts when the bank requires it |
+| CHK-26 | Choose "Use a new payment method" as a logged-in customer (setting ON) | Card fields + "Save payment information to my account for future purchases." checkbox appear; checked → after the order the card shows in My Account → Payment Methods AND in the next checkout's saved list |
+| CHK-27 | Setting OFF, or guest checkout | No saved-card list and no save checkbox — plain card entry only (guests never see either regardless of setting) |
 
 ## TC-COUPON — Coupons
 
