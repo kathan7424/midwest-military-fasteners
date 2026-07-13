@@ -58,9 +58,11 @@ const EMPTY_CART: CartData = {
   subtotal: "",
   shipping_total: "",
   tax_total: "",
+  discount_total: "",
   total: "",
   checkout_url: "",
   cart_url: "",
+  coupons: [],
 };
 
 function getCartItemCountFromItems(items: CartItem[]): number {

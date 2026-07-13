@@ -36,15 +36,22 @@ export interface CartItem {
   is_in_stock?: boolean;
 }
 
+export interface CartCoupon {
+  code: string;
+  discount: string;
+}
+
 export interface CartData {
   items: CartItem[];
   item_count: number;
   subtotal: string;
   shipping_total: string;
   tax_total: string;
+  discount_total: string;
   total: string;
   checkout_url: string;
   cart_url: string;
+  coupons: CartCoupon[];
 }
 
 export interface CartAddResponse {

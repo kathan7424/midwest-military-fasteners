@@ -9,8 +9,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FaCircleCheck } from "react-icons/fa6";
 
-import { requireAuth } from "@/services/auth.service";
-
 export const metadata: Metadata = {
   title: "Order Received | Midwest Military Fasteners",
   description: "Your Midwest Military Fasteners order has been received.",
@@ -26,8 +24,6 @@ type Props = {
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
-  await requireAuth("/cart");
-
   const params = await searchParams;
   const order_id = params.order_id?.replace(/\D/g, "") ?? "";
   const total = params.total?.trim() ?? "";
