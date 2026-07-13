@@ -321,6 +321,10 @@ function CheckoutForm({
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showOrderNotes, setShowOrderNotes] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Order placed successfully — hold a stable "redirecting" view while the
+  // client-side navigation to /checkout/success completes (clearing the cart
+  // before navigation would otherwise flash the empty-cart/error screen).
+  const [orderComplete, setOrderComplete] = useState(false);
 
   const { fields } = settings;
 
@@ -695,7 +699,10 @@ function CheckoutForm({
         return;
       }
 
-      setCart(null);
+      // Lock the UI into the "redirecting" state BEFORE clearing the cart —
+      // otherwise the null-cart guard renders the error/empty screen for a
+      // frame while router.push is still in flight.
+      setOrderComplete(true);
 
       const successParams = new URLSearchParams({
         order_id: String(data.order_id),
@@ -705,10 +712,26 @@ function CheckoutForm({
       });
 
       router.push(`/checkout/success?${successParams.toString()}`);
+      setCart(null);
     } finally {
       setIsPlacingOrder(false);
     }
   };
+
+  if (orderComplete) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-4 py-24 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <Loader2 className="size-8 animate-spin text-amber" aria-hidden="true" />
+        <p className="text-body font-semibold text-near-black">
+          Order received — taking you to your confirmation&hellip;
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -17,7 +17,10 @@ import {
   type AccountAddress,
   type OrderDetail,
 } from "@/services/account.client";
-import { has_product_document } from "@/utils/spec-parts.utils";
+import {
+  has_product_document,
+  map_product_spec_href,
+} from "@/utils/spec-parts.utils";
 
 function OrderDetailSkeleton() {
   return (
@@ -235,9 +238,8 @@ export default function OrderDetailPanel({
                 <td className="px-4 py-3 text-center">
                   {has_product_document(item.spec_file_url) ? (
                     <a
-                      href={item.spec_file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={map_product_spec_href(item.spec_file_url)}
+                      download
                       className="inline-flex items-center gap-1 text-amber hover:underline"
                     >
                       <Download className="size-3.5" aria-hidden="true" />
@@ -250,9 +252,8 @@ export default function OrderDetailPanel({
                 <td className="px-4 py-3 text-center">
                   {has_product_document(item.certificate_file_url) ? (
                     <a
-                      href={item.certificate_file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={map_product_spec_href(item.certificate_file_url)}
+                      download
                       className="inline-flex items-center gap-1 text-amber hover:underline"
                     >
                       <Download className="size-3.5" aria-hidden="true" />

@@ -16,7 +16,11 @@ import {
   SpecPartsSeriesTerm,
 } from "@/types/spec-parts.types";
 
-const CATEGORIES_REVALIDATE_SECONDS = 120;
+// Catalog data changes on WP import, not per request. Long ISR windows keep
+// pages serving from cache (Next revalidates stale entries in the background,
+// so shoppers never wait on the WP round-trip after first population).
+const CATEGORIES_REVALIDATE_SECONDS = 900;
+const PRODUCTS_REVALIDATE_SECONDS = 300;
 
 function normalize_series_terms(value: unknown): SpecPartsSeriesTerm[] {
   if (Array.isArray(value)) {
@@ -99,11 +103,10 @@ async function fetch_spec_parts_products_primary(
     : "/spec-parts/v1/products";
 
   try {
-    // Short ISR: product data changes on import, not per request. Each unique
-    // query (category/series/search/page) caches independently for 60s.
+    // Each unique query (category/series/search/page) caches independently.
     const response = await fetchWpJson<SpecPartsProductsResponse>(endpoint, {
       mode: "static",
-      revalidate: 60,
+      revalidate: PRODUCTS_REVALIDATE_SECONDS,
     });
     primary_failed_at = 0;
     return response;

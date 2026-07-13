@@ -1,12 +1,13 @@
 ﻿/**
  * File Name: ProductGallery.tsx
  * Description: Product image gallery - WooCommerce-style.
- *   Hover over main image -> inline zoom (2.5x scale, tracks cursor).
+ *   Hover over main image -> side-by-side magnifier: a lens tracks the cursor
+ *   on the image and a zoom pane beside it shows the magnified region.
  *   Click main image -> lightbox with full-size view + prev/next nav.
  *   Thumbnail strip shown when product has 2+ images.
  * Developer: KP-184
  * Created Date: 2026-07-09
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-13
  */
 
 "use client";
@@ -116,8 +117,8 @@ export default function ProductGallery({
 
   return (
     <>
-      <div>
-        {/* -- Main image + zoom ---------------------------------- */}
+      <div className="relative">
+        {/* -- Main image + magnifier lens ------------------------- */}
         <div
           ref={containerRef}
           onMouseMove={handleMouseMove}
@@ -129,31 +130,32 @@ export default function ProductGallery({
           aria-label="Zoom / enlarge image"
           className="group relative h-[199px] w-[298px] cursor-zoom-in overflow-hidden border border-light-gray bg-white xl:h-[240px] xl:w-[360px]"
         >
-          {/* Zoomed image layer */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={
-              zoomPos
-                ? {
-                    transform: `scale(${ZOOM_SCALE})`,
-                    transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-                  }
-                : {
-                    transform: "scale(1)",
-                    transition: "transform 0.15s ease-out",
-                  }
-            }
-          >
-            <Image
-              src={active}
-              alt={alt}
-              fill
-              className="object-contain"
-              priority
-              sizes="(min-width: 1280px) 360px, 298px"
-              onError={() => setActive(PRODUCT_PLACEHOLDER_IMAGE)}
+          <Image
+            src={active}
+            alt={alt}
+            fill
+            className="object-contain"
+            priority
+            sizes="(min-width: 1280px) 360px, 298px"
+            onError={() => setActive(PRODUCT_PLACEHOLDER_IMAGE)}
+          />
+
+          {/* Magnifier lens — marks the region shown in the zoom pane.
+              left/top mirror the transform-origin window math of the pane:
+              at origin (x%, y%) and scale s, the visible window starts at
+              x*(1 - 1/s)% and spans 100/s%. */}
+          {zoomPos ? (
+            <span
+              className="pointer-events-none absolute hidden border border-white bg-white/25 shadow-[0_0_0_1px_rgba(0,0,0,0.2)] lg:block"
+              style={{
+                left: `${zoomPos.x * (1 - 1 / ZOOM_SCALE)}%`,
+                top: `${zoomPos.y * (1 - 1 / ZOOM_SCALE)}%`,
+                width: `${100 / ZOOM_SCALE}%`,
+                height: `${100 / ZOOM_SCALE}%`,
+              }}
+              aria-hidden="true"
             />
-          </div>
+          ) : null}
 
           {/* Zoom icon hint (shown on hover, hidden while zooming) */}
           <span
@@ -166,6 +168,30 @@ export default function ProductGallery({
             <ZoomIn className="h-4 w-4 text-mid-gray" />
           </span>
         </div>
+
+        {/* -- Side-by-side zoom pane (desktop only) --------------- */}
+        {zoomPos ? (
+          <div
+            className="pointer-events-none absolute left-full top-0 z-20 ml-4 hidden h-[300px] w-[450px] overflow-hidden border border-light-gray bg-white shadow-lg lg:block"
+            aria-hidden="true"
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                transform: `scale(${ZOOM_SCALE})`,
+                transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
+              }}
+            >
+              <Image
+                src={active}
+                alt=""
+                fill
+                className="object-contain"
+                sizes="450px"
+              />
+            </div>
+          </div>
+        ) : null}
 
         {/* -- Thumbnail strip ------------------------------------ */}
         {hasMultiple ? (
