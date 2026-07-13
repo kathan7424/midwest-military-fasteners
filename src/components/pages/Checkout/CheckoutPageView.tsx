@@ -279,11 +279,11 @@ function CheckoutForm({
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
+  const cart = useCartStore((state) => state.cart);
   const setCart = useCartStore((state) => state.setCart);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [cart, setCartState] = useState<CartData | null>(null);
   const [checkout, setCheckout] = useState<CheckoutCartState | null>(null);
   const [locations, setLocations] = useState<CheckoutLocations | null>(null);
 
@@ -325,7 +325,6 @@ function CheckoutForm({
 
   const applyState = useCallback(
     (data: CheckoutStateResponse) => {
-      setCartState(data.cart);
       setCheckout(data.checkout);
       setCart(data.cart);
     },
