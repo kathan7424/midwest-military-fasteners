@@ -19,6 +19,7 @@ import {
   map_product_spec_href,
 } from "@/utils/spec-parts.utils";
 import { decodeHtmlEntities } from "@/utils/text.utils";
+import { format_us_date } from "@/utils/date.utils";
 
 type DocumentFilter = "all" | "spec" | "certificate";
 
@@ -154,7 +155,7 @@ export default function OrderDocumentsPanel({
             Order #{order.order_number}
             {order.order_date ? (
               <span className="ml-2 font-normal normal-case text-mid-gray">
-                ({order.order_date})
+                ({format_us_date(order.order_date)})
               </span>
             ) : null}
           </h3>
