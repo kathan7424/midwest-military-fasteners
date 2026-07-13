@@ -213,7 +213,7 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | ACC-06 | Dashboard — "View all orders" | Navigates to Orders section |
 | ACC-07 | Dashboard skeleton | Two address card skeletons + 3-row order table skeleton while loading |
 | ACC-08 | Sidebar navigation | Sections switch without reload; Dashboard is first item and default active; active item blue/bold |
-| ACC-09 | Orders table | Figma layout: order # link, date, status, Certifications ⬇ Download, bold total + "N items" + View; skeleton table while loading |
+| ACC-09 | Orders table | Columns: Order # link, Date, Status badge, bold Total + "N items", Action → View button; NO Certifications column (certs live in the Certifications tab, per product); skeleton table matches the same 5 columns |
 | ACC-10 | Click order # or View | Order detail page: overview strip (number, date, status, total), line items table with spec/cert downloads, order totals (subtotal, shipping, tax, discount, total), payment method, billing+shipping addresses |
 | ACC-11 | Certifications tab | Only certificate docs; only from shipped/completed orders; "Certificates are available after your order ships." empty state |
 | ACC-12 | Spec Sheets tab | Spec sheets from all order statuses (processing, shipped, completed) |
