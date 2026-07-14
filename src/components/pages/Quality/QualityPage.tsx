@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import AboutAccordion from "@/components/pages/About/AboutAccordion";
-import type { QualityPageData } from "@/services/quality-page.service";
+import type { QualityPageData } from "@/types/quality-page.types";
 
 const FALLBACK_BANNER =
   "https://dev-mmf-wp.pantheonsite.io/wp-content/uploads/2026/06/about-banner.webp";
