@@ -64,6 +64,12 @@ function mmf_set_custom_api_cache_headers( $response, $server, $request ) {
 		return $response;
 	}
 
+	// Quality page ACF content — same caching strategy as About page.
+	if ( strpos( $route, '/custom/v1/quality-page' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate' );
+		return $response;
+	}
+
 	// Contact form submissions are user-specific — never cache.
 	if ( strpos( $route, '/custom/v1/contact' ) === 0 ) {
 		$response->header( 'Cache-Control', 'no-store, private' );
@@ -168,6 +174,21 @@ function mmf_notify_nextjs_revalidate( int $post_id, WP_Post $post ): void {
 			)
 		);
 	}
+
+	// Quality page ACF content changed — revalidate the "/quality" route.
+	if ( (int) $post->ID === 4263 ) {
+		wp_remote_post(
+			add_query_arg(
+				array( 'secret' => $secret, 'path' => '/quality' ),
+				trailingslashit( $nextjs_url ) . 'api/revalidate'
+			),
+			array(
+				'timeout'  => 2,
+				'blocking' => false,
+				'headers'  => array( 'x-revalidate-secret' => $secret ),
+			)
+		);
+	}
 }
 
 add_action( 'rest_api_init', function () {
@@ -223,6 +244,15 @@ add_action( 'rest_api_init', function () {
 		array(
 			'methods'             => 'GET',
 			'callback'            => 'mmf_get_about_page',
+			'permission_callback' => '__return_true',
+		)
+	);
+	register_rest_route(
+		'custom/v1',
+		'/quality-page',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'mmf_get_quality_page',
 			'permission_callback' => '__return_true',
 		)
 	);
@@ -565,6 +595,63 @@ function mmf_get_about_page() {
 		'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
 		'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
 		'faq_heading'     => sanitize_text_field( (string) get_field( 'field_6a3e273def148', $page_id ) ),
+		'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
+		'faq_list'        => $faq_items,
+	) );
+}
+
+/**
+ * Endpoint: GET /custom/v1/quality-page
+ *
+ * Returns ACF fields for the Quality page (page ID 4263).
+ * Structure is identical to the About Us page.
+ *
+ * Field keys are used for the three "heading" fields (banner / content / faq)
+ * because all three share the same ACF name within the same group.
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_get_quality_page() {
+	$page_id = 4263;
+	$page    = get_post( $page_id );
+
+	if ( ! $page || 'publish' !== $page->post_status ) {
+		return new WP_Error( 'no_page', 'Quality page not found', array( 'status' => 404 ) );
+	}
+
+	$faq_rows  = get_field( 'faq_list', $page_id );
+	$faq_items = array();
+
+	if ( is_array( $faq_rows ) ) {
+		foreach ( $faq_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$question = sanitize_text_field( (string) ( $row['faq_question'] ?? '' ) );
+			$answer   = wp_kses_post( (string) ( $row['faq_answer'] ?? '' ) );
+
+			if ( '' === $question ) {
+				continue;
+			}
+
+			$faq_items[] = array(
+				'question' => $question,
+				'answer'   => $answer,
+			);
+		}
+	}
+
+	return rest_ensure_response( array(
+		'heading'         => sanitize_text_field( (string) get_field( 'field_6a55e1411d81e', $page_id ) ),
+		'sub_heading'     => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
+		'banner_image'    => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
+		'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
+		'content_heading' => sanitize_text_field( (string) get_field( 'field_6a55e1411da31', $page_id ) ),
+		'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
+		'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
+		'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
+		'faq_heading'     => sanitize_text_field( (string) get_field( 'field_6a55e1411dba9', $page_id ) ),
 		'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
 		'faq_list'        => $faq_items,
 	) );

@@ -91,6 +91,7 @@ export const WP_ROUTES = {
   cartRemove: "/wp-json/custom/v1/cart/remove",
   homePage: "/wp-json/custom/v1/home-page",
   aboutPage: "/wp-json/custom/v1/about-page",
+  qualityPage: "/wp-json/custom/v1/quality-page",
   contactPage: "/wp-json/custom/v1/contact-page",
   productCatalog: "/wp-json/custom/v1/product-catalog",
   search: "/wp-json/custom/v1/search",
