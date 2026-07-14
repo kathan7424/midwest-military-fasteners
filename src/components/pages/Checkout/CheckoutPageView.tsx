@@ -10,10 +10,11 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import type { StripeCardExpiryElement, StripeCardCvcElement } from "@stripe/stripe-js";
 import {
   CardNumberElement,
   CardExpiryElement,
@@ -301,9 +302,11 @@ function OrderSummary({
 function CheckoutForm({
   settings,
   isLoggedIn,
+  onOrderComplete,
 }: {
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
+  onOrderComplete: () => void;
 }) {
   const router = useRouter();
   const stripe = useStripe();
@@ -330,6 +333,8 @@ function CheckoutForm({
   const [showBillingApt, setShowBillingApt] = useState(false);
 
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
+  const [pendingRateId, setPendingRateId] = useState<string | null>(null);
+  const [showAllRates, setShowAllRates] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [cardBrand, setCardBrand] = useState("unknown");
   const [cardNumberComplete, setCardNumberComplete] = useState(false);
@@ -341,6 +346,8 @@ function CheckoutForm({
   const [cardNumberFocused, setCardNumberFocused] = useState(false);
   const [cardExpiryFocused, setCardExpiryFocused] = useState(false);
   const [cardCvcFocused, setCardCvcFocused] = useState(false);
+  const cardExpiryRef = useRef<StripeCardExpiryElement | null>(null);
+  const cardCvcRef = useRef<StripeCardCvcElement | null>(null);
   const [createAccount, setCreateAccount] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [selectedGateway, setSelectedGateway] = useState("stripe");
@@ -565,11 +572,13 @@ function CheckoutForm({
   }, [cart?.total]);
 
   const handleSelectRate = async (package_id: number | string, rate_id: string) => {
+    setPendingRateId(rate_id);
     setIsUpdatingRates(true);
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
     if (ok && "cart" in data) applyState(data);
     else if ("message" in data && data.message) notifyError(data.message);
     setIsUpdatingRates(false);
+    setPendingRateId(null);
   };
 
   const handleApplyCoupon = async () => {
@@ -778,6 +787,7 @@ function CheckoutForm({
       // otherwise the null-cart guard renders the error/empty screen for a
       // frame while router.push is still in flight.
       setOrderComplete(true);
+      onOrderComplete();
 
       const successParams = new URLSearchParams({
         order_id: String(data.order_id),
@@ -1085,35 +1095,65 @@ function CheckoutForm({
                 Shipping options
               </h2>
 
-              {isUpdatingRates ? (
+              {shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
+                shippingRates.map((pkg) => {
+                  const LIMIT = 5;
+                  const rates = pkg.shipping_rates;
+                  const activeId = pendingRateId ?? rates.find((r) => r.selected)?.rate_id;
+                  const visible = showAllRates
+                    ? rates
+                    : rates.filter((r, i) => i < LIMIT || r.rate_id === activeId);
+                  const hiddenCount = rates.length - visible.length;
+
+                  return (
+                    <div key={pkg.package_id}>
+                      <ul className="space-y-2">
+                        {visible.map((rate) => (
+                          <li key={rate.rate_id}>
+                            <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
+                              <span className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name={`shipping-${pkg.package_id}`}
+                                  checked={pendingRateId !== null ? pendingRateId === rate.rate_id : rate.selected}
+                                  onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
+                                />
+                                <span className="text-link text-near-black">{rate.name}</span>
+                              </span>
+                              <span className="text-link font-semibold text-near-black">
+                                {isFreeRate(rate.price) ? "Free" : rate.price}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      {!showAllRates && hiddenCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(true)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See {hiddenCount} more option{hiddenCount !== 1 ? "s" : ""}
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : showAllRates && rates.length > LIMIT ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(false)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See less
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : isUpdatingRates ? (
                 <div className="flex items-center gap-2 border border-light-gray bg-off-white px-4 py-3 text-link text-dark-gray" aria-busy="true">
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Loading shipping options…
                 </div>
-              ) : shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
-                shippingRates.map((pkg) => (
-                  <ul key={pkg.package_id} className="space-y-2">
-                    {pkg.shipping_rates.map((rate) => (
-                      <li key={rate.rate_id}>
-                        <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
-                          <span className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name={`shipping-${pkg.package_id}`}
-                              checked={rate.selected}
-                              disabled={isUpdatingRates}
-                              onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
-                            />
-                            <span className="text-link text-near-black">{rate.name}</span>
-                          </span>
-                          <span className="text-link font-semibold text-near-black">
-                            {isFreeRate(rate.price) ? "Free" : rate.price}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                ))
               ) : locationReady ? (
                 <p className="border-l-4 border-amber bg-[#fdf6e7] px-4 py-3 text-link text-near-black">
                   There are no shipping options available for this address.
@@ -1203,68 +1243,84 @@ function CheckoutForm({
                 ) : null}
 
                 {usingSavedCard ? null : (
-                <>
-                <div
-                  className={`flex items-stretch overflow-hidden border bg-white transition-colors ${
-                    cardNumberError || cardExpiryError || cardCvcError
-                      ? "border-red-400"
-                      : cardNumberFocused || cardExpiryFocused || cardCvcFocused
-                        ? "border-blue"
-                        : "border-light-gray"
-                  }`}
-                >
-                  <div className="flex-1 border-r border-light-gray px-4 py-3">
-                    <CardNumberElement
-                      options={{ ...STRIPE_ELEMENT_STYLE, showIcon: false }}
-                      onFocus={() => setCardNumberFocused(true)}
-                      onBlur={() => setCardNumberFocused(false)}
-                      onChange={(e) => {
-                        setCardBrand(e.brand ?? "unknown");
-                        setCardNumberComplete(e.complete);
-                        if (e.error) setCardNumberError(e.error.message);
-                        else if (e.complete) setCardNumberError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[130px] border-r border-light-gray px-3 py-3">
-                    <CardExpiryElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardExpiryFocused(true)}
-                      onBlur={() => setCardExpiryFocused(false)}
-                      onChange={(e) => {
-                        setCardExpiryComplete(e.complete);
-                        if (e.error) setCardExpiryError(e.error.message);
-                        else if (e.complete) setCardExpiryError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[110px] px-3 py-3">
-                    <CardCvcElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardCvcFocused(true)}
-                      onBlur={() => setCardCvcFocused(false)}
-                      onChange={(e) => {
-                        setCardCvcComplete(e.complete);
-                        if (e.error) setCardCvcError(e.error.message);
-                        else if (e.complete) setCardCvcError("");
-                      }}
-                    />
-                  </div>
-                </div>
+                  <>
+                    {/* WooCommerce-standard Stripe card layout:
+                        card number full-width (top) + expiry|CVC row (bottom) */}
+                    <div
+                      className={`overflow-hidden border bg-white transition-colors ${
+                        cardNumberError || cardExpiryError || cardCvcError
+                          ? "border-red-400"
+                          : cardNumberFocused || cardExpiryFocused || cardCvcFocused
+                            ? "border-blue"
+                            : "border-light-gray"
+                      }`}
+                    >
+                      {/* Row 1 — Card number (full width, brand icon visible) */}
+                      <div className="border-b border-light-gray px-4 py-3">
+                        <CardNumberElement
+                          options={{ ...STRIPE_ELEMENT_STYLE, showIcon: true }}
+                          onFocus={() => setCardNumberFocused(true)}
+                          onBlur={() => setCardNumberFocused(false)}
+                          onChange={(e) => {
+                            setCardBrand(e.brand ?? "unknown");
+                            setCardNumberComplete(e.complete);
+                            if (e.error) setCardNumberError(e.error.message);
+                            else if (e.complete) {
+                              setCardNumberError("");
+                              cardExpiryRef.current?.focus();
+                            }
+                          }}
+                        />
+                      </div>
+                      {/* Row 2 — Expiry | CVC */}
+                      <div className="flex">
+                        <div className="flex-1 border-r border-light-gray px-4 py-3">
+                          <CardExpiryElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardExpiryRef.current = el; }}
+                            onFocus={() => setCardExpiryFocused(true)}
+                            onBlur={() => setCardExpiryFocused(false)}
+                            onChange={(e) => {
+                              setCardExpiryComplete(e.complete);
+                              if (e.error) setCardExpiryError(e.error.message);
+                              else if (e.complete) {
+                                setCardExpiryError("");
+                                cardCvcRef.current?.focus();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 px-4 py-3">
+                          <CardCvcElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardCvcRef.current = el; }}
+                            onFocus={() => setCardCvcFocused(true)}
+                            onBlur={() => setCardCvcFocused(false)}
+                            onChange={(e) => {
+                              setCardCvcComplete(e.complete);
+                              if (e.error) setCardCvcError(e.error.message);
+                              else if (e.complete) setCardCvcError("");
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-                {cardNumberError || cardExpiryError || cardCvcError ? (
-                  <div className="space-y-0.5">
-                    {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
-                    {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
-                    {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
-                  </div>
-                ) : null}
+                    {(cardNumberError || cardExpiryError || cardCvcError) ? (
+                      <div className="space-y-0.5">
+                        {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
+                        {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
+                        {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
+                      </div>
+                    ) : null}
 
-                <CardBrandRow detected={cardBrand} />
+                    <CardBrandRow detected={cardBrand} />
+                  </>
+                )}
 
                 {/* WC Stripe: "Save payment information to my account for
                     future purchases." — logged-in customers, setting on. */}
-                {isLoggedIn && settings.saved_cards ? (
+                {!usingSavedCard && isLoggedIn && settings.saved_cards ? (
                   <label className="flex cursor-pointer items-center gap-3 pt-1 text-link text-near-black">
                     <input
                       type="checkbox"
@@ -1275,8 +1331,6 @@ function CheckoutForm({
                     Save payment information to my account for future purchases.
                   </label>
                 ) : null}
-                </>
-                )}
               </div>
             )}
 
@@ -1353,6 +1407,8 @@ export default function CheckoutPageView({
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
 }) {
+  const [orderComplete, setOrderComplete] = useState(false);
+
   if (!stripePromise) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
@@ -1360,6 +1416,21 @@ export default function CheckoutPageView({
         <p className="text-body text-dark-gray">
           Payment is not configured — set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in
           the environment and reload.
+        </p>
+      </div>
+    );
+  }
+
+  if (orderComplete) {
+    return (
+      <div
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <Loader2 className="size-8 animate-spin text-amber" aria-hidden="true" />
+        <p className="text-body font-semibold text-near-black">
+          Order received — taking you to your confirmation&hellip;
         </p>
       </div>
     );
@@ -1377,7 +1448,11 @@ export default function CheckoutPageView({
       </div>
 
       <Elements stripe={stripePromise}>
-        <CheckoutForm settings={settings} isLoggedIn={isLoggedIn} />
+        <CheckoutForm
+          settings={settings}
+          isLoggedIn={isLoggedIn}
+          onOrderComplete={() => setOrderComplete(true)}
+        />
       </Elements>
     </div>
   );
