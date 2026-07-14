@@ -69,9 +69,9 @@ export default function CartLineItem({
         />
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <span className="hidden text-mid-gray sm:inline">Price</span>
+          <span className="hidden text-gray sm:inline">Price</span>
           <span
-            className="whitespace-nowrap text-near-black"
+            className="whitespace-nowrap text-dark-gray"
             dangerouslySetInnerHTML={{ __html: item.price_html }}
           />
           <button
@@ -79,14 +79,14 @@ export default function CartLineItem({
             disabled={isMutating}
             aria-label={`Remove ${item.sku || item.name}`}
             onClick={() => void onRemove(item.key)}
-            className="text-red-500 transition-colors hover:text-red-600 disabled:opacity-50"
+            className="ml-2.5 text-[#E12222] transition-colors hover:text-red-600 disabled:opacity-50"
           >
             <FaXmark size={18} />
           </button>
         </div>
       </div>
 
-      <CartStockNotice item={item} className="mt-1.5 normal-case" />
+      <CartStockNotice item={item} className="mt-1.5 mb-0 normal-case" />
     </div>
   );
 }

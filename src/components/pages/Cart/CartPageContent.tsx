@@ -27,7 +27,7 @@ function CartCheckoutButton() {
   return (
     <Link
       href="/checkout"
-      className="inline-flex w-full items-center justify-center gap-2.5 bg-amber px-5 py-3 text-link font-semibold uppercase text-white transition-colors hover:bg-blue sm:w-auto"
+      className="inline-flex w-auto items-center justify-center gap-2.5 bg-amber px-5 lg:px-[30px] py-3.5 text-link font-semibold uppercase text-white transition-colors hover:bg-blue"
     >
       Checkout
       <FaChevronRight size={12} aria-hidden="true" />
@@ -356,10 +356,10 @@ export default function CartPageContent() {
       </div>
 
       {/* WooCommerce-style cart totals */}
-      <div className="flex flex-col items-stretch gap-6 sm:items-end">
+      <div className="mt-8 flex flex-col gap-6 items-start sm:items-end">
         <dl className="w-full max-w-[360px] space-y-2 border border-light-gray bg-off-white p-5 text-link">
           <div className="flex justify-between">
-            <dt className="text-dark-gray">Subtotal</dt>
+            <dt className="text-dark-gray font-semibold">Subtotal</dt>
             <dd className="font-semibold text-near-black">{cart.subtotal}</dd>
           </div>
           {cart.coupons.map((coupon) => (
@@ -395,7 +395,7 @@ export default function CartPageContent() {
             <dd className="text-near-black">{cart.total}</dd>
           </div>
           {shippingNum === 0 ? (
-            <p className="pt-1 text-sm text-dark-gray">
+            <p className="pt-1 text-sm text-dark-gray mb-0">
               Shipping calculated at checkout.
             </p>
           ) : null}

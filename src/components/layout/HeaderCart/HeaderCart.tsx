@@ -114,7 +114,7 @@ export default function HeaderCart() {
 
           <div className="mt-[-1px] border border-amber bg-white p-4 shadow-xl">
             {hasItems && cart?.items.length ? (
-              <div className="max-h-64 divide-y divide-light-gray overflow-y-auto">
+              <div className="max-h-64 divide-y divide-light-gray overflow-y-auto border-b border-light-gray">
                 {cart.items.map((item) => (
                   <CartLineItem
                     key={item.key}

@@ -115,15 +115,15 @@ export default function OrderHistoryPanel({
   }
 
   return (
-    <div className="overflow-x-auto border border-light-gray">
-      <table className="w-full border-collapse text-link">
+    <div className="overflow-x-auto max-w-[1320px]">
+      <table className="w-full border-collapse text-link [&_td]:align-middle [&_a]:align-middle">
         <thead>
           <tr className="bg-navy text-left text-white">
             <th className="px-4 py-3 font-semibold uppercase">Order</th>
             <th className="px-4 py-3 font-semibold uppercase">Date</th>
             <th className="px-4 py-3 font-semibold uppercase">Status</th>
             <th className="px-4 py-3 font-semibold uppercase">Total</th>
-            <th className="px-4 py-3 font-semibold uppercase">Action</th>
+            <th className="px-4 py-3 font-semibold uppercase"><span className="sr-only">Action</span></th>
           </tr>
         </thead>
         <tbody>
@@ -174,12 +174,12 @@ function OrderRow({
           <button
             type="button"
             onClick={handleOrderClick}
-            className="font-semibold text-blue transition-colors hover:text-amber"
+            className="font-normal text-blue transition-colors hover:text-amber"
           >
             #{order.order_number}
           </button>
         </td>
-        <td className="whitespace-nowrap px-4 py-3.5 text-near-black">
+        <td className="whitespace-nowrap px-4 py-3.5 text-dark-gray">
           {order.date}
         </td>
         <td className="whitespace-nowrap px-4 py-3.5">
@@ -190,8 +190,8 @@ function OrderRow({
           </span>
         </td>
         <td className="whitespace-nowrap px-4 py-3.5">
-          <span className="font-bold text-near-black">{order.total}</span>
-          <span className="ml-3 text-dark-gray">
+          <span className="font-bold text-dark-gray min-w-[80px]">{order.total}</span>
+          <span className="ml-2.5 text-mid-gray">
             {order.item_count} {order.item_count === 1 ? "item" : "items"}
           </span>
         </td>
