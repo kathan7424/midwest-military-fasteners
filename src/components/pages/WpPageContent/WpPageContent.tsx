@@ -22,11 +22,11 @@ export default function WpPageContent({ title, content }: WpPageContentProps) {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      {hasTitle ? <h1 className="mb-6 text-4xl font-bold">{title}</h1> : null}
+    <div className="container max-w-[1300px] mx-auto px-5 py-12">
+      {hasTitle ? <h1 className="mb-10 text-[30px] font-black leading-[1.1] sm:text-[36px] md:text-[44px] lg:text-[52px] xl:text-[60px] font-bold">{title}</h1> : null}
       {hasContent ? (
         <div
-          className="prose max-w-none"
+          className="prose max-w-none section-content"
           dangerouslySetInnerHTML={{ __html: content! }}
         />
       ) : null}

@@ -175,7 +175,7 @@ export default function HeaderCartDropdown({
               )}
             >
               {variant === "compact" ? (
-                <div className="mb-4 flex items-center justify-between border-b border-light-gray pb-3">
+                <div className="mb-3 flex items-center justify-between border-b border-light-gray pb-3">
                   <h2 className="text-base font-bold uppercase tracking-wide text-near-black">
                     Your Order
                   </h2>
@@ -210,7 +210,7 @@ export default function HeaderCartDropdown({
               </p>
             )}
 
-            <div className="mt-auto border-t border-light-gray pt-5 flex items-center justify-between gap-4 xl:mt-[28px]">
+            <div className="mt-auto border-t border-light-gray pt-4 flex items-center justify-between gap-4 xl:mt-[28px]">
               <Link
                 href="/cart"
                 onClick={() => setIsOpen(false)}

@@ -19,6 +19,7 @@ import OrderHistoryPanel from "@/components/pages/Account/OrderHistoryPanel";
 import PaymentMethodsPanel from "@/components/pages/Account/PaymentMethodsPanel";
 import TaxDocumentsPanel from "@/components/pages/Account/TaxDocumentsPanel";
 import LogoutButton from "@/components/pages/Auth/LogoutButton";
+import IsoSection from "@/components/shared_Ui/IsoSection";
 
 export interface AccountUser {
   display_name?: string;
@@ -87,8 +88,8 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
     : SECTION_TITLES[section];
 
   return (
-    <div className="mx-auto w-full max-w-[1320px] px-4 py-8 xl:px-5 xl:py-[40px]">
-      <div className="flex flex-col gap-8 lg:flex-row lg:gap-10">
+    <div className="relative mx-auto w-full overflow-x-clip px-5 py-6 xl:px-5 xl:py-[30px]">
+      <div className="flex flex-col gap-8 lg:flex-row">
         {/* Sidebar — Figma design: top 6px blue border, neutral-50 bg */}
         <aside className="h-fit w-full shrink-0 border-t-[6px] border-[#336699] bg-neutral-50 px-[27px] pb-[27px] pt-[23px] lg:w-[295px]">
           <h2 className="mb-[18px] text-xl font-bold text-[#14151c]">My Account</h2>
@@ -150,7 +151,7 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
         </aside>
 
         {/* Content panel */}
-        <main className="min-w-0 flex-1">
+        <main className="flex min-w-0 flex-1 flex-col">
           <h1 className="mb-6 text-h2 font-bold uppercase text-near-black">
             {activeTitle}
           </h1>
@@ -182,6 +183,7 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
               {section === "documents" ? <TaxDocumentsPanel /> : null}
             </>
           )}
+          <IsoSection align="left" className="mt-auto pb-[18px] pt-10" />
         </main>
       </div>
     </div>
