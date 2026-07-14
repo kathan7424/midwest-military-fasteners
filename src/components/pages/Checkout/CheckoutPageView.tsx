@@ -10,10 +10,11 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import type { StripeCardExpiryElement, StripeCardCvcElement } from "@stripe/stripe-js";
 import {
   CardNumberElement,
   CardExpiryElement,
@@ -44,8 +45,9 @@ import type {
   CheckoutLocations,
   WcCheckoutSettings,
 } from "@/types/checkout.types";
-import { CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
+import { CardBrandIcon, CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
 import { notifyError, notifySuccess } from "@/utils/notifications";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 const STRIPE_PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
@@ -84,6 +86,34 @@ const EMPTY_ADDRESS: CheckoutAddress = {
 
 const INPUT_CLASS =
   "w-full border border-light-gray bg-white px-4 py-3 text-link text-near-black outline-none transition-colors focus:border-blue";
+
+/** Saved Stripe card offered at checkout (WC Stripe "saved payment methods"). */
+interface SavedCheckoutCard {
+  id: string;
+  brand: string;
+  last4: string;
+  exp_month: number;
+  exp_year: number;
+}
+
+/** Sentinel for the "Use a new payment method" option. */
+const NEW_CARD_ID = "new";
+
+function saved_card_label(card: SavedCheckoutCard): string {
+  const brands: Record<string, string> = {
+    visa: "Visa",
+    mastercard: "Mastercard",
+    amex: "American Express",
+    discover: "Discover",
+    diners: "Diners Club",
+    jcb: "JCB",
+    unionpay: "UnionPay",
+  };
+  const brand = brands[card.brand.toLowerCase()] ?? card.brand;
+  const exp = `${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}`;
+
+  return `${brand} ending in ${card.last4} (expires ${exp})`;
+}
 
 /** WC block checkout shows "Free" for zero-cost shipping rates. */
 function isFreeRate(formattedPrice: string): boolean {
@@ -130,7 +160,7 @@ function AddressSelectField({
         <option value="">{placeholder ?? `Select ${label.toLowerCase()}...`}</option>
         {options.map((option) => (
           <option key={option.code} value={option.code}>
-            {option.name}
+            {decodeHtmlEntities(option.name)}
           </option>
         ))}
       </select>
@@ -272,18 +302,20 @@ function OrderSummary({
 function CheckoutForm({
   settings,
   isLoggedIn,
+  onOrderComplete,
 }: {
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
+  onOrderComplete: () => void;
 }) {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
+  const cart = useCartStore((state) => state.cart);
   const setCart = useCartStore((state) => state.setCart);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [cart, setCartState] = useState<CartData | null>(null);
   const [checkout, setCheckout] = useState<CheckoutCartState | null>(null);
   const [locations, setLocations] = useState<CheckoutLocations | null>(null);
 
@@ -301,6 +333,8 @@ function CheckoutForm({
   const [showBillingApt, setShowBillingApt] = useState(false);
 
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
+  const [pendingRateId, setPendingRateId] = useState<string | null>(null);
+  const [showAllRates, setShowAllRates] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [cardBrand, setCardBrand] = useState("unknown");
   const [cardNumberComplete, setCardNumberComplete] = useState(false);
@@ -312,20 +346,31 @@ function CheckoutForm({
   const [cardNumberFocused, setCardNumberFocused] = useState(false);
   const [cardExpiryFocused, setCardExpiryFocused] = useState(false);
   const [cardCvcFocused, setCardCvcFocused] = useState(false);
+  const cardExpiryRef = useRef<StripeCardExpiryElement | null>(null);
+  const cardCvcRef = useRef<StripeCardCvcElement | null>(null);
   const [createAccount, setCreateAccount] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [selectedGateway, setSelectedGateway] = useState("stripe");
+  // WC Stripe "Enable saved payment methods": returning customers pay with a
+  // card stored at Stripe; new cards can be saved for future purchases.
+  const [savedCards, setSavedCards] = useState<SavedCheckoutCard[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState<string>(NEW_CARD_ID);
+  const [saveNewCard, setSaveNewCard] = useState(false);
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [showOrderNotes, setShowOrderNotes] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // Order placed successfully — hold a stable "redirecting" view while the
+  // client-side navigation to /checkout/success completes (clearing the cart
+  // before navigation would otherwise flash the empty-cart/error screen).
+  const [orderComplete, setOrderComplete] = useState(false);
 
   const { fields } = settings;
 
   const applyState = useCallback(
     (data: CheckoutStateResponse) => {
-      setCartState(data.cart);
       setCheckout(data.checkout);
       setCart(data.cart);
     },
@@ -397,6 +442,31 @@ function CheckoutForm({
 
     return () => { active = false; };
   }, [applyState]);
+
+  // WC Stripe "Enable saved payment methods": load the customer's cards
+  // stored at Stripe. Guests and disabled setting → new-card entry only.
+  useEffect(() => {
+    if (!isLoggedIn || !settings.saved_cards) return;
+
+    let active = true;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/account/payment-methods", { cache: "no-store" });
+        if (!res.ok || !active) return;
+        const data = (await res.json()) as { payment_methods?: SavedCheckoutCard[] };
+        const cards = data.payment_methods ?? [];
+        if (!active || cards.length === 0) return;
+        setSavedCards(cards);
+        // WC standard: the saved card is preselected for returning customers.
+        setSelectedCardId(cards[0].id);
+      } catch {
+        // Card list is a convenience — checkout works without it.
+      }
+    })();
+
+    return () => { active = false; };
+  }, [isLoggedIn, settings.saved_cards]);
 
   const handleShippingChange = (name: keyof CheckoutAddress, value: string) => {
     setFormErrors((prev) => ({ ...prev, [`shipping_${name}`]: "" }));
@@ -479,23 +549,48 @@ function CheckoutForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addressKey, locationReady, isLoading]);
 
+  // When cart total changes from a header mutation, re-fetch checkout state
+  // so Order Summary Subtotal/Shipping/Tax/Total stay in sync.
+  useEffect(() => {
+    if (
+      !cart ||
+      !checkout ||
+      isLoading ||
+      isUpdatingRates ||
+      isApplyingCoupon ||
+      isPlacingOrder ||
+      cart.total === checkout.totals.total
+    ) return;
+
+    let cancelled = false;
+    void (async () => {
+      const { ok, data } = await fetch_checkout_state();
+      if (!cancelled && ok && 'cart' in data) applyState(data as CheckoutStateResponse);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart?.total]);
+
   const handleSelectRate = async (package_id: number | string, rate_id: string) => {
+    setPendingRateId(rate_id);
     setIsUpdatingRates(true);
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
     if (ok && "cart" in data) applyState(data);
     else if ("message" in data && data.message) notifyError(data.message);
     setIsUpdatingRates(false);
+    setPendingRateId(null);
   };
 
   const handleApplyCoupon = async () => {
     const code = couponCode.trim();
-    if (!code) { notifyError("Enter a coupon code."); return; }
+    if (!code) { setCouponError("Please enter a coupon code."); return; }
+    setCouponError("");
     setIsApplyingCoupon(true);
     const { ok, data } = await apply_coupon(code);
     if (ok && "cart" in data) {
       applyState(data); setCouponCode(""); setCouponOpen(false); notifySuccess("Coupon applied.");
     } else {
-      notifyError(("message" in data && data.message) || "Coupon could not be applied.");
+      setCouponError(("message" in data && data.message) || "Coupon code is invalid.");
     }
     setIsApplyingCoupon(false);
   };
@@ -517,6 +612,7 @@ function CheckoutForm({
     ? selectedGateway
     : availableGateways[0];
   const isNet30 = activeGateway === "cod";
+  const usingSavedCard = savedCards.some((card) => card.id === selectedCardId);
 
   const checkoutError = (message: string) => {
     notifyError(message);
@@ -539,7 +635,14 @@ function CheckoutForm({
     if (!shipping.postcode.trim()) errors.shipping_postcode = "ZIP Code is a required field.";
     if (!shipping.country.trim()) errors.shipping_country = "Country is a required field.";
     if (fields.company === "required" && !shipping.company?.trim()) errors.shipping_company = "Company name is a required field.";
-    if (fields.phone === "required" && !shipping.phone?.trim()) errors.shipping_phone = "Phone is a required field.";
+    if (fields.phone !== "hidden") {
+      const sp = shipping.phone?.trim() ?? "";
+      if (fields.phone === "required" && !sp) {
+        errors.shipping_phone = "Phone is a required field.";
+      } else if (sp && !/^[\d\s\-+().]{7,20}$/.test(sp)) {
+        errors.shipping_phone = "Please enter a valid phone number.";
+      }
+    }
 
     if (!sameAsBilling) {
       if (!billing.first_name.trim()) errors.billing_first_name = "First name is a required field.";
@@ -550,7 +653,14 @@ function CheckoutForm({
       if (!billing.postcode.trim()) errors.billing_postcode = "ZIP Code is a required field.";
       if (!billing.country.trim()) errors.billing_country = "Country is a required field.";
       if (fields.company === "required" && !billing.company?.trim()) errors.billing_company = "Company name is a required field.";
-      if (fields.phone === "required" && !billing.phone?.trim()) errors.billing_phone = "Phone is a required field.";
+      if (fields.phone !== "hidden") {
+        const bp = billing.phone?.trim() ?? "";
+        if (fields.phone === "required" && !bp) {
+          errors.billing_phone = "Phone is a required field.";
+        } else if (bp && !/^[\d\s\-+().]{7,20}$/.test(bp)) {
+          errors.billing_phone = "Please enter a valid phone number.";
+        }
+      }
     }
 
     setFormErrors(errors);
@@ -587,44 +697,59 @@ function CheckoutForm({
           return;
         }
 
-        let cardValid = true;
-        if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
-        if (!cardExpiryComplete) { setCardExpiryError("Enter the expiration date."); cardValid = false; }
-        if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
-        if (!cardValid) { setIsPlacingOrder(false); return; }
+        if (usingSavedCard) {
+          // WC Stripe "saved payment methods": pay with the card stored at
+          // Stripe — no card entry, no card data through the store.
+          paymentData = [
+            { key: "payment_method", value: "stripe" },
+            { key: "wc-stripe-payment-method", value: selectedCardId },
+            { key: "wc-stripe-is-deferred-intent", value: true },
+          ];
+        } else {
+          let cardValid = true;
+          if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
+          if (!cardExpiryComplete) { setCardExpiryError("Enter the expiration date."); cardValid = false; }
+          if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
+          if (!cardValid) { setIsPlacingOrder(false); return; }
 
-        const cardNumberElement = elements.getElement(CardNumberElement);
-        if (!cardNumberElement) { checkoutError("Card details are required."); return; }
+          const cardNumberElement = elements.getElement(CardNumberElement);
+          if (!cardNumberElement) { checkoutError("Card details are required."); return; }
 
-        const billingAddr = effectiveBilling;
-        const { paymentMethod, error } = await stripe.createPaymentMethod({
-          type: "card",
-          card: cardNumberElement,
-          billing_details: {
-            name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
-            email,
-            phone: billingAddr.phone || undefined,
-            address: {
-              line1: billingAddr.address_1,
-              line2: billingAddr.address_2 || undefined,
-              city: billingAddr.city,
-              state: billingAddr.state,
-              postal_code: billingAddr.postcode,
-              country: billingAddr.country,
+          const billingAddr = effectiveBilling;
+          const { paymentMethod, error } = await stripe.createPaymentMethod({
+            type: "card",
+            card: cardNumberElement,
+            billing_details: {
+              name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
+              email,
+              phone: billingAddr.phone || undefined,
+              address: {
+                line1: billingAddr.address_1,
+                line2: billingAddr.address_2 || undefined,
+                city: billingAddr.city,
+                state: billingAddr.state,
+                postal_code: billingAddr.postcode,
+                country: billingAddr.country,
+              },
             },
-          },
-        });
+          });
 
-        if (error || !paymentMethod) {
-          checkoutError(error?.message || "Card could not be processed.");
-          return;
+          if (error || !paymentMethod) {
+            checkoutError(error?.message || "Card could not be processed.");
+            return;
+          }
+
+          paymentData = [
+            { key: "payment_method", value: "stripe" },
+            { key: "wc-stripe-payment-method", value: paymentMethod.id },
+            { key: "wc-stripe-is-deferred-intent", value: true },
+          ];
+
+          // "Save payment information to my account for future purchases."
+          if (isLoggedIn && settings.saved_cards && saveNewCard) {
+            paymentData.push({ key: "wc-stripe-new-payment-method", value: true });
+          }
         }
-
-        paymentData = [
-          { key: "payment_method", value: "stripe" },
-          { key: "wc-stripe-payment-method", value: paymentMethod.id },
-          { key: "wc-stripe-is-deferred-intent", value: true },
-        ];
       }
 
       const { ok, data } = await place_order({
@@ -658,7 +783,11 @@ function CheckoutForm({
         return;
       }
 
-      setCart(null);
+      // Lock the UI into the "redirecting" state BEFORE clearing the cart —
+      // otherwise the null-cart guard renders the error/empty screen for a
+      // frame while router.push is still in flight.
+      setOrderComplete(true);
+      onOrderComplete();
 
       const successParams = new URLSearchParams({
         order_id: String(data.order_id),
@@ -668,10 +797,26 @@ function CheckoutForm({
       });
 
       router.push(`/checkout/success?${successParams.toString()}`);
+      setCart(null);
     } finally {
       setIsPlacingOrder(false);
     }
   };
+
+  if (orderComplete) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-4 py-24 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <Loader2 className="size-8 animate-spin text-amber" aria-hidden="true" />
+        <p className="text-body font-semibold text-near-black">
+          Order received — taking you to your confirmation&hellip;
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -742,30 +887,36 @@ function CheckoutForm({
             Have a coupon?{" "}
             <button
               type="button"
-              onClick={() => setCouponOpen((o) => !o)}
+              onClick={() => { setCouponOpen((o) => !o); setCouponError(""); }}
               className="font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
             >
               Click here to enter your code
             </button>
           </p>
           {couponOpen ? (
-            <div className="mt-3 flex max-w-[420px] gap-2 border-t border-[#c9dcea] pt-3">
-              <input
-                type="text"
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="Coupon code"
-                className="min-w-0 flex-1 border border-light-gray bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue"
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
-              />
-              <button
-                type="button"
-                disabled={isApplyingCoupon}
-                onClick={() => void handleApplyCoupon()}
-                className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
-              >
-                {isApplyingCoupon ? "Applying..." : "Apply coupon"}
-              </button>
+            <div className="mt-3 border-t border-[#c9dcea] pt-3">
+              <div className="flex max-w-[420px] gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }}
+                  placeholder="Coupon code"
+                  aria-describedby={couponError ? "coupon-error" : undefined}
+                  className={`min-w-0 flex-1 border bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue ${couponError ? "border-[#b81c23]" : "border-light-gray"}`}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
+                />
+                <button
+                  type="button"
+                  disabled={isApplyingCoupon}
+                  onClick={() => void handleApplyCoupon()}
+                  className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
+                >
+                  {isApplyingCoupon ? "Applying..." : "Apply coupon"}
+                </button>
+              </div>
+              {couponError ? (
+                <p id="coupon-error" className="mt-2 text-sm text-[#b81c23]">{couponError}</p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -944,35 +1095,65 @@ function CheckoutForm({
                 Shipping options
               </h2>
 
-              {isUpdatingRates ? (
+              {shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
+                shippingRates.map((pkg) => {
+                  const LIMIT = 5;
+                  const rates = pkg.shipping_rates;
+                  const activeId = pendingRateId ?? rates.find((r) => r.selected)?.rate_id;
+                  const visible = showAllRates
+                    ? rates
+                    : rates.filter((r, i) => i < LIMIT || r.rate_id === activeId);
+                  const hiddenCount = rates.length - visible.length;
+
+                  return (
+                    <div key={pkg.package_id}>
+                      <ul className="space-y-2">
+                        {visible.map((rate) => (
+                          <li key={rate.rate_id}>
+                            <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
+                              <span className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name={`shipping-${pkg.package_id}`}
+                                  checked={pendingRateId !== null ? pendingRateId === rate.rate_id : rate.selected}
+                                  onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
+                                />
+                                <span className="text-link text-near-black">{rate.name}</span>
+                              </span>
+                              <span className="text-link font-semibold text-near-black">
+                                {isFreeRate(rate.price) ? "Free" : rate.price}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      {!showAllRates && hiddenCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(true)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See {hiddenCount} more option{hiddenCount !== 1 ? "s" : ""}
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : showAllRates && rates.length > LIMIT ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(false)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See less
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : isUpdatingRates ? (
                 <div className="flex items-center gap-2 border border-light-gray bg-off-white px-4 py-3 text-link text-dark-gray" aria-busy="true">
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Loading shipping options…
                 </div>
-              ) : shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
-                shippingRates.map((pkg) => (
-                  <ul key={pkg.package_id} className="space-y-2">
-                    {pkg.shipping_rates.map((rate) => (
-                      <li key={rate.rate_id}>
-                        <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
-                          <span className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name={`shipping-${pkg.package_id}`}
-                              checked={rate.selected}
-                              disabled={isUpdatingRates}
-                              onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
-                            />
-                            <span className="text-link text-near-black">{rate.name}</span>
-                          </span>
-                          <span className="text-link font-semibold text-near-black">
-                            {isFreeRate(rate.price) ? "Free" : rate.price}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                ))
               ) : locationReady ? (
                 <p className="border-l-4 border-amber bg-[#fdf6e7] px-4 py-3 text-link text-near-black">
                   There are no shipping options available for this address.
@@ -1021,63 +1202,135 @@ function CheckoutForm({
               </p>
             ) : (
               <div className="space-y-3">
-                <div
-                  className={`flex items-stretch overflow-hidden border bg-white transition-colors ${
-                    cardNumberError || cardExpiryError || cardCvcError
-                      ? "border-red-400"
-                      : cardNumberFocused || cardExpiryFocused || cardCvcFocused
-                        ? "border-blue"
-                        : "border-light-gray"
-                  }`}
-                >
-                  <div className="flex-1 border-r border-light-gray px-4 py-3">
-                    <CardNumberElement
-                      options={{ ...STRIPE_ELEMENT_STYLE, showIcon: false }}
-                      onFocus={() => setCardNumberFocused(true)}
-                      onBlur={() => setCardNumberFocused(false)}
-                      onChange={(e) => {
-                        setCardBrand(e.brand ?? "unknown");
-                        setCardNumberComplete(e.complete);
-                        if (e.error) setCardNumberError(e.error.message);
-                        else if (e.complete) setCardNumberError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[130px] border-r border-light-gray px-3 py-3">
-                    <CardExpiryElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardExpiryFocused(true)}
-                      onBlur={() => setCardExpiryFocused(false)}
-                      onChange={(e) => {
-                        setCardExpiryComplete(e.complete);
-                        if (e.error) setCardExpiryError(e.error.message);
-                        else if (e.complete) setCardExpiryError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[110px] px-3 py-3">
-                    <CardCvcElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardCvcFocused(true)}
-                      onBlur={() => setCardCvcFocused(false)}
-                      onChange={(e) => {
-                        setCardCvcComplete(e.complete);
-                        if (e.error) setCardCvcError(e.error.message);
-                        else if (e.complete) setCardCvcError("");
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {cardNumberError || cardExpiryError || cardCvcError ? (
-                  <div className="space-y-0.5">
-                    {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
-                    {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
-                    {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
-                  </div>
+                {/* WC Stripe "saved payment methods" — returning customers pick a
+                    stored card or enter a new one. */}
+                {savedCards.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {savedCards.map((card) => (
+                      <li key={card.id}>
+                        <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
+                          <input
+                            type="radio"
+                            name="saved_payment_method"
+                            value={card.id}
+                            checked={selectedCardId === card.id}
+                            onChange={() => setSelectedCardId(card.id)}
+                            className="h-4 w-4 accent-amber"
+                          />
+                          <CardBrandIcon brand={card.brand} size="sm" />
+                          <span className="text-link text-near-black">
+                            {saved_card_label(card)}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                    <li>
+                      <label className="flex cursor-pointer items-center gap-3 border border-light-gray bg-white px-4 py-3">
+                        <input
+                          type="radio"
+                          name="saved_payment_method"
+                          value={NEW_CARD_ID}
+                          checked={!usingSavedCard}
+                          onChange={() => setSelectedCardId(NEW_CARD_ID)}
+                          className="h-4 w-4 accent-amber"
+                        />
+                        <span className="text-link text-near-black">
+                          Use a new payment method
+                        </span>
+                      </label>
+                    </li>
+                  </ul>
                 ) : null}
 
-                <CardBrandRow detected={cardBrand} />
+                {usingSavedCard ? null : (
+                  <>
+                    {/* WooCommerce-standard Stripe card layout:
+                        card number full-width (top) + expiry|CVC row (bottom) */}
+                    <div
+                      className={`overflow-hidden border bg-white transition-colors ${
+                        cardNumberError || cardExpiryError || cardCvcError
+                          ? "border-red-400"
+                          : cardNumberFocused || cardExpiryFocused || cardCvcFocused
+                            ? "border-blue"
+                            : "border-light-gray"
+                      }`}
+                    >
+                      {/* Row 1 — Card number (full width, brand icon visible) */}
+                      <div className="border-b border-light-gray px-4 py-3">
+                        <CardNumberElement
+                          options={{ ...STRIPE_ELEMENT_STYLE, showIcon: true }}
+                          onFocus={() => setCardNumberFocused(true)}
+                          onBlur={() => setCardNumberFocused(false)}
+                          onChange={(e) => {
+                            setCardBrand(e.brand ?? "unknown");
+                            setCardNumberComplete(e.complete);
+                            if (e.error) setCardNumberError(e.error.message);
+                            else if (e.complete) {
+                              setCardNumberError("");
+                              cardExpiryRef.current?.focus();
+                            }
+                          }}
+                        />
+                      </div>
+                      {/* Row 2 — Expiry | CVC */}
+                      <div className="flex">
+                        <div className="flex-1 border-r border-light-gray px-4 py-3">
+                          <CardExpiryElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardExpiryRef.current = el; }}
+                            onFocus={() => setCardExpiryFocused(true)}
+                            onBlur={() => setCardExpiryFocused(false)}
+                            onChange={(e) => {
+                              setCardExpiryComplete(e.complete);
+                              if (e.error) setCardExpiryError(e.error.message);
+                              else if (e.complete) {
+                                setCardExpiryError("");
+                                cardCvcRef.current?.focus();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 px-4 py-3">
+                          <CardCvcElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardCvcRef.current = el; }}
+                            onFocus={() => setCardCvcFocused(true)}
+                            onBlur={() => setCardCvcFocused(false)}
+                            onChange={(e) => {
+                              setCardCvcComplete(e.complete);
+                              if (e.error) setCardCvcError(e.error.message);
+                              else if (e.complete) setCardCvcError("");
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {(cardNumberError || cardExpiryError || cardCvcError) ? (
+                      <div className="space-y-0.5">
+                        {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
+                        {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
+                        {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
+                      </div>
+                    ) : null}
+
+                    <CardBrandRow detected={cardBrand} />
+                  </>
+                )}
+
+                {/* WC Stripe: "Save payment information to my account for
+                    future purchases." — logged-in customers, setting on. */}
+                {!usingSavedCard && isLoggedIn && settings.saved_cards ? (
+                  <label className="flex cursor-pointer items-center gap-3 pt-1 text-link text-near-black">
+                    <input
+                      type="checkbox"
+                      checked={saveNewCard}
+                      onChange={(e) => setSaveNewCard(e.target.checked)}
+                      className="h-4 w-4 accent-amber"
+                    />
+                    Save payment information to my account for future purchases.
+                  </label>
+                ) : null}
               </div>
             )}
 
@@ -1154,6 +1407,8 @@ export default function CheckoutPageView({
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
 }) {
+  const [orderComplete, setOrderComplete] = useState(false);
+
   if (!stripePromise) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
@@ -1161,6 +1416,21 @@ export default function CheckoutPageView({
         <p className="text-body text-dark-gray">
           Payment is not configured — set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in
           the environment and reload.
+        </p>
+      </div>
+    );
+  }
+
+  if (orderComplete) {
+    return (
+      <div
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <Loader2 className="size-8 animate-spin text-amber" aria-hidden="true" />
+        <p className="text-body font-semibold text-near-black">
+          Order received — taking you to your confirmation&hellip;
         </p>
       </div>
     );
@@ -1178,7 +1448,11 @@ export default function CheckoutPageView({
       </div>
 
       <Elements stripe={stripePromise}>
-        <CheckoutForm settings={settings} isLoggedIn={isLoggedIn} />
+        <CheckoutForm
+          settings={settings}
+          isLoggedIn={isLoggedIn}
+          onOrderComplete={() => setOrderComplete(true)}
+        />
       </Elements>
     </div>
   );

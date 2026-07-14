@@ -25,12 +25,12 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-11 | Sidebar: open "Hex Cap Screws", then open "Cap Nuts" (different section) | "Hex Cap Screws" closes automatically — only ONE group open at a time across the whole sidebar |
 | PDP-12 | Sidebar: click the currently open group's header | Group closes; no group is open |
 | PDP-13 | Navigate to a category page (e.g. /product-category/screws/hex-cap-screws) | That category's sidebar group is open on load; all others closed |
-| PDP-14 | Add gallery images to a product in WC admin, then open its detail page | Thumbnails appear (allow up to ~60s — product fetch cache); no code change needed |
+| PDP-14 | Add gallery images to a product in WC admin, then open its detail page | Thumbnails appear (allow up to ~5 min — product fetch cache); no code change needed |
 | PDP-15 | Product with distinct long + short descriptions | Under the title: LONG description; spec table DESCRIPTION row: SHORT description |
 | PDP-16 | Open shop page / product detail | Every qty input is BLANK (placeholder "QTY") — no pre-filled 1 |
 | PDP-17 | Click "Add to Order" with a blank qty input | Error toast "Please enter a quantity." — nothing added to cart |
 | PDP-18 | Enter qty, click "Add to Order", item adds | Qty input resets to blank after a successful add |
-| PDP-19 | Edit WP admin → Pages → Shop (title/content/featured image), Update, wait ~60s, reload /shop | Hero shows the WP title, content, and featured image; empty fields fall back (title "Product Catalog", first product image) |
+| PDP-19 | Edit WP admin → Pages → Shop (title/content/featured image), Update, wait ~5 min, reload /shop | Hero shows the WP title, content, and featured image; empty fields fall back (title "Product Catalog", first product image) |
 | PDP-20 | As a guest, open the WordPress URL directly (site root or any WP page) | Redirects to the storefront with path preserved (Frontend URL set) OR shows plain "API backend" notice (not set) — never the WP theme |
 | PDP-21 | As a guest, open `{wp}/wp-login.php` and `{wp}/wp-json/` | Both still work — login page loads, REST responds (redirect must not touch admin/API traffic) |
 | PDP-22 | As a GUEST, open /shop, a category page, and a product detail | Only the 1 PKG price shows — no 3/5/10 PKG columns (tables) or rows (spec table) |
@@ -39,6 +39,16 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-25 | Click page 3, then click page 3 again within ~30s | Second visit is near-instant (cached) |
 | PDP-26 | Middle-click / ctrl-click a pagination number | Opens the correct `?page=N` URL in a new tab |
 | PDP-27 | Open a sidebar accordion group, hover briefly, click a series link | Navigation feels near-instant (links prefetch); first-ever visit may flash the skeleton briefly |
+| PDP-28 | Hover the main product image (real photo) | Image magnifies 2.5× INSIDE the same box, following the cursor; leaving the image smoothly zooms back out; NO floating pane over other content |
+| PDP-29 | Product with a broken/missing image (placeholder art) | No hover zoom at all — default cursor, no zoom icon; clicking still opens the lightbox with the placeholder |
+| PDP-30 | WP page title containing `&` (e.g. "Shipping & Returns") | Renders "Shipping & Returns" — never the raw `&#038;` entity; same for category names, search suggestions, order item names, and checkout state/country dropdowns |
+| PDP-31 | Open the lightbox (click main image), then Prev/Next between images | White spinner shows centered until the full-size image loads, then image fades in; no blank dark frame while loading |
+| PDP-31a | Lightbox open — page behind | Body scroll is LOCKED (mouse wheel doesn't scroll the page); restored on close |
+| PDP-31b | Lightbox with 2+ images | "2 / 5"-style counter shows top-left; updates with prev/next/dots/keyboard |
+| PDP-31c | Navigate to image 3 in lightbox, press Escape or click backdrop | Lightbox closes AND the main image + active thumbnail are now image 3 (synced to last viewed slide) |
+| PDP-31d | Mobile: swipe left/right on the lightbox image | Swipe left → next image, swipe right → previous (≥50px swipe); short taps don't navigate |
+| PDP-31e | Prev/Next through all images and wrap around | Navigation loops (last → first, first → last); adjacent images preload so the spinner is brief/absent on revisit |
+| PDP-32 | WP backend hangs (unreachable/very slow) | Pages fail over to their error/fallback path within ~15s — never an indefinite skeleton (WP fetches have a 15s timeout) |
 
 ## TC-IMP — CSV Import
 
@@ -110,6 +120,11 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-22 | Guest fills address, leaves, returns to /checkout in same session | Previously entered address restored from the WC session (WC standard) |
 | CHK-19 | Fill address matching NO shipping zone | Warning: "There are no shipping options available for this address."; Place Order blocked with "Please select a shipping option" error |
 | CHK-20 | Free shipping rate offered | Rate price displays "Free" (not $0.00); Place Order button disabled while rates recalculate |
+| CHK-23 | Place a successful order and watch the transition | Checkout swaps to a centered "Order received — taking you to your confirmation…" spinner, then the success page loads — NO flash of "Checkout unavailable" or the empty-cart screen in between |
+| CHK-24 | WC → Payments → Stripe → "Enable saved payment methods" ON → logged-in customer with saved cards opens /checkout | Saved cards listed as radio options (brand badge + "Visa ending in 4242 (expires 12/26)"), first card preselected; "Use a new payment method" option below reopens the card fields |
+| CHK-25 | Pay with a selected saved card | Order places without entering card details; card fields hidden while a saved card is selected; 3DS still prompts when the bank requires it |
+| CHK-26 | Choose "Use a new payment method" as a logged-in customer (setting ON) | Card fields + "Save payment information to my account for future purchases." checkbox appear; checked → after the order the card shows in My Account → Payment Methods AND in the next checkout's saved list |
+| CHK-27 | Setting OFF, or guest checkout | No saved-card list and no save checkbox — plain card entry only (guests never see either regardless of setting) |
 
 ## TC-COUPON — Coupons
 
@@ -198,7 +213,7 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | ACC-06 | Dashboard — "View all orders" | Navigates to Orders section |
 | ACC-07 | Dashboard skeleton | Two address card skeletons + 3-row order table skeleton while loading |
 | ACC-08 | Sidebar navigation | Sections switch without reload; Dashboard is first item and default active; active item blue/bold |
-| ACC-09 | Orders table | Figma layout: order # link, date, status, Certifications ⬇ Download, bold total + "N items" + View; skeleton table while loading |
+| ACC-09 | Orders table | Columns: Order # link, Date, Status badge, bold Total + "N items", Action → View button; NO Certifications column (certs live in the Certifications tab, per product); skeleton table matches the same 5 columns |
 | ACC-10 | Click order # or View | Order detail page: overview strip (number, date, status, total), line items table with spec/cert downloads, order totals (subtotal, shipping, tax, discount, total), payment method, billing+shipping addresses |
 | ACC-11 | Certifications tab | Only certificate docs; only from shipped/completed orders; "Certificates are available after your order ships." empty state |
 | ACC-12 | Spec Sheets tab | Spec sheets from all order statuses (processing, shipped, completed) |
@@ -218,6 +233,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | ACC-26 | Skeleton loading | Every panel shows skeleton (table/card/form shapes) while fetching, not plain text |
 | ACC-27 | Currency displays | Order totals show `$160.00` (decoded) — never `&#36;160.00` |
 | ACC-28 | Order detail — cert visibility | Certificates column shows download only for shipped/completed orders; shows "—" for processing orders |
+| ACC-29 | Spec Sheets tab — same product bought in 2+ orders | The spec sheet appears ONCE (under the most recent order) — spec sheets are product-level docs, not per-order; an order left with no unique spec sheets disappears from the tab |
+| ACC-30 | Spec Sheets / Certifications / Order detail — click Download | File DOWNLOADS via `/api/download` (no new tab) — same behavior as the shop table and product detail page; downloaded file keeps its REAL name/extension (e.g. `cert.svg`, `spec.pdf`) — a `download.json` file means the proxy rejected the URL (check host + extension allowlist) |
+| ACC-31 | Certifications / Spec Sheets — order date | US format MM-DD-YY (e.g. `07-13-26`) next to the order number — never raw `2026-07-13` |
 
 ## TC-CHK-VAL — Checkout Validation
 

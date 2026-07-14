@@ -17,7 +17,11 @@ import {
   type AccountAddress,
   type OrderDetail,
 } from "@/services/account.client";
-import { has_product_document } from "@/utils/spec-parts.utils";
+import {
+  has_product_document,
+  map_product_spec_href,
+} from "@/utils/spec-parts.utils";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 function OrderDetailSkeleton() {
   return (
@@ -225,9 +229,11 @@ export default function OrderDetailPanel({
             {order.line_items.map((item) => (
               <tr key={`${order.order_id}-${item.product_id}-${item.sku}`} className="border-t border-light-gray">
                 <td className="px-4 py-3">
-                  <span className="font-semibold text-near-black">{item.sku || item.name}</span>
+                  <span className="font-semibold text-near-black">
+                    {decodeHtmlEntities(item.sku || item.name)}
+                  </span>
                   {item.sku && item.name !== item.sku ? (
-                    <span className="ml-2 text-dark-gray">{item.name}</span>
+                    <span className="ml-2 text-dark-gray">{decodeHtmlEntities(item.name)}</span>
                   ) : null}
                 </td>
                 <td className="px-4 py-3 text-center text-near-black">{item.quantity}</td>
@@ -235,9 +241,8 @@ export default function OrderDetailPanel({
                 <td className="px-4 py-3 text-center">
                   {has_product_document(item.spec_file_url) ? (
                     <a
-                      href={item.spec_file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={map_product_spec_href(item.spec_file_url)}
+                      download
                       className="inline-flex items-center gap-1 text-amber hover:underline"
                     >
                       <Download className="size-3.5" aria-hidden="true" />
@@ -250,9 +255,8 @@ export default function OrderDetailPanel({
                 <td className="px-4 py-3 text-center">
                   {has_product_document(item.certificate_file_url) ? (
                     <a
-                      href={item.certificate_file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={map_product_spec_href(item.certificate_file_url)}
+                      download
                       className="inline-flex items-center gap-1 text-amber hover:underline"
                     >
                       <Download className="size-3.5" aria-hidden="true" />

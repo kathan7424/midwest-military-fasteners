@@ -41,14 +41,14 @@ export async function fetch_spec_parts_category_by_slug(
 
   return fetchWpJson<SpecPartsCategoryTerm>(
     `/spec-parts/v1/categories/slug/${encodeURIComponent(normalized_slug)}`,
-    { mode: "static", revalidate: 120 }
+    { mode: "static", revalidate: 900 }
   );
 }
 
 export async function fetch_spec_parts_series(): Promise<SpecPartsSeriesTerm[]> {
   return fetchWpJson<SpecPartsSeriesTerm[]>("/spec-parts/v1/series", {
     mode: "static",
-    revalidate: 120,
+    revalidate: 900,
   });
 }
 
@@ -57,7 +57,7 @@ export async function fetch_spec_parts_product_by_sku(
 ): Promise<SpecPartsProduct> {
   return fetchWpJson<SpecPartsProduct>(
     `/spec-parts/v1/products/sku/${encodeURIComponent(sku)}`,
-    { mode: "static", revalidate: 60 }
+    { mode: "static", revalidate: 300 }
   );
 }
 
@@ -69,7 +69,7 @@ export async function fetch_spec_parts_product_by_slug(
   try {
     return await fetchWpJson<SpecPartsProduct>(
       `/spec-parts/v1/products/slug/${encodeURIComponent(normalized_slug)}`,
-      { mode: "static", revalidate: 60 }
+      { mode: "static", revalidate: 300 }
     );
   } catch {
     const response = await fetch_spec_parts_products({

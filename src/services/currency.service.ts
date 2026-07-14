@@ -24,7 +24,9 @@ export async function fetch_store_settings(): Promise<CheckoutLocations | null> 
     const response = await fetch(
       `${ENV.WP_SITE_URL}/wp-json/custom/v1/checkout/locations`,
       {
-        ...(IS_DEV ? { cache: "no-store" as const } : { next: { revalidate: 300 } }),
+        ...(IS_DEV
+        ? { cache: "no-store" as const }
+        : { next: { revalidate: 300, tags: ["checkout-settings"] } }),
         headers: { Accept: "application/json" },
       }
     );

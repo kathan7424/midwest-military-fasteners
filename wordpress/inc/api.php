@@ -42,6 +42,34 @@ function mmf_set_custom_api_cache_headers( $response, $server, $request ) {
 		return $response;
 	}
 
+	// Checkout settings (coupons, guest checkout, fields) must reflect WC admin
+	// changes immediately. WP-side transient handles performance; Varnish must not
+	// serve stale values that affect checkout behaviour.
+	if ( strpos( $route, '/custom/v1/checkout/locations' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate' );
+		return $response;
+	}
+
+	// Contact page ACF content — admin-editable; Next.js ISR + save_post webhook
+	// is the caching layer. Varnish must not serve stale heading/image.
+	if ( strpos( $route, '/custom/v1/contact-page' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate' );
+		return $response;
+	}
+
+	// About page ACF content — admin-editable; Next.js ISR + save_post webhook
+	// is the caching layer. Varnish must not serve stale banner/FAQ content.
+	if ( strpos( $route, '/custom/v1/about-page' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate' );
+		return $response;
+	}
+
+	// Contact form submissions are user-specific — never cache.
+	if ( strpos( $route, '/custom/v1/contact' ) === 0 ) {
+		$response->header( 'Cache-Control', 'no-store, private' );
+		return $response;
+	}
+
 	// Menu + site-settings change rarely — cache for 5 min.
 	$response->header( 'Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=600' );
 
@@ -110,6 +138,36 @@ function mmf_notify_nextjs_revalidate( int $post_id, WP_Post $post ): void {
 			);
 		}
 	}
+
+	// Contact page ACF content changed — revalidate the "/contact" route.
+	if ( (int) $post->ID === 131 ) {
+		wp_remote_post(
+			add_query_arg(
+				array( 'secret' => $secret, 'path' => '/contact' ),
+				trailingslashit( $nextjs_url ) . 'api/revalidate'
+			),
+			array(
+				'timeout'  => 2,
+				'blocking' => false,
+				'headers'  => array( 'x-revalidate-secret' => $secret ),
+			)
+		);
+	}
+
+	// About page ACF content changed — revalidate the "/about" route.
+	if ( (int) $post->ID === 29 ) {
+		wp_remote_post(
+			add_query_arg(
+				array( 'secret' => $secret, 'path' => '/about' ),
+				trailingslashit( $nextjs_url ) . 'api/revalidate'
+			),
+			array(
+				'timeout'  => 2,
+				'blocking' => false,
+				'headers'  => array( 'x-revalidate-secret' => $secret ),
+			)
+		);
+	}
 }
 
 add_action( 'rest_api_init', function () {
@@ -148,6 +206,59 @@ add_action( 'rest_api_init', function () {
 			'methods'             => 'GET',
 			'callback'            => 'mmf_get_product_catalog',
 			'permission_callback' => '__return_true',
+		)
+	);
+	register_rest_route(
+		'custom/v1',
+		'/contact-page',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'mmf_get_contact_page',
+			'permission_callback' => '__return_true',
+		)
+	);
+	register_rest_route(
+		'custom/v1',
+		'/about-page',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'mmf_get_about_page',
+			'permission_callback' => '__return_true',
+		)
+	);
+	register_rest_route(
+		'custom/v1',
+		'/contact',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'mmf_submit_contact_form',
+			'permission_callback' => '__return_true',
+			'args'                => array(
+				'first_name' => array(
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_text_field',
+					'validate_callback' => function ( $v ) { return is_string( $v ) && strlen( trim( $v ) ) > 0; },
+				),
+				'last_name'  => array(
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_text_field',
+					'validate_callback' => function ( $v ) { return is_string( $v ) && strlen( trim( $v ) ) > 0; },
+				),
+				'email'      => array(
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_email',
+					'validate_callback' => 'is_email',
+				),
+				'company'    => array(
+					'required'          => false,
+					'sanitize_callback' => 'sanitize_text_field',
+				),
+				'message'    => array(
+					'required'          => true,
+					'sanitize_callback' => 'sanitize_textarea_field',
+					'validate_callback' => function ( $v ) { return is_string( $v ) && strlen( trim( $v ) ) > 0; },
+				),
+			),
 		)
 	);
     register_rest_route(
@@ -199,6 +310,28 @@ define( 'MMF_LOCATIONS_CACHE_TTL', 5 * MINUTE_IN_SECONDS );
 add_action( 'woocommerce_settings_saved', 'mmf_clear_checkout_locations_cache' );
 function mmf_clear_checkout_locations_cache(): void {
 	delete_transient( MMF_LOCATIONS_CACHE_KEY );
+	mmf_revalidate_nextjs_checkout();
+}
+
+function mmf_revalidate_nextjs_checkout(): void {
+	$nextjs_url = defined( 'MMF_NEXTJS_URL' ) ? (string) MMF_NEXTJS_URL : '';
+	$secret     = defined( 'MMF_NEXTJS_REVALIDATION_SECRET' ) ? (string) MMF_NEXTJS_REVALIDATION_SECRET : '';
+
+	if ( empty( $nextjs_url ) || empty( $secret ) ) {
+		return;
+	}
+
+	wp_remote_post(
+		add_query_arg(
+			array( 'secret' => $secret, 'path' => '/checkout' ),
+			trailingslashit( $nextjs_url ) . 'api/revalidate'
+		),
+		array(
+			'timeout'  => 2,
+			'blocking' => false,
+			'headers'  => array( 'x-revalidate-secret' => $secret ),
+		)
+	);
 }
 
 /**
@@ -295,6 +428,13 @@ function mmf_get_checkout_locations() {
 			'coupons_enabled'      => wc_coupons_enabled(),
 			// General → "Enable the use of order notes".
 			'order_notes_enabled'  => 'yes' === get_option( 'woocommerce_enable_order_comments', 'yes' ),
+			// WC → Payments → Stripe → "Enable saved payment methods" (saved_cards).
+			// Returning customers can pay with a card stored at Stripe and save
+			// new cards during checkout. No card data touches the store.
+			'saved_cards'          => ( function() {
+				$stripe = get_option( 'woocommerce_stripe_settings', array() );
+				return isset( $stripe['saved_cards'] ) && 'yes' === $stripe['saved_cards'];
+			} )(),
 			// Appearance → Customize → WooCommerce → Checkout field visibility.
 			'fields'               => array(
 				'company'   => get_option( 'woocommerce_checkout_company_field', 'optional' ),
@@ -353,6 +493,137 @@ function mmf_get_home_page() {
     );
 
     return rest_ensure_response( $response );
+}
+
+/**
+ * Endpoint: GET /custom/v1/contact-page
+ *
+ * Returns ACF fields for the Contact Us page (page ID 131).
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_get_contact_page() {
+	$page_id = 131;
+	$page    = get_post( $page_id );
+
+	if ( ! $page || 'publish' !== $page->post_status ) {
+		return new WP_Error( 'no_page', 'Contact page not found', array( 'status' => 404 ) );
+	}
+
+	return rest_ensure_response( array(
+		'heading'      => sanitize_text_field( (string) get_field( 'heading', $page_id ) ),
+		'sub_heading'  => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
+		'banner_image' => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
+	) );
+}
+
+/**
+ * Endpoint: GET /custom/v1/about-page
+ *
+ * Returns ACF fields for the About Us page (page ID 29).
+ *
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_get_about_page() {
+	$page_id = 29;
+	$page    = get_post( $page_id );
+
+	if ( ! $page || 'publish' !== $page->post_status ) {
+		return new WP_Error( 'no_page', 'About page not found', array( 'status' => 404 ) );
+	}
+
+	$faq_rows  = get_field( 'faq_list', $page_id );
+	$faq_items = array();
+
+	if ( is_array( $faq_rows ) ) {
+		foreach ( $faq_rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$question = sanitize_text_field( (string) ( $row['faq_question'] ?? '' ) );
+			$answer   = wp_kses_post( (string) ( $row['faq_answer'] ?? '' ) );
+
+			if ( '' === $question ) {
+				continue;
+			}
+
+			$faq_items[] = array(
+				'question' => $question,
+				'answer'   => $answer,
+			);
+		}
+	}
+
+	return rest_ensure_response( array(
+		'heading'         => sanitize_text_field( (string) get_field( 'field_6a3d2e26dca98', $page_id ) ),
+		'sub_heading'     => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
+		'banner_image'    => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
+		'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
+		'content_heading' => sanitize_text_field( (string) get_field( 'field_6a3d2fc81b6f1', $page_id ) ),
+		'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
+		'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
+		'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
+		'faq_heading'     => sanitize_text_field( (string) get_field( 'field_6a3e273def148', $page_id ) ),
+		'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
+		'faq_list'        => $faq_items,
+	) );
+}
+
+/**
+ * Endpoint: POST /custom/v1/contact
+ *
+ * Submits the contact form via Gravity Forms (form ID 3).
+ *
+ * @param WP_REST_Request $request
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_submit_contact_form( WP_REST_Request $request ) {
+	if ( ! class_exists( 'GFAPI' ) ) {
+		return new WP_Error( 'gf_unavailable', 'Form service unavailable.', array( 'status' => 503 ) );
+	}
+
+	// GFAPI::submit_form() expects HTML POST key format:
+	// compound fields use input_{field_id}_{input_id} (underscore, not dot).
+	$input_values = array(
+		'input_1_3' => (string) $request->get_param( 'first_name' ),
+		'input_1_6' => (string) $request->get_param( 'last_name' ),
+		'input_3'   => (string) ( $request->get_param( 'company' ) ?? '' ),
+		'input_4'   => (string) $request->get_param( 'email' ),
+		'input_5'   => (string) $request->get_param( 'message' ),
+	);
+
+	$result = GFAPI::submit_form( 3, $input_values );
+
+	if ( is_wp_error( $result ) ) {
+		return new WP_Error( 'form_error', $result->get_error_message(), array( 'status' => 422 ) );
+	}
+
+	if ( isset( $result['is_valid'] ) && ! $result['is_valid'] ) {
+		$validation_messages = array();
+		if ( ! empty( $result['validation_messages'] ) ) {
+			foreach ( $result['validation_messages'] as $field_id => $msg ) {
+				$validation_messages[] = sanitize_text_field( (string) $msg );
+			}
+		}
+		return new WP_Error(
+			'validation_failed',
+			! empty( $validation_messages ) ? implode( ' ', $validation_messages ) : 'Form validation failed.',
+			array( 'status' => 422 )
+		);
+	}
+
+	// Return GF's configured confirmation message so the frontend can display it
+	// without hardcoding strings — admin can change it in GF → Forms → Settings.
+	$confirmation_message = '';
+	if ( ! empty( $result['confirmation_message'] ) ) {
+		$confirmation_message = wp_strip_all_tags( (string) $result['confirmation_message'] );
+	}
+
+	return rest_ensure_response( array(
+		'success'      => true,
+		'confirmation' => $confirmation_message,
+	) );
 }
 
 /**

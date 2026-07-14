@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { ENV } from "@/config/env";
-import { CartData, CartItem, CartItemQuantityLimits } from "@/types/cart.types";
+import { CartData, CartCoupon, CartItem, CartItemQuantityLimits } from "@/types/cart.types";
 import type {
   CheckoutAddress,
   CheckoutCartState,
@@ -192,15 +192,30 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
     };
   });
 
+  const discountRaw = Number(storeCart.totals.total_discount ?? "0");
+  const coupons: CartCoupon[] = (storeCart.coupons ?? []).map((coupon) => ({
+    code: coupon.code,
+    discount: formatMinorUnits(
+      coupon.totals?.total_discount ?? "0",
+      coupon.totals?.currency_minor_unit ?? minorUnit,
+      currency
+    ),
+  }));
+
   return {
     items,
     item_count: storeCart.items_count,
     subtotal: formatMinorUnits(storeCart.totals.total_items, minorUnit, currency),
     shipping_total: formatMinorUnits(storeCart.totals.total_shipping ?? "0", minorUnit, currency),
     tax_total: formatMinorUnits(storeCart.totals.total_tax ?? "0", minorUnit, currency),
+    discount_total:
+      discountRaw > 0
+        ? formatMinorUnits(storeCart.totals.total_discount ?? "0", minorUnit, currency)
+        : "",
     total: formatMinorUnits(storeCart.totals.total_price, minorUnit, currency),
     checkout_url: `${ENV.WP_SITE_URL}/checkout`,
     cart_url: `${ENV.WP_SITE_URL}/cart`,
+    coupons,
   };
 }
 
@@ -556,9 +571,11 @@ function buildEmptyCartResponse(): NextResponse {
     subtotal: "",
     shipping_total: "",
     tax_total: "",
+    discount_total: "",
     total: "",
     checkout_url: `${ENV.WP_SITE_URL}/checkout`,
     cart_url: `${ENV.WP_SITE_URL}/cart`,
+    coupons: [],
   };
 
   const response = NextResponse.json(emptyCart, { status: 200 });

@@ -11,7 +11,7 @@ import { fetch_spec_parts_products } from "@/services/spec-parts.service";
 
 export const dynamic = "force-dynamic";
 // NOTE: no fetchCache override here — fetch_spec_parts_products relies on
-// fetchWpJson's 60s ISR per unique query. force-no-store would disable that
+// fetchWpJson's ISR per unique query. force-no-store would disable that
 // and send every filter keystroke on a full WP roundtrip (~0.3–2s each).
 
 export async function GET(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     // reuse it briefly and refresh in the background.
     return NextResponse.json(products, {
       headers: {
-        "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+        "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=900",
       },
     });
   } catch (error) {

@@ -1,19 +1,21 @@
 ﻿/**
  * File Name: ProductGallery.tsx
  * Description: Product image gallery - WooCommerce-style.
- *   Hover over main image -> inline zoom (2.5x scale, tracks cursor).
+ *   Hover over main image -> in-place magnifier (2.5x zoom inside the same
+ *   image box, tracks cursor — WC single-product hover zoom).
  *   Click main image -> lightbox with full-size view + prev/next nav.
  *   Thumbnail strip shown when product has 2+ images.
+ *   Placeholder images never zoom (nothing to magnify).
  * Developer: KP-184
  * Created Date: 2026-07-09
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-13
  */
 
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Loader2, ZoomIn } from "lucide-react";
 
 import {
   PRODUCT_PLACEHOLDER_IMAGE,
@@ -46,8 +48,12 @@ export default function ProductGallery({
   // When the main image errors out (active -> placeholder), track it so the
   // lightbox uses the same corrected src instead of the original broken URL.
   const [lbError, setLbError] = useState(false);
+  // Full-size lightbox image loads on demand — show a spinner until it lands.
+  const [lbLoading, setLbLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasMultiple = allImages.length > 1;
+  // Placeholder art has no detail to magnify — disable hover zoom for it.
+  const isPlaceholder = active === PRODUCT_PLACEHOLDER_IMAGE;
 
   // -- Zoom -------------------------------------------------------
   const handleMouseMove = useCallback(
@@ -69,15 +75,25 @@ export default function ProductGallery({
     const idx = allImages.indexOf(active);
     setLightboxIdx(idx >= 0 ? idx : 0);
     setLbError(false);
+    setLbLoading(true);
     setLightbox(true);
   }, [active, allImages]);
 
-  const closeLightbox = useCallback(() => setLightbox(false), []);
+  // Standard lightbox behavior: closing keeps the image you navigated to —
+  // the main image + active thumbnail sync to the last viewed slide.
+  const closeLightbox = useCallback(() => {
+    const viewed = allImages[lightboxIdx];
+    if (viewed) {
+      setActive(viewed);
+    }
+    setLightbox(false);
+  }, [allImages, lightboxIdx]);
 
   const lightboxPrev = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setLbError(false);
+      setLbLoading(true);
       setLightboxIdx((i) => (i - 1 + allImages.length) % allImages.length);
     },
     [allImages.length]
@@ -87,6 +103,7 @@ export default function ProductGallery({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setLbError(false);
+      setLbLoading(true);
       setLightboxIdx((i) => (i + 1) % allImages.length);
     },
     [allImages.length]
@@ -98,16 +115,66 @@ export default function ProductGallery({
       if (e.key === "Escape") closeLightbox();
       if (e.key === "ArrowLeft" && hasMultiple) {
         setLbError(false);
+        setLbLoading(true);
         setLightboxIdx((i) => (i - 1 + allImages.length) % allImages.length);
       }
       if (e.key === "ArrowRight" && hasMultiple) {
         setLbError(false);
+        setLbLoading(true);
         setLightboxIdx((i) => (i + 1) % allImages.length);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox, hasMultiple, allImages.length, closeLightbox]);
+
+  // Standard modal behavior: lock body scroll while the lightbox is open.
+  useEffect(() => {
+    if (!lightbox) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [lightbox]);
+
+  // Preload the adjacent slides so prev/next feels instant.
+  useEffect(() => {
+    if (!lightbox || !hasMultiple) return;
+    [
+      allImages[(lightboxIdx + 1) % allImages.length],
+      allImages[(lightboxIdx - 1 + allImages.length) % allImages.length],
+    ].forEach((src) => {
+      if (src) {
+        const img = new window.Image();
+        img.src = src;
+      }
+    });
+  }, [lightbox, lightboxIdx, hasMultiple, allImages]);
+
+  // Touch swipe (standard mobile lightbox nav): left → next, right → prev.
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (touchStartX.current === null || !hasMultiple) return;
+      const deltaX = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
+      touchStartX.current = null;
+      if (Math.abs(deltaX) < 50) return;
+      setLbError(false);
+      setLbLoading(true);
+      setLightboxIdx((i) =>
+        deltaX < 0
+          ? (i + 1) % allImages.length
+          : (i - 1 + allImages.length) % allImages.length
+      );
+    },
+    [hasMultiple, allImages.length]
+  );
 
   // Use active (already error-corrected) when the original URL failed to load.
   const lightboxSrc = lbError
@@ -117,19 +184,22 @@ export default function ProductGallery({
   return (
     <>
       <div>
-        {/* -- Main image + zoom ---------------------------------- */}
+        {/* -- Main image + in-place zoom -------------------------- */}
         <div
           ref={containerRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
+          onMouseMove={isPlaceholder ? undefined : handleMouseMove}
+          onMouseLeave={isPlaceholder ? undefined : handleMouseLeave}
           onClick={openLightbox}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === "Enter" && openLightbox()}
           aria-label="Zoom / enlarge image"
-          className="group relative h-[199px] w-[298px] cursor-zoom-in overflow-hidden border border-light-gray bg-white xl:h-[240px] xl:w-[360px]"
+          className={[
+            "group relative h-[199px] w-[298px] overflow-hidden border border-light-gray bg-white xl:h-[240px] xl:w-[360px]",
+            isPlaceholder ? "cursor-default" : "cursor-zoom-in",
+          ].join(" ")}
         >
-          {/* Zoomed image layer */}
+          {/* Zoomed image layer — scales inside the same box, following the cursor */}
           <div
             className="pointer-events-none absolute inset-0"
             style={
@@ -151,20 +221,25 @@ export default function ProductGallery({
               className="object-contain"
               priority
               sizes="(min-width: 1280px) 360px, 298px"
-              onError={() => setActive(PRODUCT_PLACEHOLDER_IMAGE)}
+              onError={() => {
+                setZoomPos(null);
+                setActive(PRODUCT_PLACEHOLDER_IMAGE);
+              }}
             />
           </div>
 
           {/* Zoom icon hint (shown on hover, hidden while zooming) */}
-          <span
-            className={[
-              "pointer-events-none absolute bottom-2 right-2 rounded bg-white/90 p-1 shadow-sm transition-opacity",
-              zoomPos ? "opacity-0" : "opacity-0 group-hover:opacity-100",
-            ].join(" ")}
-            aria-hidden="true"
-          >
-            <ZoomIn className="h-4 w-4 text-mid-gray" />
-          </span>
+          {!isPlaceholder ? (
+            <span
+              className={[
+                "pointer-events-none absolute bottom-2 right-2 rounded bg-white/90 p-1 shadow-sm transition-opacity",
+                zoomPos ? "opacity-0" : "opacity-0 group-hover:opacity-100",
+              ].join(" ")}
+              aria-hidden="true"
+            >
+              <ZoomIn className="h-4 w-4 text-mid-gray" />
+            </span>
+          ) : null}
         </div>
 
         {/* -- Thumbnail strip ------------------------------------ */}
@@ -210,6 +285,16 @@ export default function ProductGallery({
           aria-modal="true"
           aria-label="Image preview"
         >
+          {/* Image counter — standard "2 / 5" position, top-left */}
+          {hasMultiple ? (
+            <span
+              className="absolute left-4 top-4 rounded bg-white/10 px-2.5 py-1 text-sm font-semibold text-white"
+              aria-live="polite"
+            >
+              {lightboxIdx + 1} / {allImages.length}
+            </span>
+          ) : null}
+
           {/* Close */}
           <button
             type="button"
@@ -236,14 +321,33 @@ export default function ProductGallery({
           <div
             className="relative mx-20 max-h-[90vh] max-w-[90vw] h-[600px] w-[800px]"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
+            {/* Loader — shown until the full-size image finishes loading */}
+            {lbLoading ? (
+              <span
+                className="absolute inset-0 z-10 flex items-center justify-center"
+                role="status"
+                aria-label="Loading image"
+              >
+                <Loader2 className="h-10 w-10 animate-spin text-white/80" aria-hidden="true" />
+              </span>
+            ) : null}
             <Image
               src={lightboxSrc}
               alt={alt}
               fill
-              className="object-contain"
+              className={[
+                "object-contain transition-opacity duration-150",
+                lbLoading ? "opacity-0" : "opacity-100",
+              ].join(" ")}
               sizes="90vw"
-              onError={() => setLbError(true)}
+              onLoad={() => setLbLoading(false)}
+              onError={() => {
+                setLbError(true);
+                setLbLoading(false);
+              }}
             />
           </div>
 
@@ -269,6 +373,7 @@ export default function ProductGallery({
                   onClick={(e) => {
                     e.stopPropagation();
                     setLbError(false);
+                    setLbLoading(i !== lightboxIdx);
                     setLightboxIdx(i);
                   }}
                   aria-label={`Go to image ${i + 1}`}

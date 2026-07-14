@@ -16,7 +16,11 @@ import {
   SpecPartsSeriesTerm,
 } from "@/types/spec-parts.types";
 
-const CATEGORIES_REVALIDATE_SECONDS = 120;
+// Catalog data changes on WP import, not per request. Long ISR windows keep
+// pages serving from cache (Next revalidates stale entries in the background,
+// so shoppers never wait on the WP round-trip after first population).
+const CATEGORIES_REVALIDATE_SECONDS = 900;
+const PRODUCTS_REVALIDATE_SECONDS = 300;
 
 function normalize_series_terms(value: unknown): SpecPartsSeriesTerm[] {
   if (Array.isArray(value)) {
@@ -99,11 +103,10 @@ async function fetch_spec_parts_products_primary(
     : "/spec-parts/v1/products";
 
   try {
-    // Short ISR: product data changes on import, not per request. Each unique
-    // query (category/series/search/page) caches independently for 60s.
+    // Each unique query (category/series/search/page) caches independently.
     const response = await fetchWpJson<SpecPartsProductsResponse>(endpoint, {
       mode: "static",
-      revalidate: 60,
+      revalidate: PRODUCTS_REVALIDATE_SECONDS,
     });
     primary_failed_at = 0;
     return response;
@@ -265,31 +268,41 @@ async function fetch_category_product_series_ids(
   const per_page = 100;
   const max_pages = 15;
 
-  for (const category_term_id of category_term_ids) {
-    let page = 1;
-    let total_pages = 1;
+  const fetch_category_page = (category_term_id: number, page: number) =>
+    fetchWpJsonWithHeaders<Array<Record<string, unknown>>>(
+      `/wp/v2/product?product_cat=${category_term_id}&per_page=${per_page}&page=${page}&_fields=id,product-series,product_series&orderby=id&order=asc`,
+      {
+        mode: "static",
+        revalidate: CATEGORIES_REVALIDATE_SECONDS,
+      }
+    );
 
-    while (page <= total_pages && page <= max_pages) {
-      const response = await fetchWpJsonWithHeaders<
-        Array<Record<string, unknown>>
-      >(
-        `/wp/v2/product?product_cat=${category_term_id}&per_page=${per_page}&page=${page}&_fields=id,product-series,product_series&orderby=id&order=asc`,
-        {
-          mode: "static",
-          revalidate: CATEGORIES_REVALIDATE_SECONDS,
-        }
-      );
-
-      response.data.forEach((product) => {
-        extract_product_series_ids(product).forEach((term_id) => {
-          series_ids.add(term_id);
-        });
+  const collect = (products: Array<Record<string, unknown>>) => {
+    products.forEach((product) => {
+      extract_product_series_ids(product).forEach((term_id) => {
+        series_ids.add(term_id);
       });
+    });
+  };
 
-      total_pages = Math.max(1, response.total_pages);
-      page += 1;
+  // Page 1 of every category in parallel (was a sequential double loop —
+  // each WP round-trip stacked on the previous one).
+  const first_pages = await Promise.all(
+    category_term_ids.map((id) => fetch_category_page(id, 1))
+  );
+
+  const remaining: Array<Promise<{ data: Array<Record<string, unknown>> }>> = [];
+
+  first_pages.forEach((response, index) => {
+    collect(response.data);
+
+    const total_pages = Math.min(Math.max(1, response.total_pages), max_pages);
+    for (let page = 2; page <= total_pages; page += 1) {
+      remaining.push(fetch_category_page(category_term_ids[index], page));
     }
-  }
+  });
+
+  (await Promise.all(remaining)).forEach((response) => collect(response.data));
 
   return Array.from(series_ids);
 }

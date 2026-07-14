@@ -16,9 +16,9 @@
  *                   _cost_per_ea, _piece_weight, _pkg_qty
  *
  * FILE FOLDERS (configure in Settings tab):
- *   product-images/   → product photos  → named {SKU}.jpg  → col 34 PRODUCT IMAGE
- *   product-specs/    → spec sheet PDFs → named {SKU}-spec.pdf → col 35 SPEC SHEET
- *   product-certs/    → certificate PDFs → named {SKU}-cert.pdf → col 36 CERTIFICATE
+ *   product-images/   → product photos  → named {SKU}.jpg  → col 28 PRODUCT IMAGE
+ *   product-specs/    → spec sheet PDFs → named {SKU}-spec.pdf → col 29 SPEC SHEET
+ *   product-certs/    → certificate PDFs → named {SKU}-cert.pdf → col 30 CERTIFICATE
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -316,14 +316,14 @@ function specparts_resolve_cert_file( $cert_loc, $sku ) {
  * @return array{spec_url:string,cert_url:string,cert_location:string}
  */
 function specparts_resolve_product_documents( $row, $sku, $col_map, $idx ) {
-    $cert_loc = trim( $idx( $row, 31 ) );
+    $cert_loc = trim( $idx( $row, 25 ) );
 
-    $spec_sheet = trim( $idx( $row, 34 ) );
+    $spec_sheet = trim( $idx( $row, 28 ) );
     if ( $spec_sheet === '' && isset( $col_map['SPEC SHEET'] ) ) {
         $spec_sheet = trim( $row[ $col_map['SPEC SHEET'] ] ?? '' );
     }
 
-    $certificate = trim( $idx( $row, 35 ) );
+    $certificate = trim( $idx( $row, 29 ) );
     if ( $certificate === '' && isset( $col_map['CERTIFICATE'] ) ) {
         $certificate = trim( $row[ $col_map['CERTIFICATE'] ] ?? '' );
     }
@@ -743,7 +743,7 @@ function specparts_render_import_tab() {
 
         <h2 style="font-size:1.1em;margin:0 0 6px">Import from CSV</h2>
         <p style="color:#666;margin:0 0 16px">
-            Upload the client catalog CSV (INFO MOCKUP format, 33+ columns, positional).
+            Upload the client catalog CSV (30-column format, positional).
             Category and series context is inherited from header rows.
             <br><a href="<?php echo esc_url( specparts_get_template_csv_download_url() ); ?>" class="button button-secondary" style="margin-top:8px">Download sample CSV</a>
         </p>
@@ -886,27 +886,27 @@ function specparts_render_settings_tab() {
                         <strong>Option B (manual):</strong> Any name, put in CSV col 34<br>
                         <code>hex-cap-screw-14.jpg</code>
                     </td>
-                    <td>Col 34<br><code>PRODUCT IMAGE</code><br><small>(optional — blank = SKU fallback)</small></td>
+                    <td>Col 28<br><code>PRODUCT IMAGE</code><br><small>(optional — blank = SKU fallback)</small></td>
                 </tr>
                 <tr>
                     <td><strong>Spec Sheets</strong><br><small>.pdf</small></td>
                     <td><code>product-specs/</code></td>
                     <td>
                         <strong>Option A (auto):</strong> <code>{SKU}-spec.pdf</code><br>
-                        <strong>Option B (manual):</strong> filename in CSV col 35<br>
+                        <strong>Option B (manual):</strong> filename in CSV col 29<br>
                         <code>MS35307-303-spec.pdf</code>
                     </td>
-                    <td>Col 35<br><code>SPEC SHEET</code></td>
+                    <td>Col 29<br><code>SPEC SHEET</code></td>
                 </tr>
                 <tr>
                     <td><strong>Certificates</strong><br><small>.pdf</small></td>
                     <td><code>product-certs/</code></td>
                     <td>
                         <strong>Option A (auto):</strong> <code>{SKU}-cert.pdf</code> or <code>{SKU}.pdf</code><br>
-                        <strong>Option B (manual):</strong> filename in CSV col 36<br>
+                        <strong>Option B (manual):</strong> filename in CSV col 30<br>
                         <code>MS35307-303-cert.pdf</code>
                     </td>
-                    <td>Col 36<br><code>CERTIFICATE</code></td>
+                    <td>Col 30<br><code>CERTIFICATE</code></td>
                 </tr>
             </tbody>
         </table>
@@ -914,7 +914,7 @@ function specparts_render_settings_tab() {
         <div style="background:#fff8e1;border:1px solid #ffe082;padding:12px 16px;border-radius:4px;margin-top:12px;font-size:.875em">
             <strong>How spec sheets &amp; certificates become download links</strong><br>
             Import reads <code>SPEC SHEET</code> and <code>CERTIFICATE</code> columns. PDF filenames are copied from the configured folders into the WP media library and saved as <code>_spec_file_url</code> and <code>_certificate_file_url</code>.<br>
-            Blank columns auto-try <code>{SKU}-spec.pdf</code> and <code>{SKU}-cert.pdf</code>. Legacy CSV files may still use col 32 <code>CERT LOCATION</code> with a <code>.pdf</code> filename for certificates.
+            Blank columns auto-try <code>{SKU}-spec.pdf</code> and <code>{SKU}-cert.pdf</code>. Legacy CSV files may still use col 26 <code>CERT LOCATION</code> with a <code>.pdf</code> filename for certificates.
         </div>
     </div>
     <?php
@@ -929,9 +929,9 @@ function specparts_render_guide_tab() {
     <div style="max-width:960px;font-size:.875em">
         <h2 style="font-size:1.3em;margin-bottom:4px">CSV Column Reference</h2>
         <p style="color:#666;margin-bottom:16px">
-            Columns are read <strong>positionally</strong> (by index, not by header name) to handle the duplicate
-            "SHIPPING DIMENSIONS" and "SHIPPING WEIGHT" headers in the INFO MOCKUP format.
-            The optional <strong>PRODUCT IMAGE</strong> column can be at index 33 or named.
+            Columns are read <strong>positionally</strong> (by index, not by header name).
+            The format has <strong>30 columns</strong> — tier-1 shipping dims/weight only; tier-3/5/10 dims and weight columns from the original INFO MOCKUP have been removed since Shippo uses the tier-1 values for all quantities.
+            The optional <strong>PRODUCT IMAGE</strong> column can be at index 27 or named.
             Category, sub-category, and series values <strong>cascade</strong> from header rows to all following product rows until changed.
         </p>
         <p style="margin-bottom:16px">
@@ -976,58 +976,52 @@ function specparts_render_guide_tab() {
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 3 — 3+ packages</strong></td></tr>
                 <tr><td>11</td><td>3 PKG COST</td><td><code>_package_pricing</code> tier[1]</td><td>Cart tier price only.</td></tr>
-                <tr><td>12</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td>Shippo uses WC product dimensions from tier 1.</td></tr>
-                <tr><td>13</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td>Shippo uses WC product weight from tier 1.</td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 5 — 5+ packages</strong></td></tr>
-                <tr><td>14</td><td>5 PKG COST</td><td><code>_package_pricing</code> tier[2]</td><td>Cart tier price only.</td></tr>
-                <tr><td>15</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td></td></tr>
-                <tr><td>16</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td></td></tr>
+                <tr><td>12</td><td>5 PKG COST</td><td><code>_package_pricing</code> tier[2]</td><td>Cart tier price only.</td></tr>
 
                 <tr style="background:#eef3ff"><td colspan="4"><strong>Tier 10 — 10+ packages</strong></td></tr>
-                <tr><td>17</td><td>10 PKG COST</td><td><code>_package_pricing</code> tier[3]</td><td>Cart tier price only.</td></tr>
-                <tr><td>18</td><td>SHIPPING DIMENSIONS H&times;W&times;L</td><td><em>CSV column ignored</em></td><td></td></tr>
-                <tr><td>19</td><td>SHIPPING WEIGHT</td><td><em>CSV column ignored</em></td><td></td></tr>
+                <tr><td>13</td><td>10 PKG COST</td><td><code>_package_pricing</code> tier[3]</td><td>Cart tier price only. Shippo uses tier-1 dims/weight for all quantities.</td></tr>
 
-                <tr><td>20</td><td>QUANTITY IN STOCK</td>
+                <tr><td>14</td><td>QUANTITY IN STOCK</td>
                     <td>WC <code>_stock</code>, <code>_stock_status</code>, <code>manage_stock=yes</code></td>
                     <td>Integer. 0 = out of stock. Enables WC stock management automatically.</td></tr>
-                <tr><td>21</td><td>BACKORDER LEADTIME</td><td>Post meta <code>_backorder_leadtime</code></td>
+                <tr><td>15</td><td>BACKORDER LEADTIME</td><td>Post meta <code>_backorder_leadtime</code></td>
                     <td>E.g. "2-3 DAYS". Displayed on product page.</td></tr>
-                <tr><td>22</td><td>REORDER LIMIT</td><td>Post meta <code>_reorder_limit</code></td>
+                <tr><td>16</td><td>REORDER LIMIT</td><td>Post meta <code>_reorder_limit</code></td>
                     <td>Internal minimum reorder quantity.</td></tr>
-                <tr><td>23</td><td>COUNTRY OF ORIGIN</td><td>WC attribute <code>pa_country</code></td>
+                <tr><td>17</td><td>COUNTRY OF ORIGIN</td><td>WC attribute <code>pa_country</code></td>
                     <td>"USA", "Germany", etc. Shown in Additional Information tab. Powers "Made in X" badge.</td></tr>
-                <tr><td>24</td><td>DFAR?</td><td>WC attribute <code>pa_specs_standard</code></td>
+                <tr><td>18</td><td>DFAR?</td><td>WC attribute <code>pa_specs_standard</code></td>
                     <td>"Y" = attribute set to "DFAR". "N"/blank = not set. Powers DFAR compliance badge.</td></tr>
-                <tr><td>25</td><td>MFR C OF C</td><td>Post meta <code>_mfr_coc</code></td>
+                <tr><td>19</td><td>MFR C OF C</td><td>Post meta <code>_mfr_coc</code></td>
                     <td>"Y"/"N" — manufacturer certificate of conformance available.</td></tr>
-                <tr><td>26</td><td>MATERIAL CERTS</td><td>Post meta <code>_material_certs</code></td><td>"Y"/"N"</td></tr>
-                <tr><td>27</td><td>PROCESS CERTS</td><td>Post meta <code>_process_certs</code></td><td>"Y"/"N"</td></tr>
-                <tr><td>28</td><td>TEST REPORTS</td><td>Post meta <code>_test_reports</code></td><td>"Y"/"N"</td></tr>
-                <tr><td>29</td><td>MFR</td><td>WC attribute <code>pa_manufacturer</code></td>
+                <tr><td>20</td><td>MATERIAL CERTS</td><td>Post meta <code>_material_certs</code></td><td>"Y"/"N"</td></tr>
+                <tr><td>21</td><td>PROCESS CERTS</td><td>Post meta <code>_process_certs</code></td><td>"Y"/"N"</td></tr>
+                <tr><td>22</td><td>TEST REPORTS</td><td>Post meta <code>_test_reports</code></td><td>"Y"/"N"</td></tr>
+                <tr><td>23</td><td>MFR</td><td>WC attribute <code>pa_manufacturer</code></td>
                     <td>Manufacturer name. Shown in Additional Information tab.</td></tr>
-                <tr><td>30</td><td>LOT IN USE</td><td>Post meta <code>_lot_in_use</code></td>
+                <tr><td>24</td><td>LOT IN USE</td><td>Post meta <code>_lot_in_use</code></td>
                     <td>Internal lot/batch reference. Not shown to customers.</td></tr>
-                <tr><td>31</td><td>COST PER EA</td><td>Post meta <code>_cost_per_ea</code></td>
+                <tr><td>25</td><td>COST PER EA</td><td>Post meta <code>_cost_per_ea</code></td>
                     <td>Internal cost per piece. Not shown to customers.</td></tr>
-                <tr><td>32</td><td>CERT LOCATION</td><td>Post meta <code>_cert_location</code></td>
+                <tr><td>26</td><td>CERT LOCATION</td><td>Post meta <code>_cert_location</code></td>
                     <td>Internal note for where physical certificates are stored. Use <code>CERTIFICATE</code> column for the public PDF.</td></tr>
-                <tr><td>33</td><td>PER PIECE WEIGHT</td>
+                <tr><td>27</td><td>PER PIECE WEIGHT</td>
                     <td>WC weight fallback + meta <code>_piece_weight</code></td>
                     <td>Individual piece weight in lbs. Used when tier-1 ship weight is blank.</td></tr>
                 <tr style="background:#fffde7">
-                    <td>34</td>
+                    <td>28</td>
                     <td><strong>PRODUCT IMAGE</strong> <small>(optional)</small></td>
                     <td>WC featured image + product gallery</td>
                     <td>Comma-separated filenames from the configured images folder.</td></tr>
                 <tr style="background:#fffde7">
-                    <td>35</td>
+                    <td>29</td>
                     <td><strong>SPEC SHEET</strong> <small>(optional)</small></td>
                     <td>Post meta <code>_spec_file_url</code></td>
                     <td>PDF filename from <code>product-specs/</code> or full URL. Blank = auto <code>{SKU}-spec.pdf</code>.</td></tr>
                 <tr style="background:#fffde7">
-                    <td>36</td>
+                    <td>30</td>
                     <td><strong>CERTIFICATE</strong> <small>(optional)</small></td>
                     <td>Post meta <code>_certificate_file_url</code></td>
                     <td>PDF filename from <code>product-certs/</code> or full URL. Blank = auto <code>{SKU}-cert.pdf</code> / <code>{SKU}.pdf</code>.</td></tr>
@@ -1176,15 +1170,15 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         }
 
         // ── Pricing tiers (positional — fixed in INFO MOCKUP format) ──
-        // Tier costs: 1=[9], 3=[10], 5=[13], 10=[16]
+        // Tier costs: 1=[9], 3=[10], 5=[11], 10=[12]
         // Tier-1 shipping: dims=[7], weight=[8] → WC native fields for Shippo
         $ship_dims_tier1   = trim( $idx( $row, 7 ) );
         $ship_weight_tier1 = floatval( $idx( $row, 8 ) );
         $tier_defs = [
             [ 'qty' => 1,  'ci' => 9  ],
             [ 'qty' => 3,  'ci' => 10 ],
-            [ 'qty' => 5,  'ci' => 13 ],
-            [ 'qty' => 10, 'ci' => 16 ],
+            [ 'qty' => 5,  'ci' => 11 ],
+            [ 'qty' => 10, 'ci' => 12 ],
         ];
         $tiers = [];
         foreach ( $tier_defs as $td ) {
@@ -1205,25 +1199,25 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
         // Other columns
         $description  = trim( $idx( $row, 5 ) );
         $pkg_qty      = intval( $idx( $row, 6 ) );
-        $qty_raw      = trim( $idx( $row, 19 ) );
+        $qty_raw      = trim( $idx( $row, 13 ) );
         $qty_stock    = $qty_raw !== '' ? intval( $qty_raw ) : null;
-        $leadtime     = trim( $idx( $row, 20 ) );
-        $reorder_lim  = trim( $idx( $row, 21 ) );
-        $country      = strtoupper( trim( $idx( $row, 22 ) ) );
-        $dfar_raw     = strtoupper( trim( $idx( $row, 23 ) ) );
-        $mfr_coc      = trim( $idx( $row, 24 ) );
-        $mat_certs    = trim( $idx( $row, 25 ) );
-        $proc_certs   = trim( $idx( $row, 26 ) );
-        $test_rpts    = trim( $idx( $row, 27 ) );
-        $manufacturer = trim( $idx( $row, 28 ) );
-        $lot_in_use   = trim( $idx( $row, 29 ) );
-        $cost_per_ea  = specparts_parse_price( $idx( $row, 30 ) );
-        $piece_wt     = trim( $idx( $row, 32 ) );
+        $leadtime     = trim( $idx( $row, 14 ) );
+        $reorder_lim  = trim( $idx( $row, 15 ) );
+        $country      = strtoupper( trim( $idx( $row, 16 ) ) );
+        $dfar_raw     = strtoupper( trim( $idx( $row, 17 ) ) );
+        $mfr_coc      = trim( $idx( $row, 18 ) );
+        $mat_certs    = trim( $idx( $row, 19 ) );
+        $proc_certs   = trim( $idx( $row, 20 ) );
+        $test_rpts    = trim( $idx( $row, 21 ) );
+        $manufacturer = trim( $idx( $row, 22 ) );
+        $lot_in_use   = trim( $idx( $row, 23 ) );
+        $cost_per_ea  = specparts_parse_price( $idx( $row, 24 ) );
+        $piece_wt     = trim( $idx( $row, 26 ) );
 
-        // Optional PRODUCT IMAGE column — index 33, or by header name
+        // Optional PRODUCT IMAGE column — index 27, or by header name
         $img_col = '';
-        if ( isset( $row[33] ) && trim( $row[33] ) !== '' ) {
-            $img_col = trim( $row[33] );
+        if ( isset( $row[27] ) && trim( $row[27] ) !== '' ) {
+            $img_col = trim( $row[27] );
         } elseif ( isset( $col_map['PRODUCT IMAGE'] ) && isset( $row[ $col_map['PRODUCT IMAGE'] ] ) ) {
             $img_col = trim( $row[ $col_map['PRODUCT IMAGE'] ] );
         }
@@ -1248,11 +1242,15 @@ function specparts_import_csv( $filepath, $update_existing = false ) {
             $product->set_stock_status( 'instock' );
         }
 
-        // Weight + dimensions: tier-1 CSV shipping data → WC native for Shippo
+        // Weight + dimensions: tier-1 CSV shipping data → WC native for Shippo.
+        // WC weight is PER PACKAGE (cart quantity = number of packages), so the
+        // per-piece fallback must be multiplied by the package quantity — a raw
+        // piece weight would under-weigh the parcel by the pkg_qty factor.
         if ( $ship_weight_tier1 > 0 ) {
             $product->set_weight( $ship_weight_tier1 );
         } elseif ( $piece_wt !== '' && floatval( $piece_wt ) > 0 ) {
-            $product->set_weight( floatval( $piece_wt ) );
+            $pieces_per_pkg = $pkg_qty > 0 ? $pkg_qty : 1;
+            $product->set_weight( floatval( $piece_wt ) * $pieces_per_pkg );
         }
         specparts_apply_wc_shipping_dims( $product, $ship_dims_tier1 );
 
@@ -1439,7 +1437,7 @@ function specparts_preview_csv( $filepath, $update_existing = false ) {
         fclose( $handle );
         return [
             'success' => false,
-            'message' => '<p class="notice notice-error" style="padding:8px 12px">This file has only ' . count( $headers ) . ' columns — the catalog format needs 36. Are you uploading the right file? Download the sample CSV to compare.</p>',
+            'message' => '<p class="notice notice-error" style="padding:8px 12px">This file has only ' . count( $headers ) . ' columns — the catalog format needs 30. Are you uploading the right file? Download the sample CSV to compare.</p>',
         ];
     }
 
@@ -1493,7 +1491,7 @@ function specparts_preview_csv( $filepath, $update_existing = false ) {
 
         // Pricing tiers
         $tier_count = 0;
-        foreach ( [ 9, 10, 13, 16 ] as $ci ) {
+        foreach ( [ 9, 10, 11, 12 ] as $ci ) {
             if ( specparts_parse_price( $idx( $row, $ci ) ) > 0 ) {
                 $tier_count++;
             }
@@ -1512,7 +1510,7 @@ function specparts_preview_csv( $filepath, $update_existing = false ) {
         // Shipping data (WC native fields — Shippo needs both to quote rates)
         $ship_dims   = trim( $idx( $row, 7 ) );
         $ship_weight = floatval( $idx( $row, 8 ) );
-        $piece_wt    = floatval( $idx( $row, 32 ) );
+        $piece_wt    = floatval( $idx( $row, 26 ) );
 
         if ( '' === $ship_dims ) {
             $warnings[] = 'No shipping dimensions — Shippo cannot quote without box size';
@@ -1521,25 +1519,25 @@ function specparts_preview_csv( $filepath, $update_existing = false ) {
         }
 
         if ( $ship_weight <= 0 && $piece_wt <= 0 ) {
-            $warnings[] = 'No shipping weight (col 9) or piece weight (col 33) — Shippo cannot quote';
+            $warnings[] = 'No shipping weight (col 9) or piece weight (col 27) — Shippo cannot quote';
         }
 
         // Media files (first image only, spec, cert) — existence check
-        $img_first = trim( explode( ',', $idx( $row, 33 ) )[0] ?? '' );
+        $img_first = trim( explode( ',', $idx( $row, 27 ) )[0] ?? '' );
         if ( $img_first !== '' && ! filter_var( $img_first, FILTER_VALIDATE_URL )
             && ! file_exists( $images_dir . '/' . sanitize_file_name( basename( $img_first ) ) )
             && ! specparts_get_attachment_by_filename( $img_first ) ) {
             $warnings[] = "Image not found: {$img_first}";
         }
 
-        $spec_file = trim( $idx( $row, 34 ) );
+        $spec_file = trim( $idx( $row, 28 ) );
         if ( $spec_file !== '' && ! filter_var( $spec_file, FILTER_VALIDATE_URL )
             && ! file_exists( $specs_dir . '/' . sanitize_file_name( basename( $spec_file ) ) )
             && ! specparts_get_attachment_by_filename( $spec_file ) ) {
             $warnings[] = "Spec sheet not found: {$spec_file}";
         }
 
-        $cert_file = trim( $idx( $row, 35 ) );
+        $cert_file = trim( $idx( $row, 29 ) );
         if ( $cert_file !== '' && ! filter_var( $cert_file, FILTER_VALIDATE_URL )
             && ! file_exists( $certs_dir . '/' . sanitize_file_name( basename( $cert_file ) ) )
             && ! specparts_get_attachment_by_filename( $cert_file ) ) {
