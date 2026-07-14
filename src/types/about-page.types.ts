@@ -1,10 +1,12 @@
-import type { LinkField, MediaItem } from "@/types/site-settings.types";
+import type { MediaItem } from "@/types/site-settings.types";
 
+/** Shared FAQ item — used by AboutAccordion (Quality page). */
 export interface AboutPageFaqItem {
   question: string;
   answer: string;
 }
 
+/** About Us page: banner + image/content section only (no logo, button, FAQ). */
 export interface AboutPageData {
   heading: string;
   sub_heading: string;
@@ -12,9 +14,4 @@ export interface AboutPageData {
   image: MediaItem | null;
   content_heading: string;
   content: string;
-  logo_image: MediaItem | null;
-  button: LinkField | null;
-  faq_heading: string;
-  faq_description: string;
-  faq_list: AboutPageFaqItem[];
 }

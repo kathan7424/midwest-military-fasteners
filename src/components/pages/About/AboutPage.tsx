@@ -1,45 +1,19 @@
 /**
  * File Name: AboutPage.tsx
- * Description: About Us page — ACF content from WordPress via /custom/v1/about-page.
+ * Description: About Us page — banner + image/content section from ACF.
  * Developer: Jaimin
  * Created Date: 2026-07-08
  * Last Modified: 2026-07-14
  */
 
 import Image from "next/image";
-import Link from "next/link";
 
-import AboutAccordion from "./AboutAccordion";
 import type { AboutPageData } from "@/types/about-page.types";
 
 const FALLBACK_BANNER =
   "https://dev-mmf-wp.pantheonsite.io/wp-content/uploads/2026/06/about-banner.webp";
 const FALLBACK_CONTENT_IMAGE =
   "https://dev-mmf-wp.pantheonsite.io/wp-content/uploads/2026/06/inspection-report.webp";
-const FALLBACK_LOGO = "/images/ISO_9001-2015-logo.svg";
-
-const FALLBACK_FAQ_ITEMS = [
-  {
-    question: "What certifications do you maintain?",
-    answer:
-      "We are registered to ISO 9001:2015 and review certifications for incoming lots. All material is inspected and traceability is maintained.",
-  },
-  {
-    question: "Can you source specialty fasteners?",
-    answer:
-      "Yes — we support specialty and mil-spec hardware. Contact our sales team with requirements and we will source or quote accordingly.",
-  },
-  {
-    question: "How do I request a quote or certification?",
-    answer:
-      "Use the Contact Us page or call our sales line; provide the part number and any required certification or inspection needs.",
-  },
-  {
-    question: "Do you ship internationally?",
-    answer:
-      "Yes — we ship globally. Shipping terms depend on the account and order size; contact our support team for details.",
-  },
-];
 
 interface Props {
   pageData: AboutPageData | null;
@@ -59,14 +33,6 @@ export default function AboutPage({ pageData }: Props) {
   const contentHtml = pageData?.content || "";
   const contentImageUrl = pageData?.image?.url ?? FALLBACK_CONTENT_IMAGE;
   const contentImageAlt = pageData?.image?.alt || "Inspection report";
-  const logoUrl = pageData?.logo_image?.url ?? FALLBACK_LOGO;
-  const logoAlt = pageData?.logo_image?.alt || "Midwest Military Fasteners";
-  const button = pageData?.button;
-
-  const faqHeading = pageData?.faq_heading || "Frequently Asked Questions";
-  const faqDescription = pageData?.faq_description || "";
-  const faqItems =
-    pageData?.faq_list?.length ? pageData.faq_list : FALLBACK_FAQ_ITEMS;
 
   return (
     <section className="bg-white">
@@ -104,8 +70,8 @@ export default function AboutPage({ pageData }: Props) {
         </div>
       </div>
 
-      {/* Overview */}
-      <div className="mx-auto max-w-[1300px] px-5 py-12 md:pb-20">
+      {/* Image & Content */}
+      <div className="mx-auto max-w-[1300px] px-5 py-12 md:py-20">
         <div className="relative flex flex-col justify-start gap-6 lg:flex-row lg:gap-10">
           <div className="w-full lg:w-[48%]">
             <Image
@@ -116,89 +82,39 @@ export default function AboutPage({ pageData }: Props) {
               className="h-auto w-full max-w-[450px] rounded-none lg:max-w-none"
             />
           </div>
-          <div className="flex w-full flex-shrink-0 flex-grow-0 flex-col items-start justify-start gap-5 lg:w-[52%] lg:gap-8">
-            <div className="relative flex flex-shrink-0 flex-grow-0 flex-col items-start justify-start gap-5 self-stretch lg:gap-8">
-              <h2 className="flex-shrink-0 flex-grow-0 self-stretch text-left text-2xl font-bold text-black lg:text-3xl">
-                {contentHeading}
-              </h2>
-              {contentHtml ? (
-                <div
-                  className="prose prose-base max-w-none self-stretch text-left text-black"
-                  dangerouslySetInnerHTML={{ __html: contentHtml }}
-                />
-              ) : (
-                <div className="self-stretch text-left text-base text-black">
-                  <p>
-                    Dealing on a daily basis with some of the most demanding
-                    applications for our products, we understand that quality is
-                    of the utmost importance. Reflecting our commitment to
-                    providing nothing but quality product with each and every
-                    order, we are registered to ISO 9001:2015. All incoming lots
-                    of material are inspected, certifications reviewed, and
-                    traceability maintained.
-                  </p>
-                  <p>
-                    A variety of tools are used to ensure that conforming
-                    material is shipped. All products we sell and stock have
-                    factory certifications.
-                  </p>
-                  <p className="mb-0">
-                    We are continuously refining and improving our processes
-                    and equipment with the sole purpose of proving that we are
-                    your First and Final Stop for standard and specialty
-                    hardware.
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="relative flex flex-shrink-0 flex-grow-0 flex-wrap items-center justify-start gap-5 lg:gap-12">
-              <Link href="/" prefetch={false} className="block shrink-0">
-                <Image
-                  src={logoUrl}
-                  alt={logoAlt}
-                  width={164}
-                  height={144}
-                  className="h-auto w-[164px]"
-                />
-              </Link>
-              {button?.url ? (
-                <Link
-                  href={button.url}
-                  target={button.target || undefined}
-                  rel={button.target === "_blank" ? "noopener noreferrer" : undefined}
-                  className="rounded-none bg-amber px-5 py-3 text-body font-bold uppercase text-white hover:bg-[#b38600] md:px-6 md:py-5 md:text-h5"
-                >
-                  {button.title || "Learn More"}
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* FAQ */}
-      <div className="mx-auto max-w-[1300px] px-5 pb-12 md:pb-20">
-        <div className="relative flex flex-col justify-start gap-6 lg:flex-row lg:gap-10">
-          <div className="w-full lg:w-[48%]">
-            <h2 className="mb-5 text-left text-2xl font-semibold text-black">
-              {faqHeading}
+          <div className="flex w-full flex-col items-start justify-start gap-5 lg:w-[52%] lg:gap-8">
+            <h2 className="self-stretch text-left text-2xl font-bold text-black lg:text-3xl">
+              {contentHeading}
             </h2>
-            {faqDescription ? (
+            {contentHtml ? (
               <div
-                className="prose prose-base mb-0 max-w-none text-left text-black lg:max-w-[572px]"
-                dangerouslySetInnerHTML={{ __html: faqDescription }}
+                className="prose prose-base max-w-none self-stretch text-left text-black"
+                dangerouslySetInnerHTML={{ __html: contentHtml }}
               />
             ) : (
-              <p className="mb-0 text-left text-base text-black lg:max-w-[572px]">
-                Dealing on a daily basis with some of the most demanding
-                applications for our products, we understand that quality is of
-                the utmost importance. Reflecting our commitment to providing
-                nothing but quality product with each and every order.
-              </p>
+              <div className="self-stretch text-left text-base text-black">
+                <p>
+                  Dealing on a daily basis with some of the most demanding
+                  applications for our products, we understand that quality is
+                  of the utmost importance. Reflecting our commitment to
+                  providing nothing but quality product with each and every
+                  order, we are registered to ISO 9001:2015. All incoming lots
+                  of material are inspected, certifications reviewed, and
+                  traceability maintained.
+                </p>
+                <p>
+                  A variety of tools are used to ensure that conforming
+                  material is shipped. All products we sell and stock have
+                  factory certifications.
+                </p>
+                <p className="mb-0">
+                  We are continuously refining and improving our processes
+                  and equipment with the sole purpose of proving that we are
+                  your First and Final Stop for standard and specialty
+                  hardware.
+                </p>
+              </div>
             )}
-          </div>
-          <div className="flex w-full flex-col items-center justify-start lg:w-[52%]">
-            <AboutAccordion items={faqItems} />
           </div>
         </div>
       </div>

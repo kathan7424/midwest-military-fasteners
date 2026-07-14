@@ -1,10 +1,9 @@
 import { ENV } from "@/config/env";
-import type { AboutPageData } from "@/types/about-page.types";
+import type { QualityPageData } from "@/types/quality-page.types";
+
+export type { QualityPageData };
 
 const IS_DEV = process.env.NODE_ENV === "development";
-
-/** Quality page has the same ACF field structure as About Us. */
-export type QualityPageData = AboutPageData;
 
 export async function fetch_quality_page(): Promise<QualityPageData | null> {
   try {

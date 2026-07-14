@@ -551,6 +551,9 @@ function mmf_get_contact_page() {
  * Endpoint: GET /custom/v1/about-page
  *
  * Returns ACF fields for the About Us page (page ID 29).
+ * About Us has two sections: Banner + Image & Content (no logo, button, or FAQ).
+ *
+ * Field keys resolve the two duplicate "heading" field names within the group.
  *
  * @return WP_REST_Response|WP_Error
  */
@@ -562,29 +565,6 @@ function mmf_get_about_page() {
 		return new WP_Error( 'no_page', 'About page not found', array( 'status' => 404 ) );
 	}
 
-	$faq_rows  = get_field( 'faq_list', $page_id );
-	$faq_items = array();
-
-	if ( is_array( $faq_rows ) ) {
-		foreach ( $faq_rows as $row ) {
-			if ( ! is_array( $row ) ) {
-				continue;
-			}
-
-			$question = sanitize_text_field( (string) ( $row['faq_question'] ?? '' ) );
-			$answer   = wp_kses_post( (string) ( $row['faq_answer'] ?? '' ) );
-
-			if ( '' === $question ) {
-				continue;
-			}
-
-			$faq_items[] = array(
-				'question' => $question,
-				'answer'   => $answer,
-			);
-		}
-	}
-
 	return rest_ensure_response( array(
 		'heading'         => sanitize_text_field( (string) get_field( 'field_6a3d2e26dca98', $page_id ) ),
 		'sub_heading'     => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
@@ -592,11 +572,6 @@ function mmf_get_about_page() {
 		'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
 		'content_heading' => sanitize_text_field( (string) get_field( 'field_6a3d2fc81b6f1', $page_id ) ),
 		'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
-		'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
-		'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
-		'faq_heading'     => sanitize_text_field( (string) get_field( 'field_6a3e273def148', $page_id ) ),
-		'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
-		'faq_list'        => $faq_items,
 	) );
 }
 
