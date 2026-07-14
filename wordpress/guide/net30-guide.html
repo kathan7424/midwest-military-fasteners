@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midwest Military Fasteners — Net 30 Payment Terms Guide</title>
+<style>
+  :root {
+    --navy: #1a3659; --blue: #1a56db; --amber: #d9a521; --gold: #f6c90e;
+    --ink: #1d2327; --gray: #50575e; --light: #e5e7eb; --bg: #f6f7f9;
+    --green: #2e7d32; --green-bg: #e5f5e8; --red: #b81c23; --red-bg: #fbeaea;
+    --orange: #9a6700; --orange-bg: #fdf3e0; --card: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* ── Hero ── */
+  header.hero { background: var(--navy); color: #fff; padding: 44px 20px 36px; margin-bottom: 32px; }
+  .hero-inner { max-width: 1080px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .hero h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 1px; line-height: 1.25; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { color: #a8bdd4; margin-top: 8px; font-size: 14px; }
+  .hero-badge { background: rgba(246,201,14,.15); border: 1px solid var(--gold); color: var(--gold); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 6px 16px; border-radius: 4px; white-space: nowrap; }
+
+  /* ── TOC ── */
+  nav.toc { background: var(--card); border: 1px solid var(--light); padding: 16px 20px; margin-bottom: 28px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13.5px; }
+  nav.toc a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  nav.toc a:hover { color: var(--amber); }
+
+  /* ── Sections ── */
+  section { margin-bottom: 44px; scroll-margin-top: 12px; }
+  h2 { font-size: 18px; text-transform: uppercase; color: var(--navy); border-left: 4px solid var(--gold); padding-left: 12px; margin-bottom: 18px; letter-spacing: .5px; }
+  h3 { font-size: 14.5px; color: var(--navy); font-weight: 700; margin: 22px 0 9px; text-transform: uppercase; letter-spacing: .3px; }
+  p { font-size: 14px; color: var(--gray); margin-bottom: 12px; }
+  p.lead { font-size: 15px; color: var(--ink); margin-bottom: 18px; }
+
+  /* ── Cards & Grid ── */
+  .card { background: var(--card); border: 1px solid var(--light); padding: 20px 22px; margin-bottom: 14px; }
+  .card.accent { border-left: 4px solid var(--gold); }
+  .card.green  { border-left: 4px solid var(--green); }
+  .card.red    { border-left: 4px solid var(--red); }
+  .card.blue   { border-left: 4px solid var(--blue); }
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .cols-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  /* ── Tables ── */
+  .tbl-wrap { overflow-x: auto; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; background: var(--card); }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 10px 14px; text-transform: uppercase; font-size: 11.5px; letter-spacing: .5px; }
+  td { padding: 10px 14px; border-top: 1px solid var(--light); vertical-align: top; color: var(--ink); }
+  tr:hover td { background: #f9fafb; }
+
+  /* ── Badges ── */
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 2px 9px; border-radius: 3px; letter-spacing: .4px; white-space: nowrap; }
+  .badge.green  { background: var(--green-bg); color: var(--green); }
+  .badge.orange { background: var(--orange-bg); color: var(--orange); }
+  .badge.red    { background: var(--red-bg); color: var(--red); }
+  .badge.blue   { background: #e8f0fe; color: var(--blue); }
+  .badge.gray   { background: #f1f3f5; color: var(--gray); }
+
+  /* ── Flow diagram ── */
+  pre.flow { background: var(--navy); color: #d4e3f5; padding: 22px 24px; overflow-x: auto; font-size: 12.5px; font-family: Consolas, Menlo, monospace; line-height: 1.75; border-radius: 2px; }
+  pre.flow b  { color: var(--gold); font-weight: 700; }
+  pre.flow em { color: #7dd3a8; font-style: normal; }
+  pre.flow s  { color: #f6826a; text-decoration: none; }
+
+  /* ── Step list ── */
+  ol.steps { list-style: none; counter-reset: step; }
+  ol.steps li { counter-increment: step; padding: 14px 16px 14px 56px; position: relative; border-bottom: 1px solid var(--light); background: var(--card); }
+  ol.steps li:last-child { border-bottom: none; }
+  ol.steps li::before { content: counter(step); position: absolute; left: 14px; top: 14px; width: 26px; height: 26px; background: var(--navy); color: var(--gold); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; line-height: 26px; text-align: center; }
+  ol.steps li strong { display: block; font-size: 13.5px; color: var(--ink); margin-bottom: 4px; }
+  ol.steps li span { font-size: 13px; color: var(--gray); }
+
+  /* ── Icon list ── */
+  ul.check { list-style: none; }
+  ul.check li { padding: 5px 0 5px 26px; position: relative; font-size: 13.5px; color: var(--gray); }
+  ul.check li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  ul.arrow li::before { content: "▸"; color: var(--amber); }
+
+  /* ── Code ── */
+  code { background: #eef1f5; padding: 1px 6px; font-size: 12.5px; border-radius: 3px; font-family: Consolas, Menlo, monospace; color: var(--navy); }
+  .code-block { background: #1e2d3d; color: #d4e3f5; padding: 18px 22px; font-size: 12.5px; font-family: Consolas, Menlo, monospace; line-height: 1.7; overflow-x: auto; margin-bottom: 14px; }
+  .code-block .k  { color: #79b8ff; }
+  .code-block .s  { color: #f6c90e; }
+  .code-block .c  { color: #6a8fa8; font-style: italic; }
+  .code-block .v  { color: #7dd3a8; }
+
+  /* ── Callouts ── */
+  .callout { display: flex; gap: 14px; padding: 16px 18px; margin-bottom: 16px; border-radius: 2px; font-size: 13.5px; }
+  .callout.tip    { background: var(--green-bg);  border-left: 4px solid var(--green); }
+  .callout.warn   { background: var(--orange-bg); border-left: 4px solid #e0a000; }
+  .callout.danger { background: var(--red-bg);    border-left: 4px solid var(--red); }
+  .callout.info   { background: #e8f0fe;           border-left: 4px solid var(--blue); }
+  .callout-icon { font-size: 18px; line-height: 1.4; flex-shrink: 0; }
+  .callout p { margin: 0; color: var(--ink); }
+
+  /* ── Quick ref card ── */
+  .qrc { background: var(--navy); color: #d4e3f5; padding: 28px 32px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+  .qrc-item h4 { color: var(--gold); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .qrc-item p  { font-size: 13px; color: #a8bdd4; margin: 0; line-height: 1.5; }
+  .qrc-item code { background: rgba(255,255,255,.08); color: var(--gold); }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--light); margin-bottom: 0; }
+  .tab  { padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--gray); border-bottom: 2px solid transparent; margin-bottom: -2px; user-select: none; }
+  .tab.active { color: var(--navy); border-bottom-color: var(--gold); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Status pill row ── */
+  .status-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+  .status-pill { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--light); padding: 8px 14px; font-size: 13px; }
+  .status-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  footer { text-align: center; color: var(--gray); font-size: 12px; margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--light); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div>
+      <h1>Midwest Military <span>Fasteners</span><br>Net 30 Payment Terms</h1>
+      <p>Admin guide — eligibility management · order fulfilment · troubleshooting</p>
+    </div>
+    <div class="hero-badge">Purchase Order Terms</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <a href="#what">What is Net 30</a>
+  <a href="#flow">Full Flow</a>
+  <a href="#wc-settings">WC Settings</a>
+  <a href="#enable">Enable Customers</a>
+  <a href="#fulfil">Fulfil Orders</a>
+  <a href="#statuses">Order Statuses</a>
+  <a href="#tech">Technical Ref</a>
+  <a href="#troubleshoot">Troubleshooting</a>
+  <a href="#qrc">Quick Reference</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════ WHAT IS NET 30 -->
+<section id="what">
+  <h2>What is Net 30?</h2>
+  <p class="lead">Net 30 lets an approved business customer place an order <strong>without paying at checkout</strong>. A printed invoice ships with the goods and payment is due within 30 days.</p>
+
+  <div class="grid cols-3">
+    <div class="card accent">
+      <h3 style="margin-top:0">No Payment at Checkout</h3>
+      <p style="margin:0">No credit card, no Stripe charge. The customer places the order and receives an invoice with their shipment.</p>
+    </div>
+    <div class="card accent">
+      <h3 style="margin-top:0">Admin-Approved Only</h3>
+      <p style="margin:0">Only customers explicitly enabled by admin can see or use this option. Guests are always excluded — login required.</p>
+    </div>
+    <div class="card accent">
+      <h3 style="margin-top:0">Manual Fulfilment</h3>
+      <p style="margin:0">Admin ships the order via Shippo, collects payment outside the platform, then marks the order Completed.</p>
+    </div>
+  </div>
+
+  <div class="callout info" style="margin-top:6px">
+    <span class="callout-icon">ℹ️</span>
+    <p><strong>Under the hood:</strong> Net 30 uses WooCommerce's built-in <strong>Cash on Delivery (COD)</strong> gateway — renamed "Net 30 — Purchase Order Terms" in the WC settings. COD is the WooCommerce standard approach for deferred payment.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ FULL FLOW -->
+<section id="flow">
+  <h2>Full Order Flow</h2>
+
+  <pre class="flow">
+<b>CUSTOMER</b> (must be logged in + Net 30 eligible)
+    │
+    │  Loads checkout page
+    ▼
+<b>WooCommerce Store API</b>  ←  mmf_filter_net30_gateway checks user meta
+    │                        mmf_net30_eligible = 'yes' ?
+    │
+    ├─ <em>YES</em>  →  payment_methods: ["stripe", "cod"]   ← both options shown
+    └─ <em>NO</em>   →  payment_methods: ["stripe"]          ← only card visible
+                                                   (guests always NO)
+    │
+    │  Customer selects "Net 30 — Purchase Order Terms"
+    │  Clicks Place Order
+    ▼
+<b>Next.js → POST /wp-json/wc/store/v1/checkout</b>
+    { payment_method: "cod",  payment_data: [] }   ← no Stripe token
+    │
+    ▼
+<b>WooCommerce COD gateway</b>
+    Order created, status forced to <em>"processing"</em>
+    (custom hook: mmf_net30_set_processing_status)
+    │
+    ├──  Customer  →  /checkout/success  →  "Net 30 — Purchase Order" label
+    │
+    └──  Admin     →  WP Admin → Orders
+                          │
+                          ▼
+                   <b>ADMIN FULFILS</b>
+                   1. Open order in WP Admin
+                   2. Create Shippo label  ← works because status = processing
+                   3. Ship goods + include invoice
+                   4. Customer pays within 30 days
+                   5. Admin marks order <em>Completed</em></pre>
+
+  <div class="callout warn" style="margin-top:16px">
+    <span class="callout-icon">⚠️</span>
+    <p><strong>Why "Processing" and not "On Hold"?</strong> Shippo's "Create Label" button only appears on <strong>Processing</strong> orders. A custom hook forces Net 30 orders out of WooCommerce's default COD status (On Hold) into Processing on creation. If you ever see a Net 30 order stuck on On Hold, manually change it to Processing.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ WC SETTINGS -->
+<section id="wc-settings">
+  <h2>WooCommerce Settings</h2>
+  <p>The COD gateway must be correctly configured before Net 30 works. Do this once.</p>
+
+  <ol class="steps">
+    <li>
+      <strong>Go to WP Admin → WooCommerce → Settings → Payments</strong>
+      <span>Find the "Cash on Delivery" row in the payment methods list.</span>
+    </li>
+    <li>
+      <strong>Click "Manage" on Cash on Delivery</strong>
+      <span>Opens the COD gateway settings page.</span>
+    </li>
+    <li>
+      <strong>Fill in these exact fields and save</strong>
+      <span>See the table below for values.</span>
+    </li>
+  </ol>
+
+  <div class="tbl-wrap" style="margin-top:16px">
+    <table>
+      <thead><tr><th>Field</th><th>Value to enter</th></tr></thead>
+      <tbody>
+        <tr><td>Enable / Disable</td><td><span class="badge green">☑ Enable Cash on Delivery</span></td></tr>
+        <tr><td>Title <span style="color:var(--gray);font-size:12px">(shown on invoice)</span></td><td><code>Net 30 — Purchase Order Terms</code></td></tr>
+        <tr><td>Description</td><td><code>Your order will be placed on Net 30 payment terms. An invoice will be included with your order — payment is due within 30 days.</code></td></tr>
+        <tr><td>Instructions</td><td>Same as description, or leave blank</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ ENABLE CUSTOMERS -->
+<section id="enable">
+  <h2>Enabling / Disabling Customers</h2>
+  <p class="lead">Two methods — both update the same flag instantly. Use whichever is faster for your workflow.</p>
+
+  <div class="tabs" id="method-tabs">
+    <div class="tab active" onclick="switchTab('method-tabs','m-list')">Method A — Users List <span class="badge green" style="margin-left:6px">Fastest</span></div>
+    <div class="tab" onclick="switchTab('method-tabs','m-profile')">Method B — User Profile</div>
+  </div>
+
+  <div class="card" style="border-top:none;padding-top:22px">
+    <div class="tab-panel active" id="m-list">
+      <ol class="steps">
+        <li>
+          <strong>WP Admin → Users</strong>
+          <span>Opens the full users list. The "Net 30" column appears on the right side of the table.</span>
+        </li>
+        <li>
+          <strong>Find the customer</strong>
+          <span>Use the search box at the top if needed.</span>
+        </li>
+        <li>
+          <strong>Look at the Net 30 column</strong>
+          <span>
+            <span class="badge gray">Disabled</span> grey button = customer cannot use Net 30<br>
+            <span class="badge green">✓ Eligible</span> green button = customer can use Net 30
+          </span>
+        </li>
+        <li>
+          <strong>Click the button to toggle</strong>
+          <span>Saves instantly via AJAX — no page reload. Button colour changes immediately to confirm.</span>
+        </li>
+      </ol>
+    </div>
+
+    <div class="tab-panel" id="m-profile">
+      <ol class="steps">
+        <li>
+          <strong>WP Admin → Users → click the customer's name</strong>
+          <span>Opens the full user profile edit page.</span>
+        </li>
+        <li>
+          <strong>Scroll down to "Net 30 Payment Terms" section</strong>
+          <span>Located below the standard WooCommerce billing fields.</span>
+        </li>
+        <li>
+          <strong>Check or uncheck "Net 30 eligible"</strong>
+          <span>Checked = customer can use Net 30. Unchecked = standard credit card only.</span>
+        </li>
+        <li>
+          <strong>Click "Update User" to save</strong>
+          <span>Takes effect immediately — customer will see the Net 30 option on their next checkout page load.</span>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout tip" style="margin-top:4px">
+    <span class="callout-icon">✅</span>
+    <p>Only <strong>shop managers and administrators</strong> can manage Net 30 eligibility. The option is not visible to other user roles.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ FULFIL ORDERS -->
+<section id="fulfil">
+  <h2>Fulfilling a Net 30 Order</h2>
+  <p>Day-to-day workflow once an order lands in WP Admin:</p>
+
+  <ol class="steps">
+    <li>
+      <strong>Order arrives in WP Admin → Orders as "Processing"</strong>
+      <span>You'll see the payment method listed as "Cash on Delivery" (WC's internal label for Net 30). The customer's email and addresses are pre-filled.</span>
+    </li>
+    <li>
+      <strong>Review the order details</strong>
+      <span>Verify billing address, shipping address, items, and quantities. Add any internal notes if needed.</span>
+    </li>
+    <li>
+      <strong>Create the shipping label via Shippo</strong>
+      <span>Scroll to the <em>Shippo</em> section within the order. Select carrier, service level, and package dimensions → click <strong>Generate Label</strong>. The PDF label downloads automatically.</span>
+    </li>
+    <li>
+      <strong>Print and attach the invoice</strong>
+      <span>Use WooCommerce's built-in invoice (WC PDF Invoices plugin if installed, or the print button on the order detail page). Include it with the shipment as the 30-day payment notice.</span>
+    </li>
+    <li>
+      <strong>Ship the goods</strong>
+      <span>Attach the label, include the invoice, and hand off to the carrier. The tracking number will auto-sync back to the WooCommerce order via Shippo.</span>
+    </li>
+    <li>
+      <strong>Wait for payment (up to 30 days)</strong>
+      <span>The order stays as <span class="badge blue">Processing</span> while awaiting payment. Follow up manually by phone or email if needed — there is no automated reminder in WooCommerce.</span>
+    </li>
+    <li>
+      <strong>Mark "Completed" when payment is received</strong>
+      <span>WP Admin → open order → Order Status → <strong>Completed</strong> → Update. This closes the order and sends the WooCommerce completion email to the customer.</span>
+    </li>
+  </ol>
+
+  <div class="callout danger" style="margin-top:8px">
+    <span class="callout-icon">🚫</span>
+    <p><strong>Don't change the status to "On Hold"</strong> while shipping — Shippo's label creation button only appears on <strong>Processing</strong> orders. Leave it as Processing until payment is received, then move to Completed.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ STATUSES -->
+<section id="statuses">
+  <h2>Order Status Reference</h2>
+
+  <div class="status-row">
+    <div class="status-pill"><div class="status-dot" style="background:#1a56db"></div><strong>Processing</strong></div>
+    <div class="status-pill"><div class="status-dot" style="background:#e0a000"></div><strong>On Hold</strong></div>
+    <div class="status-pill"><div class="status-dot" style="background:#2e7d32"></div><strong>Completed</strong></div>
+    <div class="status-pill"><div class="status-dot" style="background:#b81c23"></div><strong>Cancelled</strong></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>When it applies</th>
+          <th>Shippo label?</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge blue">Processing</span></td>
+          <td>Order placed, awaiting fulfilment — <strong>this is the default for Net 30</strong></td>
+          <td><span class="badge green">Yes ✓</span></td>
+          <td>Create label and ship</td>
+        </tr>
+        <tr>
+          <td><span class="badge orange">On Hold</span></td>
+          <td>COD default — <strong>avoid for Net 30</strong> (Shippo won't show label)</td>
+          <td><span class="badge red">No ✗</span></td>
+          <td>Change to Processing first</td>
+        </tr>
+        <tr>
+          <td><span class="badge green">Completed</span></td>
+          <td>Goods shipped AND payment received</td>
+          <td><span class="badge gray">N/A</span></td>
+          <td>No further action</td>
+        </tr>
+        <tr>
+          <td><span class="badge red">Cancelled</span></td>
+          <td>Order cancelled before fulfilment</td>
+          <td><span class="badge gray">N/A</span></td>
+          <td>Stock restored automatically by WC</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ TECH REF -->
+<section id="tech">
+  <h2>Technical Reference</h2>
+
+  <div class="grid cols-2">
+    <div class="card blue">
+      <h3 style="margin-top:0">Key Files</h3>
+      <table style="margin-top:8px">
+        <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>wordpress/inc/net30.php</code></td><td>All server-side logic</td></tr>
+          <tr><td><code>src/components/pages/Checkout/CheckoutPageView.tsx</code></td><td>Frontend detection + UI</td></tr>
+          <tr><td><code>src/app/(website)/checkout/success/page.tsx</code></td><td>Success page label</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card blue">
+      <h3 style="margin-top:0">User Meta</h3>
+      <p style="font-size:13px;margin-bottom:10px">Stored on the WordPress user record:</p>
+      <table>
+        <thead><tr><th>Key</th><th>Value</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>mmf_net30_eligible</code></td><td><code>'yes'</code></td><td><span class="badge green">Eligible</span></td></tr>
+          <tr><td><code>mmf_net30_eligible</code></td><td><code>''</code> (absent)</td><td><span class="badge gray">Disabled</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>WordPress Hooks</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Hook</th><th>Function</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>woocommerce_available_payment_gateways</code><br><span style="font-size:11px;color:var(--gray)">priority 20</span></td>
+          <td><code>mmf_filter_net30_gateway</code></td>
+          <td>Hides COD from non-eligible customers — runs for both classic checkout and the Store API (headless)</td>
+        </tr>
+        <tr>
+          <td><code>woocommerce_checkout_order_created</code></td>
+          <td><code>mmf_net30_set_processing_status</code></td>
+          <td>Forces Net 30 orders to <code>processing</code> so Shippo label creation works immediately</td>
+        </tr>
+        <tr>
+          <td><code>show_user_profile</code> / <code>edit_user_profile</code></td>
+          <td><code>mmf_render_net30_user_field</code></td>
+          <td>Adds the Net 30 checkbox section to the user profile edit page</td>
+        </tr>
+        <tr>
+          <td><code>personal_options_update</code> / <code>edit_user_profile_update</code></td>
+          <td><code>mmf_save_net30_user_field</code></td>
+          <td>Saves the checkbox value when the profile form is submitted</td>
+        </tr>
+        <tr>
+          <td><code>manage_users_columns</code></td>
+          <td><code>mmf_add_net30_users_column</code></td>
+          <td>Adds the "Net 30" column to WP Admin → Users list table</td>
+        </tr>
+        <tr>
+          <td><code>manage_users_custom_column</code></td>
+          <td><code>mmf_render_net30_users_column</code></td>
+          <td>Renders the toggle button in that column for each user row</td>
+        </tr>
+        <tr>
+          <td><code>wp_ajax_mmf_toggle_net30</code></td>
+          <td><code>mmf_ajax_toggle_net30</code></td>
+          <td>Handles the AJAX request when admin clicks the toggle button</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Frontend Detection (CheckoutPageView.tsx)</h3>
+  <div class="code-block"><span class="c">// When WC includes "cod" in available payment methods for this user:</span>
+<span class="k">const</span> <span class="v">isNet30</span> = activeGateway === <span class="s">"cod"</span>;
+
+<span class="c">// When isNet30 is true:</span>
+<span class="c">// • Stripe card fields are hidden</span>
+<span class="c">// • payment_method: "cod" sent to WC</span>
+<span class="c">// • payment_data: []  (no Stripe token)</span>
+<span class="c">// • success URL includes method=net30</span></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ TROUBLESHOOT -->
+<section id="troubleshoot">
+  <h2>Troubleshooting</h2>
+
+  <div class="card red" style="margin-bottom:16px">
+    <h3 style="margin-top:0;color:var(--red)">Customer says they can't see "Net 30" at checkout</h3>
+    <ul class="check arrow" style="margin-top:8px">
+      <li>Confirm the customer is <strong>logged in</strong> — guests are always excluded</li>
+      <li>Check <strong>WP Admin → Users → Net 30 column</strong> — must show green <span class="badge green">✓ Eligible</span></li>
+      <li>If grey: click to enable, then ask customer to hard-reload the checkout page</li>
+      <li>Check WC Settings → Payments: Cash on Delivery must be <span class="badge green">Enabled</span></li>
+    </ul>
+  </div>
+
+  <div class="card red" style="margin-bottom:16px">
+    <h3 style="margin-top:0;color:var(--red)">Shippo "Create Label" button is missing on the order</h3>
+    <ul class="check arrow" style="margin-top:8px">
+      <li>Check the order status — it must be <span class="badge blue">Processing</span></li>
+      <li>If status is <span class="badge orange">On Hold</span>: change it to Processing and save the order</li>
+      <li>Refresh the order page after changing the status</li>
+    </ul>
+  </div>
+
+  <div class="card red" style="margin-bottom:16px">
+    <h3 style="margin-top:0;color:var(--red)">Net 30 option appears for everyone (not gated)</h3>
+    <ul class="check arrow" style="margin-top:8px">
+      <li>Check <code>wordpress/functions.php</code> for: <code>require_once ... '/inc/net30.php'</code></li>
+      <li>Verify the <code>woocommerce_available_payment_gateways</code> filter is registered at priority 20</li>
+      <li>Check that non-eligible users have no <code>mmf_net30_eligible</code> user meta set</li>
+    </ul>
+  </div>
+
+  <div class="card red">
+    <h3 style="margin-top:0;color:var(--red)">COD gateway not appearing in WC Payments list</h3>
+    <ul class="check arrow" style="margin-top:8px">
+      <li>Go to <strong>WC → Settings → Payments</strong> and enable "Cash on Delivery"</li>
+      <li>The "Net 30" Users column will not appear if <code>net30.php</code> failed to load</li>
+      <li>Check the PHP error log for any fatal errors in <code>net30.php</code></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════ QUICK REF -->
+<section id="qrc">
+  <h2>Quick Reference Card</h2>
+  <div class="qrc">
+    <div class="qrc-item">
+      <h4>Enable a customer</h4>
+      <p>WP Admin → Users<br>Find customer → Net 30 column<br>Click <strong style="color:#f6c90e">Disabled</strong> → turns green</p>
+    </div>
+    <div class="qrc-item">
+      <h4>Fulfil an order</h4>
+      <p>Orders → open order<br>Shippo Create Label → ship<br>Mark <strong style="color:#7dd3a8">Completed</strong> when paid</p>
+    </div>
+    <div class="qrc-item">
+      <h4>Order status on creation</h4>
+      <p><code>processing</code><br>(forced by custom hook)<br>Shippo label works immediately</p>
+    </div>
+    <div class="qrc-item">
+      <h4>Payment tracking</h4>
+      <p>Manual — no automated dunning<br>Follow up by phone/email<br>30-day window from order date</p>
+    </div>
+    <div class="qrc-item">
+      <h4>WC gateway ID</h4>
+      <p><code>cod</code><br>Renamed to "Net 30 — Purchase<br>Order Terms" in WC settings</p>
+    </div>
+    <div class="qrc-item">
+      <h4>User meta key</h4>
+      <p><code>mmf_net30_eligible</code><br>Value: <code>'yes'</code> = eligible<br>Absent = disabled</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Midwest Military Fasteners — Net 30 Guide &nbsp;·&nbsp; Updated 2026-07-14 &nbsp;·&nbsp; wordpress/inc/net30.php
+</footer>
+
+</div><!-- .wrap -->
+
+<script>
+function switchTab(groupId, activeId) {
+  var group = document.getElementById(groupId);
+  group.querySelectorAll('.tab').forEach(function(t, i) { t.classList.remove('active'); });
+  group.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+  var tabs = group.querySelectorAll('.tab');
+  var panels = group.querySelectorAll('.tab-panel');
+  for (var i = 0; i < tabs.length; i++) {
+    if (tabs[i].getAttribute('onclick').indexOf(activeId) !== -1) {
+      tabs[i].classList.add('active');
+    }
+  }
+  document.getElementById(activeId).classList.add('active');
+}
+</script>
+</body>
+</html>
