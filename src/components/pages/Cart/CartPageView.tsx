@@ -60,7 +60,7 @@ export default function CartPageView({ sidebarCategories }: CartPageViewProps) {
 
           <CartPageContent />
 
-          <IsoSection align="left" className="mt-auto pb-[18px] pt-10" />
+          <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
         </main>
       </div>
     </div>

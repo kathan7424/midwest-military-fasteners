@@ -28,11 +28,11 @@ export default function GlobalSearchDropdown({
   }
 
   const panelClass = cn(
-    "absolute top-full left-0 z-50 w-full overflow-hidden bg-white shadow-xl",
+    "absolute top-[99%] left-0 z-50 w-full overflow-hidden bg-white shadow-xl",
     "max-h-[min(60vh,320px)] overflow-y-auto",
     variant === "hero"
       ? "border border-t-0 border-navy"
-      : "border border-t-0 border-light-gray rounded-b"
+      : "border border-t-0 border-navy top-[98%]"
   );
 
   if (isLoading) {
@@ -59,7 +59,7 @@ export default function GlobalSearchDropdown({
             <Link
               href={item.url}
               prefetch={false}
-              className="flex items-center gap-2 p-2.5 text-link transition-colors duration-200 hover:bg-off-white"
+              className="flex items-center gap-4 p-2.5 text-link transition-colors duration-200 hover:bg-off-white"
             >
               {item.code ? (
                 <span

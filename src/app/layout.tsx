@@ -50,6 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
+import LayoutWrapper from "@/components/layout/DynamicHeight/LayoutWrapper";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,7 +63,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://use.typekit.net/bzs4pmx.css" />
       </head>
       <body className={`antialiased`}>
-        {children}
+        <LayoutWrapper>{children}</LayoutWrapper>
       </body>
     </html>
   );

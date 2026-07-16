@@ -104,7 +104,7 @@ export default function QualityPage({ pageData }: Props) {
                         href={button.url}
                         target={button.target || undefined}
                         rel={button.target === "_blank" ? "noopener noreferrer" : undefined}
-                        className="rounded-none bg-amber px-5 py-3 text-body font-bold uppercase text-white hover:bg-[#b38600] md:px-6 md:py-5 md:text-h5"
+                        className="rounded-none bg-amber px-5 py-3 text-center text-body leading-6 font-bold uppercase text-white hover:bg-[#b38600] md:px-5 md:py-5 md:text-h5"
                       >
                         {button.title || "Learn More"}
                       </Link>

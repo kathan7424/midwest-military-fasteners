@@ -85,7 +85,7 @@ export const productColumns: ColumnDef<Product>[] = [
       <Link
         href={build_product_path(row.original.slug || row.original.partNumber)}
         prefetch={false}
-        className="font-semibold text-amber hover:underline"
+        className="hover:underline"
       >
         {row.original.partNumber}
       </Link>

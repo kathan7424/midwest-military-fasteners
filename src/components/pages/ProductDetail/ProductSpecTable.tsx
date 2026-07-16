@@ -66,9 +66,9 @@ export default function ProductSpecTable({
               <a
                 href={product.specHref}
                 download
-                className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
+                className="inline-flex items-center gap-1.5 font-semibold uppercase text-amber hover:underline"
               >
-                <Download className="size-4" />
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M1 16H0V14H12V16H1ZM6.71875 11.7188L6 12.4062L5.28125 11.7188L1.28125 7.71875L0.59375 7L2 5.59375C2.21875 5.78125 3.21875 6.78125 5 8.59375V0H7V8.59375C8.8125 6.78125 9.8125 5.78125 10 5.59375L11.4062 7L10.7188 7.71875L6.71875 11.7188Z" fill="currentColor"/></svg>
                 Download Spec Sheet
               </a>
             </td>
@@ -82,9 +82,9 @@ export default function ProductSpecTable({
               <a
                 href={product.certHref}
                 download
-                className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
+                className="inline-flex items-center gap-1.5 font-semibold uppercase text-amber hover:underline"
               >
-                <Download className="size-4" />
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M1 16H0V14H12V16H1ZM6.71875 11.7188L6 12.4062L5.28125 11.7188L1.28125 7.71875L0.59375 7L2 5.59375C2.21875 5.78125 3.21875 6.78125 5 8.59375V0H7V8.59375C8.8125 6.78125 9.8125 5.78125 10 5.59375L11.4062 7L10.7188 7.71875L6.71875 11.7188Z" fill="currentColor"/></svg>
                 Download Certificate
               </a>
             </td>

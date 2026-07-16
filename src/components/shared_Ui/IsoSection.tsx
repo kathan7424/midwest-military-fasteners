@@ -39,7 +39,7 @@ export default function IsoSection({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-8 py-12 md:flex-row md:items-center md:gap-10",
+        "flex flex-col items-center gap-8 py-10 md:flex-row md:items-center md:gap-10",
         align === "center" ? "md:justify-center" : "md:justify-start",
         className
       )}

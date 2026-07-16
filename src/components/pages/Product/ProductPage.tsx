@@ -516,7 +516,7 @@ export default function ProductPage({
 
           {/* ISO */}
 
-          <IsoSection align="left" className="mt-auto pb-[18px]" />
+          <IsoSection align="left" className="mt-auto pb-2.5" />
 
         </main>
 

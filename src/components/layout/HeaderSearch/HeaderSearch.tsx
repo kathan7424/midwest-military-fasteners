@@ -37,7 +37,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
       action="/catalog"
       method="GET"
       className={cn(
-        "relative hidden w-full max-w-[690px] flex-1 items-center lg:flex",
+        "relative hidden w-full max-w-[715px] flex-1 items-center lg:flex",
         className
       )}
       onSubmit={(event) => event.preventDefault()}
@@ -63,12 +63,12 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
 
             setQuery(value);
           }}
-          className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-link text-near-black outline-none placeholder:text-[#A5A5A5]"
+          className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-body text-near-black outline-none placeholder:text-[#A5A5A5]"
         />
         <button
           type="button"
           aria-label="Search"
-          className="h-12 rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
+          className="h-12 w-[55px] flex items-center justify-center rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
         >
           <FaMagnifyingGlass size={16} />
         </button>

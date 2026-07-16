@@ -66,7 +66,7 @@ export default function Sidebar({
   return (
     <nav
       aria-label="Product categories"
-      className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
+      className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6 lg:max-h-[calc(100vh-97px)] overflow-y-auto"
     >
       {categories.map((category) => {
         // Controlled value per section: only the section containing the open

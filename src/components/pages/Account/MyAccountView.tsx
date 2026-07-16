@@ -183,7 +183,7 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
               {section === "documents" ? <TaxDocumentsPanel /> : null}
             </>
           )}
-          <IsoSection align="left" className="mt-auto pb-[18px] pt-10" />
+          <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
         </main>
       </div>
     </div>

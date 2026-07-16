@@ -159,7 +159,7 @@ export default function HeaderCart() {
                 <Link
                   href="/checkout"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
+                  className="flex items-center gap-2.5 bg-amber px-5 lg:px-[30px] py-3.5 text-[18px] md:text-[20px] font-condensed font-bold leading-none uppercase text-white transition-colors hover:bg-blue"
                 >
                   Checkout
                   <svg

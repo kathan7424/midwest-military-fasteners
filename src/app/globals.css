@@ -52,7 +52,8 @@
 
   /* --- Line Heights (from Figma) --- */
   --leading-heading:  1.1;    /* 110% — H1, H2, H3, H4 */
-  --leading-section:  1.2;    /* 120% — section titles, body */
+  --leading-section:  1.2;    /* 120% — section titles*/
+  --leading-body:     1.5;   /* 150% — body text*/
   --leading-nav:      1.97;   /* 197% — nav links, category labels */
 
   --container-8xl: 1720px;
@@ -93,7 +94,11 @@
 
   a {
     text-decoration: none;
-    color: inherit;
+    color: var(--color-blue);
+    transition: 0.3s;
+  }
+  a:hover {
+    color:var(--color-amber)
   }
 
   b,
@@ -128,16 +133,14 @@
   /* --- Base body --- */
   body {
     background: var(--color-white);
-    color: var(--color-near-black);
+    color: var(--color-black);
     font-family: var(--font-sans);
-    font-size: var(--text-body);
-    line-height: var(--leading-section);
+    font-size: var(--text-link);
+    line-height: var(--leading-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   p {
-    font-size: var(--text-body);
-    line-height: var(--leading-section);
     margin: 0px 0px 16px;
   }
 
@@ -245,6 +248,7 @@
   h2, .h2 { font-size: 30px; }  
   h3, .h3 { font-size: 26px; }  
   h4, .h4 { font-size: 22px; }
+  h5, .h5 { font-size: 18px; }
 }
 /* Small Mobile */
 @media (max-width: 639px) {
