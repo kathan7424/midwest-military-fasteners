@@ -190,9 +190,9 @@ export default function HeaderCartDropdown({
                 </div>
               ) : null}
 
-            {hasItems && cart?.items.length ? (
+            {hasItems ? (
               <div className="max-h-64 divide-y divide-light-gray overflow-y-auto">
-                {cart.items.map((item) => (
+                {(cart?.items ?? []).map((item) => (
                   <CartLineItem
                     key={item.key}
                     item={item}

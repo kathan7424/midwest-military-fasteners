@@ -7,8 +7,50 @@
 
 defined( 'ABSPATH' ) || exit;
 
+add_filter( 'woocommerce_register_shop_order_statuses', 'mmf_register_shipped_order_status' );
+add_filter( 'wc_order_statuses', 'mmf_add_shipped_status_label' );
 add_action( 'rest_api_init', 'mmf_register_order_documents_routes' );
 add_action( 'woocommerce_checkout_create_order_line_item', 'mmf_store_order_line_item_documents', 10, 4 );
+
+/**
+ * Register "shipped" as a valid WooCommerce order status.
+ *
+ * @param array $statuses Existing statuses.
+ * @return array
+ */
+function mmf_register_shipped_order_status( array $statuses ): array {
+	$statuses['wc-shipped'] = array(
+		'label'                     => _x( 'Shipped', 'Order status', 'woocommerce' ),
+		'public'                    => true,
+		'exclude_from_search'       => false,
+		'show_in_admin_all_list'    => true,
+		'show_in_admin_status_list' => true,
+		'label_count'               => _n_noop(
+			'Shipped <span class="count">(%s)</span>',
+			'Shipped <span class="count">(%s)</span>',
+			'woocommerce'
+		),
+	);
+	return $statuses;
+}
+
+/**
+ * Add "Shipped" to the order status dropdown in WC admin.
+ *
+ * @param array $order_statuses Existing status labels.
+ * @return array
+ */
+function mmf_add_shipped_status_label( array $order_statuses ): array {
+	$order_statuses['wc-shipped'] = _x( 'Shipped', 'Order status', 'woocommerce' );
+	return $order_statuses;
+}
+add_action( 'woocommerce_order_status_changed', 'mmf_send_certificates_ready_email', 10, 4 );
+// Fallback: stamp cert opt-in on line items AFTER order is created AND after
+// Store API extension callbacks have run. In recent WC Blocks versions the
+// update_callback fires after create_or_update_draft_order(), so the session
+// is empty when woocommerce_checkout_create_order_line_item fires. This hook
+// is the authoritative write path.
+add_action( 'woocommerce_store_api_checkout_order_processed', 'mmf_stamp_cert_opted_in_fallback' );
 
 /**
  * Persist document URLs on the order line item at purchase time.
@@ -24,15 +66,79 @@ function mmf_store_order_line_item_documents( $item, $cart_item_key, $values, $o
 		return;
 	}
 
+	// Spec sheet URL — stored at purchase time so it survives product edits.
 	$spec_url = esc_url_raw( specparts_get_product_spec_url( $product_id ) );
-	$cert_url = esc_url_raw( (string) get_post_meta( $product_id, '_certificate_file_url', true ) );
-
 	if ( $spec_url ) {
 		$item->add_meta_data( '_mmf_spec_file_url', $spec_url, true );
 	}
 
+	// Certificate file URL — stored at purchase time for the same reason.
+	$cert_url = esc_url_raw( (string) get_post_meta( $product_id, '_certificate_file_url', true ) );
 	if ( $cert_url ) {
 		$item->add_meta_data( '_mmf_certificate_file_url', $cert_url, true );
+	}
+
+	// Always record the cart item key so the post-order fallback hook can
+	// look up the right line item regardless of callback timing.
+	$item->add_meta_data( '_mmf_cart_item_key', $cart_item_key, true );
+
+	// Cert opt-in flag: read from the request-scoped global (set by the Store
+	// API update_callback). In WC Blocks the callback fires AFTER order line
+	// items are created, so the global may already be populated by the time
+	// this hook runs if another request path fires first — but the authoritative
+	// stamp is done in mmf_stamp_cert_opted_in_fallback (below), which is
+	// guaranteed to run after both order creation AND extension callbacks.
+	global $mmf_cert_opted_in_request_map;
+	$opted_in_map = ! empty( $mmf_cert_opted_in_request_map )
+		? $mmf_cert_opted_in_request_map
+		: ( WC()->session ? (array) WC()->session->get( 'mmf_cert_opted_in', array() ) : array() );
+	if ( ! empty( $opted_in_map[ $cart_item_key ] ) ) {
+		$item->add_meta_data( '_mmf_cert_opted_in', '1', true );
+	}
+}
+
+/**
+ * Fallback: stamp _mmf_cert_opted_in on order items after both order creation
+ * AND Store API extension callbacks have completed.
+ *
+ * In WC Blocks, woocommerce_checkout_create_order_line_item fires during
+ * create_or_update_draft_order(), which runs BEFORE extension callbacks in
+ * recent versions. This hook is guaranteed to fire after both, making it the
+ * authoritative write for the opt-in flag.
+ *
+ * @param WC_Order $order The completed draft order.
+ */
+function mmf_stamp_cert_opted_in_fallback( WC_Order $order ): void {
+	global $mmf_cert_opted_in_request_map;
+
+	if ( empty( $mmf_cert_opted_in_request_map ) ) {
+		$mmf_cert_opted_in_request_map = WC()->session
+			? (array) WC()->session->get( 'mmf_cert_opted_in', array() )
+			: array();
+	}
+
+	if ( empty( $mmf_cert_opted_in_request_map ) ) {
+		return;
+	}
+
+	foreach ( $order->get_items() as $item ) {
+		if ( ! $item instanceof WC_Order_Item_Product ) {
+			continue;
+		}
+
+		if ( '1' === (string) $item->get_meta( '_mmf_cert_opted_in', true ) ) {
+			continue; // already stamped by the line-item hook
+		}
+
+		$cart_item_key = (string) $item->get_meta( '_mmf_cart_item_key', true );
+		if ( $cart_item_key && ! empty( $mmf_cert_opted_in_request_map[ $cart_item_key ] ) ) {
+			$item->update_meta_data( '_mmf_cert_opted_in', '1' );
+			$item->save();
+		}
+	}
+
+	if ( WC()->session ) {
+		WC()->session->set( 'mmf_cert_opted_in', array() );
 	}
 }
 
@@ -191,12 +297,15 @@ function mmf_get_customer_order_history() {
 		return new WP_Error( 'woocommerce_missing', 'WooCommerce is not active.', array( 'status' => 500 ) );
 	}
 
+	// Include all registered statuses so custom ones (e.g. wc-shipped) are
+	// not silently excluded by the WC_Order_Query default status list.
 	$orders = wc_get_orders(
 		array(
 			'customer_id' => get_current_user_id(),
 			'limit'       => 50,
 			'orderby'     => 'date',
 			'order'       => 'DESC',
+			'status'      => array_keys( wc_get_order_statuses() ),
 		)
 	);
 
@@ -211,16 +320,21 @@ function mmf_get_customer_order_history() {
 		$certificates = array();
 		$order_status = $order->get_status();
 
-		// Certificates are only available after the order ships (shipped/completed).
+		// Certificates are only available after the order ships (shipped/completed)
+		// AND only for items the customer opted in to at checkout (SOW).
 		$certs_available = in_array( $order_status, array( 'completed', 'shipped' ), true );
 
 		foreach ( $order->get_items() as $item ) {
+			if ( ! $item instanceof WC_Order_Item_Product ) {
+				continue;
+			}
+
 			$items[] = array(
 				'name'     => $item->get_name(),
 				'quantity' => (int) $item->get_quantity(),
 			);
 
-			if ( $certs_available ) {
+			if ( $certs_available && mmf_item_cert_opted_in( $item ) ) {
 				$docs = mmf_get_line_item_documents( $item );
 				if ( $docs['certificate_file_url'] && ! in_array( $docs['certificate_file_url'], $certificates, true ) ) {
 					$certificates[] = $docs['certificate_file_url'];
@@ -268,6 +382,21 @@ function mmf_plain_price( float $amount, string $currency = '' ): string {
 		ENT_QUOTES,
 		'UTF-8'
 	);
+}
+
+/**
+ * Did the customer opt in to certification for this line item at purchase?
+ *
+ * Opt-in is recorded on the order line item as _mmf_cert_opted_in = '1' by
+ * mmf_store_order_line_item_documents at checkout. No separate $0 product is
+ * needed — the cert file URL lives on the physical product meta.
+ *
+ * @param WC_Order_Item_Product $item Line item.
+ * @return bool
+ */
+function mmf_item_cert_opted_in( $item ): bool {
+	return $item instanceof WC_Order_Item_Product
+		&& '1' === (string) $item->get_meta( '_mmf_cert_opted_in', true );
 }
 
 /**
@@ -323,7 +452,8 @@ function mmf_get_customer_order_documents() {
 		$items        = array();
 		$order_status = $order->get_status();
 
-		// Certificates only after shipped/completed; spec sheets for any status.
+		// Certificates only after shipped/completed AND only when the customer
+		// opted in at checkout; spec sheets always available.
 		$certs_available = in_array( $order_status, array( 'completed', 'shipped' ), true );
 
 		foreach ( $order->get_items() as $item ) {
@@ -335,16 +465,25 @@ function mmf_get_customer_order_documents() {
 			$docs    = mmf_get_line_item_documents( $item );
 
 			$spec_url = $docs['spec_file_url'];
-			$cert_url = $certs_available ? $docs['certificate_file_url'] : '';
+			$cert_url = ( $certs_available && mmf_item_cert_opted_in( $item ) )
+				? $docs['certificate_file_url']
+				: '';
 
 			if ( ! $spec_url && ! $cert_url ) {
 				continue;
+			}
+
+			$short_desc = '';
+			if ( $product ) {
+				$raw = $product->get_short_description() ?: $product->get_description();
+				$short_desc = wp_strip_all_tags( html_entity_decode( $raw, ENT_QUOTES, 'UTF-8' ) );
 			}
 
 			$items[] = array(
 				'product_id'           => $product ? $product->get_id() : 0,
 				'sku'                  => $product ? $product->get_sku() : '',
 				'name'                 => $item->get_name(),
+				'description'          => $short_desc,
 				'quantity'             => (int) $item->get_quantity(),
 				'spec_file_url'        => $spec_url,
 				'certificate_file_url' => $cert_url,
@@ -372,6 +511,146 @@ function mmf_get_customer_order_documents() {
 }
 
 /**
+ * Send "certificates ready" email when an order transitions to shipped/completed.
+ *
+ * Fires only on the first transition into a cert-eligible status so re-marking
+ * completed→processing→completed doesn't spam the customer. Silently skips
+ * orders with no certificate on any line item.
+ *
+ * @param int      $order_id   Order ID.
+ * @param string   $old_status Previous status (without wc- prefix).
+ * @param string   $new_status New status (without wc- prefix).
+ * @param WC_Order $order      Order object.
+ */
+function mmf_send_certificates_ready_email( int $order_id, string $old_status, string $new_status, WC_Order $order ): void {
+	$cert_statuses = array( 'completed', 'shipped' );
+
+	if ( ! in_array( $new_status, $cert_statuses, true ) ) {
+		return;
+	}
+
+	// Don't re-send if already in a cert-eligible status (e.g. shipped → completed).
+	if ( in_array( $old_status, $cert_statuses, true ) ) {
+		return;
+	}
+
+	// Only send if the customer OPTED IN at checkout (cert product in the
+	// order) and the opted-in item actually has a certificate file (SOW:
+	// no opt-in → no certificate delivery, ever). Collect the files so the
+	// email can deliver direct download links per item.
+	$cert_files = array();
+	foreach ( $order->get_items() as $item ) {
+		if ( ! $item instanceof WC_Order_Item_Product || ! mmf_item_cert_opted_in( $item ) ) {
+			continue;
+		}
+		$docs = mmf_get_line_item_documents( $item );
+		if ( ! empty( $docs['certificate_file_url'] ) ) {
+			$cert_files[] = array(
+				'name' => $item->get_name(),
+				'url'  => $docs['certificate_file_url'],
+			);
+		}
+	}
+
+	if ( empty( $cert_files ) ) {
+		return;
+	}
+
+	$to            = $order->get_billing_email();
+	$customer_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
+	$order_number  = $order->get_order_number();
+	$site_name     = get_bloginfo( 'name' );
+
+	// Headless: the customer's account lives on the Next.js site, not WP.
+	// Same convention as the password-reset email (MMF_FRONTEND_URL constant
+	// in wp-config.php, overridable via the mmf_frontend_url filter).
+	$frontend_url = apply_filters( 'mmf_frontend_url', defined( 'MMF_FRONTEND_URL' ) ? MMF_FRONTEND_URL : home_url() );
+	$account_url  = rtrim( $frontend_url, '/' ) . '/my-account';
+
+	$subject = sprintf( 'Your product certificates are ready — Order #%s', $order_number );
+
+	ob_start();
+	?>
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;max-width:600px;width:100%;">
+      <tr>
+        <td style="background:#0a1628;padding:24px 32px;">
+          <p style="margin:0;color:#ffffff;font-size:22px;font-weight:bold;letter-spacing:1px;">
+            <?php echo esc_html( $site_name ); ?>
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:32px;">
+          <p style="margin:0 0 16px;font-size:16px;color:#1a1a1a;">
+            Hi <?php echo esc_html( $customer_name ?: 'there' ); ?>,
+          </p>
+          <p style="margin:0 0 16px;font-size:16px;color:#444444;line-height:1.6;">
+            Great news — your product certificates for <strong>Order #<?php echo esc_html( $order_number ); ?></strong>
+            are now available for download.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid #e0e0e0;">
+            <?php foreach ( $cert_files as $cert_file ) : ?>
+            <tr>
+              <td style="padding:12px 16px;border-bottom:1px solid #eeeeee;font-size:14px;color:#1a1a1a;">
+                <?php echo esc_html( $cert_file['name'] ); ?>
+              </td>
+              <td style="padding:12px 16px;border-bottom:1px solid #eeeeee;text-align:right;">
+                <a href="<?php echo esc_url( $cert_file['url'] ); ?>"
+                   style="color:#cc9900;font-size:14px;font-weight:bold;text-decoration:underline;">
+                  Download Certificate
+                </a>
+              </td>
+            </tr>
+            <?php endforeach; ?>
+          </table>
+          <p style="margin:0 0 24px;font-size:16px;color:#444444;line-height:1.6;">
+            You can also re-download these anytime from the <strong>Certifications</strong> section of your account.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+            <tr>
+              <td style="background:#cc9900;border-radius:2px;">
+                <a href="<?php echo esc_url( $account_url ); ?>"
+                   style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;text-transform:uppercase;letter-spacing:0.5px;">
+                  Go to My Account
+                </a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:0;font-size:13px;color:#888888;line-height:1.5;">
+            If you have any questions, please reply to this email or contact our support team.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#f4f4f4;padding:20px 32px;border-top:1px solid #e0e0e0;">
+          <p style="margin:0;font-size:12px;color:#999999;text-align:center;">
+            &copy; <?php echo esc_html( (string) gmdate( 'Y' ) ); ?> <?php echo esc_html( $site_name ); ?>. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
+	<?php
+	$html = ob_get_clean();
+
+	wp_mail(
+		$to,
+		$subject,
+		$html,
+		array( 'Content-Type: text/html; charset=UTF-8' )
+	);
+}
+
+/**
  * GET /custom/v1/orders/{id} — single order detail (WC My Account → View Order).
  *
  * @param WP_REST_Request $request Request object.
@@ -393,11 +672,15 @@ function mmf_get_single_order_detail( WP_REST_Request $request ) {
 		return new WP_Error( 'forbidden', 'You do not have access to this order.', array( 'status' => 403 ) );
 	}
 
-	$order_status   = $order->get_status();
+	$order_status    = $order->get_status();
 	$certs_available = in_array( $order_status, array( 'completed', 'shipped' ), true );
 
 	$line_items = array();
 	foreach ( $order->get_items() as $item ) {
+		if ( ! $item instanceof WC_Order_Item_Product ) {
+			continue;
+		}
+
 		$product = $item->get_product();
 		$docs    = mmf_get_line_item_documents( $item );
 
@@ -409,7 +692,10 @@ function mmf_get_single_order_detail( WP_REST_Request $request ) {
 			'subtotal'             => mmf_plain_price( (float) $item->get_subtotal(), $order->get_currency() ),
 			'total'                => mmf_plain_price( (float) $item->get_total(), $order->get_currency() ),
 			'spec_file_url'        => $docs['spec_file_url'],
-			'certificate_file_url' => $certs_available ? $docs['certificate_file_url'] : '',
+			// SOW: cert download only when opted in at checkout + shipped/completed.
+			'certificate_file_url' => ( $certs_available && mmf_item_cert_opted_in( $item ) )
+				? $docs['certificate_file_url']
+				: '',
 		);
 	}
 

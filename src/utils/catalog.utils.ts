@@ -19,6 +19,13 @@ import { isUsableLink, normalizeWpUrl } from "@/utils/url.utils";
  * Build a frontend product URL for the home hero catalog grid.
  */
 export function build_home_catalog_product_href(product: CatalogProduct): string {
+  // Series catalog items have empty slug and sku — permalink is already the
+  // category-filtered catalog URL; normalise and return it directly.
+  if (!product.slug?.trim() && !product.sku?.trim() && product.permalink) {
+    const normalized = normalizeWpUrl(product.permalink);
+    if (isUsableLink(normalized)) return normalized;
+  }
+
   const slug =
     product.slug?.trim() ||
     extract_product_slug_from_permalink(product.permalink);

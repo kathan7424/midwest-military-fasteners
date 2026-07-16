@@ -5,9 +5,10 @@
  * Description: Home hero search input with live WordPress suggestions.
  * Developer: KP-184
  * Created Date: 2026-06-26
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-16
  */
 
+import { useRouter } from "next/navigation";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
@@ -18,6 +19,8 @@ import { SearchBarProps } from "@/types/hero.types";
 export default function SearchBar({
   placeholder = SEARCH_PLACEHOLDER,
 }: SearchBarProps) {
+  const router = useRouter();
+
   // Home hero search: products, product categories, and part series only.
   // The header search stays global (pages + products + everything).
   const {
@@ -29,6 +32,12 @@ export default function SearchBar({
     isLoading,
     wrapperRef,
   } = useGlobalSearch({ scope: "catalog" });
+
+  function handleSearch() {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+  }
 
   return (
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-[800px]">
@@ -46,11 +55,15 @@ export default function SearchBar({
           onChange={(event) => {
             setQuery(event.target.value);
           }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") handleSearch();
+          }}
           className="h-14 min-w-0 flex-1 border border-navy px-4 text-base font-normal text-near-black placeholder:text-base placeholder:text-mid-gray focus:outline-none sm:h-16 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:h-[72px] lg:px-8 lg:text-[24px] lg:placeholder:text-[24px]"
         />
         <button
           type="button"
           aria-label="Search"
+          onClick={handleSearch}
           className="flex h-14 w-14 shrink-0 items-center justify-center bg-blue text-white transition-colors duration-300 hover:bg-navy sm:h-16 sm:w-16 lg:h-[72px] lg:w-[72px]"
         >
           <FaMagnifyingGlass className="text-lg sm:text-xl lg:text-2xl" />

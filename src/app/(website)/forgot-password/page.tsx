@@ -17,12 +17,25 @@ export const metadata: Metadata = {
   description: "Request a password reset for your Midwest Military Fasteners account.",
 };
 
-export default async function ForgotPasswordPage() {
+type Props = {
+  searchParams: Promise<{ invalid?: string }>;
+};
+
+export default async function ForgotPasswordPage({ searchParams }: Props) {
   await requireGuest();
+
+  const { invalid } = await searchParams;
+  const linkInvalid = invalid === "1";
 
   return (
     <section className="bg-white px-5 py-12 lg:py-[150px]">
       <div className="mx-auto flex w-full max-w-md flex-col items-center">
+        {linkInvalid && (
+          <div className="mb-6 w-full rounded-none border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Your password reset link is invalid or has expired. Please request a new one below.
+          </div>
+        )}
+
         <ForgotPasswordPanel />
 
         <p className="mt-6 text-center text-link text-dark-gray">

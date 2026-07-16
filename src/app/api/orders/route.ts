@@ -11,6 +11,8 @@ import { NextResponse } from "next/server";
 import { ENV } from "@/config/env";
 import { buildWpCookieHeader } from "@/utils/auth-proxy.utils";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const cookie_store = await cookies();

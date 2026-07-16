@@ -62,7 +62,7 @@ export default async function WebsiteLayout({
             isLoggedIn={shell.is_logged_in}
           />
 
-          <main className="">{children}</main>
+          <main className="min-h-screen">{children}</main>
 
           <Footer footerMenu={shell.footer_menu} settings={shell.settings} />
         </CartProvider>

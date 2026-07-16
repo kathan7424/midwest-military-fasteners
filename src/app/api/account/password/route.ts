@@ -14,6 +14,8 @@ import {
   buildWpCookieHeader,
 } from "@/utils/auth-proxy.utils";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const cookie_store = await cookies();

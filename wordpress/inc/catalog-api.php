@@ -169,14 +169,17 @@ if ( ! function_exists( 'specparts_merge_series_lists' ) ) {
 // ============================================================
 
 /**
- * Cap edge/CDN caching for catalog API responses. Without this Pantheon's
- * Varnish caches anonymous REST responses for a week (max-age=604800), so
- * catalog changes never reach the headless frontend.
+ * Prevent Pantheon Varnish from caching spec-parts catalog responses.
+ * Without this, Varnish would cache anonymous REST responses and product/
+ * category updates would not reflect in the API until the TTL expired.
+ * Next.js ISR (revalidate=300) on the frontend is the correct caching layer
+ * for catalog data — wp-json must always return the live WP value.
  */
 add_filter( 'rest_post_dispatch', function ( $response, $server, $request ) {
     if ( $response instanceof WP_REST_Response
         && 0 === strpos( (string) $request->get_route(), '/spec-parts/v1/' ) ) {
-        $response->header( 'Cache-Control', 'public, max-age=300, s-maxage=300' );
+        $response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0' );
+        $response->header( 'Surrogate-Control', 'no-store' );
     }
 
     return $response;

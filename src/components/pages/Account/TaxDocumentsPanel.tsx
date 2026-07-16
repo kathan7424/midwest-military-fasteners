@@ -96,30 +96,34 @@ function UploadForm({
 }) {
   const [certificate, setCertificate] = useState<File | null>(null);
   const [expiryDate, setExpiryDate] = useState("");
+  const [dateError, setDateError] = useState("");
   const [fieldError, setFieldError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function validateDate(dateStr: string): string {
+    if (!dateStr) return "Certificate expiration date is required.";
+    const picked = new Date(`${dateStr}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (picked < today) return "Expiration date must be today or a future date.";
+    return "";
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setFieldError("");
 
-    if (!certificate) {
-      setFieldError("Please upload your sales tax exemption document.");
-      return;
-    }
-    if (!expiryDate) {
-      setFieldError("Expiry date is required.");
-      return;
-    }
-    const expiry = new Date(`${expiryDate}T00:00:00`);
-    if (expiry <= new Date()) {
-      setFieldError("Expiry date must be a future date.");
-      return;
-    }
+    // Validate all fields at once so both errors show simultaneously.
+    const dateProblem = validateDate(expiryDate);
+    const fileProblem = !certificate ? "Please upload your sales tax exemption document." : "";
+
+    setDateError(dateProblem);
+    setFieldError(fileProblem);
+
+    if (dateProblem || fileProblem) return;
 
     setIsSubmitting(true);
     try {
-      const result = await upload_tax_exemption_document(certificate, expiryDate);
+      const result = await upload_tax_exemption_document(certificate!, expiryDate);
       onSuccess(result);
     } catch (err) {
       setFieldError(
@@ -144,35 +148,38 @@ function UploadForm({
       <form
         onSubmit={(event) => void handleSubmit(event)}
         noValidate
-        className="max-w-xl space-y-5"
-      >
+        className="max-w-3xl space-y-5"
+      > 
+      <div className="flex items-start gap-2.5 flex-wrap">
         <div>
-          <p className="mb-1.5 text-sm font-semibold text-dark-gray">Certificate Expiration Date</p>
+          <p className="mb-1.5 text-sm font-semibold text-dark-gray sr-only">Certificate Expiration Date</p>
           <DatePicker
             value={expiryDate ? parseDate(expiryDate) : null}
             onChange={(date) => {
-              setExpiryDate(date ? date.toString() : "");
-              setFieldError("");
+              const str = date ? date.toString() : "";
+              setExpiryDate(str);
+              setDateError(validateDate(str));
             }}
             minValue={parseDate(new Date().toISOString().slice(0, 10))}
             placeholder="Expiration Date"
             size="md"
-            buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
+            buttonClassName={`h-10 w-full rounded-none border bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 shadow-none text-[16px] ${dateError ? "border-red-500 focus-within:ring-red-400 text-[#989898]" : "border-[#666666] focus-within:ring-brand text-[#989898]"}`}
           />
+          {dateError ? (
+            <p className="mt-1.5 text-sm text-red-600">{dateError}</p>
+          ) : null}
         </div>
-
+        <div className="flex-1">
         <SalesTaxExemptionUpload
           file={certificate}
           onFileChange={(f) => {
             setCertificate(f);
             setFieldError("");
           }}
-          error=""
+          error={fieldError}
         />
-
-        {fieldError ? (
-          <p className="text-sm text-red-600">{fieldError}</p>
-        ) : null}
+        </div>
+      </div>
 
         <button
           type="submit"

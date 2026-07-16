@@ -52,9 +52,14 @@ function buildRegisterSchema(hasCertificate: boolean) {
           "Please enter a valid expiration date."
         )
         .refine(
-          (value) =>
-            !value || new Date(`${value}T00:00:00`) > new Date(),
-          "Expiration date must be a future date."
+          (value) => {
+            if (!value) return true;
+            const picked = new Date(`${value}T00:00:00`);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return picked >= today;
+          },
+          "Expiration date must be today or a future date."
         ),
     })
     .refine((data) => data.password === data.confirm_password, {
@@ -121,13 +126,24 @@ export default function RegisterPanel({
         throw new Error(data.message || "Registration failed.");
       }
 
-      notifySuccess(
-        data.message || "Registration successful. You can now log in."
-      );
+      // FR-AUTH-05: registration auto-logs-in (WP login cookies are set by the
+      // register API), so land the customer in their account — no manual login.
+      notifySuccess(data.message || "Welcome! Your account is ready.");
+
+      // FR-AUTH-07: a submitted certificate starts as "pending review" — say so
+      // clearly at registration. Until approved, orders are charged full tax.
+      if (certificate) {
+        notifySuccess(
+          "Your tax exemption certificate was submitted and is pending review. " +
+            "Sales tax applies until it is approved."
+        );
+      }
+
       reset();
       setCertificate(null);
       setCertificateError("");
-      router.push("/login");
+      router.push("/my-account");
+      router.refresh();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Registration failed.";
@@ -287,24 +303,29 @@ export default function RegisterPanel({
           <Controller
             name="expiry_date"
             control={control}
-            render={({ field }) => (
-              <div>
-                <DatePicker
-                  value={field.value ? parseDate(field.value) : null}
-                  onChange={(date) => {
-                    field.onChange(date ? date.toString() : "");
-                  }}
-                  size="md"
-                  placeholder="Expiration Date"
-                  buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
-                />
-                {errors.expiry_date?.message ? (
-                  <p className="mt-1 text-xs text-error-primary">
-                    {errors.expiry_date.message}
-                  </p>
-                ) : null}
-              </div>
-            )}
+            render={({ field }) => {
+              const todayStr = new Date().toISOString().slice(0, 10);
+              const hasError = Boolean(errors.expiry_date);
+              return (
+                <div>
+                  <DatePicker
+                    value={field.value ? parseDate(field.value) : null}
+                    onChange={(date) => {
+                      field.onChange(date ? date.toString() : "");
+                    }}
+                    minValue={parseDate(todayStr)}
+                    size="md"
+                    placeholder="Expiration Date"
+                    buttonClassName={`h-12 w-full rounded-none border bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 shadow-none text-[16px] text-[#989898] ${hasError ? "border-red-500 focus-within:ring-red-400" : "border-[#666666] focus-within:ring-brand"}`}
+                  />
+                  {errors.expiry_date?.message ? (
+                    <p className="mt-1 text-xs text-error-primary">
+                      {errors.expiry_date.message}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            }}
           />
         </div>
 

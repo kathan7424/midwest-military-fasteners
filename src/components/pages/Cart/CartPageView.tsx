@@ -25,9 +25,11 @@ import {
 
 interface CartPageViewProps {
   sidebarCategories: SidebarCategory[];
+  couponsEnabled: boolean;
+  isLoggedIn: boolean;
 }
 
-export default function CartPageView({ sidebarCategories }: CartPageViewProps) {
+export default function CartPageView({ sidebarCategories, couponsEnabled, isLoggedIn }: CartPageViewProps) {
   return (
     <div className="mx-auto w-full px-4 py-6 xl:px-5 xl:py-[30px] relative">
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -52,13 +54,13 @@ export default function CartPageView({ sidebarCategories }: CartPageViewProps) {
             </Sheet>
           </div>
 
-          <CartTaxExemptionNotice />
+          <CartTaxExemptionNotice isLoggedIn={isLoggedIn} />
 
           <h1 className="mb-5 text-[28px] font-bold uppercase leading-heading text-near-black sm:mb-6 sm:text-h2">
             Your Cart
           </h1>
 
-          <CartPageContent />
+          <CartPageContent couponsEnabled={couponsEnabled} />
 
           <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
         </main>

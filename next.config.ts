@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const WP_HOST = new URL(
-  process.env.NEXT_PUBLIC_WP_SITE_URL ?? "https://dev-mmf-wp.pantheonsite.io"
+  process.env.WP_SITE_URL ?? process.env.NEXT_PUBLIC_WP_SITE_URL ?? "https://dev-mmf-wp.pantheonsite.io"
 ).origin;
 
 const IS_DEV = process.env.NODE_ENV === "development";
@@ -40,11 +40,12 @@ const SECURITY_HEADERS = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=()",
+    // payment=(self ...) required for Stripe wallet payments (Apple Pay / Google Pay).
+    value: 'camera=(), microphone=(), geolocation=(), payment=(self "https://js.stripe.com")',
   },
   {
     key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains",
+    value: "max-age=63072000; includeSubDomains; preload",
   },
   ...(IS_DEV ? [] : [{ key: "Content-Security-Policy", value: CSP }]),
 ];

@@ -46,13 +46,15 @@ export default function LoginPanel() {
 
   // Only allow same-origin paths — "//evil.com" and "/\evil.com" are treated
   // as protocol-relative URLs by browsers and would redirect off-site.
-  const rawRedirect = searchParams.get("redirect") || "/";
+  // FR-AUTH-01: with no originating page (login opened directly), the default
+  // destination is the My Account dashboard, not the home page.
+  const rawRedirect = searchParams.get("redirect") || "/my-account";
   const redirectTo =
     rawRedirect.startsWith("/") &&
     !rawRedirect.startsWith("//") &&
     !rawRedirect.startsWith("/\\")
       ? rawRedirect
-      : "/";
+      : "/my-account";
 
   const {
     control,

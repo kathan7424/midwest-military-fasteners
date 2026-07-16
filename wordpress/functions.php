@@ -21,6 +21,52 @@ if ( ! defined( '_S_VERSION' ) ) {
 add_filter( 'woocommerce_defer_transactional_emails', '__return_true' );
 
 // ============================================================
+// WC STORE API — CART ITEM CERTIFICATION EXTENSION
+// Adds `cert_product_id` and `is_cert_product` to every cart item in
+// the Store API response. The headless checkout reads these to show
+// per-item certification opt-in checkboxes.
+//
+// Setup: for each physical product, set post meta `_cert_product_id`
+// to the WC product ID of its $0 downloadable certification product.
+// On the cert product itself, set `_is_cert_product` = "1".
+// ============================================================
+add_action(
+	'woocommerce_store_api_register_endpoint_data',
+	function ( $registry ) {
+		$registry->register_endpoint_data(
+			array(
+				'endpoint'        => 'cart-item',
+				'namespace'       => 'mmf_cert',
+				'data_callback'   => function ( $cart_item ) {
+					$product_id = absint( $cart_item['product_id'] );
+					return array(
+						'cert_product_id' => (int) get_post_meta( $product_id, '_cert_product_id', true ) ?: 0,
+						'is_cert_product' => (bool) get_post_meta( $product_id, '_is_cert_product', true ),
+					);
+				},
+				'schema_callback' => function () {
+					return array(
+						'cert_product_id' => array(
+							'description' => 'WC product ID of the certification product; 0 if not available.',
+							'type'        => 'integer',
+							'context'     => array( 'view', 'edit' ),
+							'readonly'    => true,
+						),
+						'is_cert_product' => array(
+							'description' => 'True if this cart item is itself a certification product.',
+							'type'        => 'boolean',
+							'context'     => array( 'view', 'edit' ),
+							'readonly'    => true,
+						),
+					);
+				},
+				'schema_type'     => ARRAY_A,
+			)
+		);
+	}
+);
+
+// ============================================================
 // DISABLE CDN/VARNISH CACHING FOR WC STORE API
 // Pantheon Varnish caches /wc/store/ GET responses with Cache-Control:
 // public, max-age=604800 (7 days) without varying on Cart-Token. This
@@ -36,6 +82,27 @@ add_filter( 'rest_post_dispatch', function ( $response, $server, $request ) {
 	}
 	return $response;
 }, 10, 3 );
+
+// ============================================================
+// CATCH-ALL: ANY REST NAMESPACE NOT COVERED BY ROUTE-SPECIFIC HOOKS
+// /wp/v2, /wc/v3, /wc/v2, and any future namespace get no-store so
+// Pantheon Varnish never caches wp-json responses. Route-specific hooks
+// (priority 10) in api.php and catalog-api.php run first and set their own
+// Cache-Control; this filter (priority 99) only fires if nothing is set yet.
+// This ensures product/page/post updates reflect immediately via the API.
+// ============================================================
+add_filter( 'rest_post_dispatch', function ( $response, $server, $request ) {
+	if ( ! $response instanceof WP_REST_Response ) {
+		return $response;
+	}
+	$headers = $response->get_headers();
+	if ( empty( $headers['Cache-Control'] ) ) {
+		$response->header( 'Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0' );
+		$response->header( 'Pragma', 'no-cache' );
+		$response->header( 'Surrogate-Control', 'no-store' );
+	}
+	return $response;
+}, 99, 3 );
 
 /**
  * Sets up theme defaults and registers support for various WordPress features.
@@ -350,6 +417,7 @@ require_once get_template_directory() . '/inc/tax-exemption-admin.php';
 require_once get_template_directory() . '/inc/order-documents.php';
 require_once get_template_directory() . '/inc/net30.php';
 require_once get_template_directory() . '/inc/headless-frontend.php';
+require_once get_template_directory() . '/inc/shippo-webhook.php';
 
 
 // ============================================================

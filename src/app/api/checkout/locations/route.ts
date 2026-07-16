@@ -10,8 +10,10 @@ import { NextResponse } from "next/server";
 import { ENV } from "@/config/env";
 
 // Dev: always fresh so WC setting changes reflect instantly.
-// Prod: 5-min ISR — admin changes selling countries rarely.
+// Prod: 5-min ISR — country/state list changes rarely.
+// Removing force-dynamic so Next.js respects next: { revalidate } inside the fetch.
 const IS_DEV = process.env.NODE_ENV === "development";
+export const revalidate = IS_DEV ? 0 : 300;
 
 export async function GET() {
   try {

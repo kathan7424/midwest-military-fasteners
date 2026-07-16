@@ -49,6 +49,8 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PDP-31d | Mobile: swipe left/right on the lightbox image | Swipe left → next image, swipe right → previous (≥50px swipe); short taps don't navigate |
 | PDP-31e | Prev/Next through all images and wrap around | Navigation loops (last → first, first → last); adjacent images preload so the spinner is brief/absent on revisit |
 | PDP-32 | WP backend hangs (unreachable/very slow) | Pages fail over to their error/fallback path within ~15s — never an indefinite skeleton (WP fetches have a 15s timeout) |
+| PDP-33 | Home page hero: click a series link in the category grid | Lands on /product-category/{parent}/{child}?series={slug} with a filtered product table — series links resolve whether the WP taxonomy is `product-series` or `product_series` |
+| PDP-34 | Open a category URL with a duplicate-import slug (e.g. /product-category/screws/flat-washers-screws-2) | Products for that slug render (no 404) — 404 only when the slug has NO category AND NO products |
 
 ## TC-IMP — CSV Import
 
@@ -69,7 +71,9 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | AUTH-03 | Register with 20MB file / .exe file as certificate | Rejected client-side AND server-side (400) — registration not created |
 | AUTH-04 | Login with wrong password ×2, then correct | Errors are generic ("Invalid email or password"); success on correct |
 | AUTH-05 | Login with `?redirect=/checkout` | Lands on /checkout after login |
-| AUTH-06 | Login with `?redirect=//evil.com` | Lands on `/` (open-redirect blocked) |
+| AUTH-06 | Login with `?redirect=//evil.com` | Lands on `/my-account` (open-redirect blocked; safe default) |
+| AUTH-06b | Login with NO redirect param (opened /login directly) | Lands on `/my-account` — the My Account dashboard is the default destination (FR-AUTH-01) |
+| AUTH-06c | Register successfully (with or without certificate) | Auto-logged-in and lands on `/my-account` — NO "you can now log in" step; with a certificate, a second toast says it's pending review and tax applies until approved (FR-AUTH-05/07) |
 | AUTH-07 | Logout | Session + WC cart cookies cleared; /my-account redirects to login |
 | AUTH-08 | Direct GET `/my-account` while logged out | 307 → /login?redirect=/my-account |
 | AUTH-09 | Forgot password with unknown email | Same generic success message as known email (no enumeration) |
@@ -125,6 +129,32 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-25 | Pay with a selected saved card | Order places without entering card details; card fields hidden while a saved card is selected; 3DS still prompts when the bank requires it |
 | CHK-26 | Choose "Use a new payment method" as a logged-in customer (setting ON) | Card fields + "Save payment information to my account for future purchases." checkbox appear; checked → after the order the card shows in My Account → Payment Methods AND in the next checkout's saved list |
 | CHK-27 | Setting OFF, or guest checkout | No saved-card list and no save checkbox — plain card entry only (guests never see either regardless of setting) |
+| CHK-28 | Place order with new card (WC Stripe 10.x) | NO 400 — payment_data has `payment_method: "stripe"` + `wc-stripe-payment-method: pm_xxx` (client-created PM). Missing `payment_method` INSIDE payment_data → type resolves to "" → "Unable to process this payment…" |
+| CHK-29 | Place order with saved card | payment_data has `payment_method: "stripe"` + `wc-stripe-payment-token: <WC token integer ID>`; missing `payment_method` → "The selected payment method isn't valid."; order succeeds without card entry |
+| CHK-30 | Open /checkout while the backend responds slowly (throttle to Slow 3G once) | Page loads after retry — no instant "Checkout unavailable"; client waits up to 20s and retries timeouts/network errors twice before showing the error screen |
+| CHK-31 | 3DS card 4000 0027 6000 3184 — complete the challenge, then check WC admin immediately | Order is Processing right away (POST /api/checkout/verify-intent fires after confirm) — NOT stuck pending until the Stripe webhook |
+| CHK-32 | POST /api/checkout/verify-intent with a non-WP redirect_url (SSRF probe) | 200 {"verified":false} — the proxy only ever fetches the WP origin |
+| CHK-33 | Order-received page after a card payment | Payment method shows the CARD, e.g. "Visa ending in 4242" (saved or new card) — not "Credit Card (Stripe)"; Net 30 still shows "Net 30 — Purchase Order"; unknown brand/last4 params fall back to "Credit Card" (sanitized) |
+| CHK-34 | Logged-in customer opens /checkout twice rapidly (or in React dev StrictMode) | Checkout loads both times — concurrent deduplicated GETs each get a cloned response; NO "Could not load checkout" from a body-already-read empty payload |
+| CHK-35 | Logged-in customer with a stale/expired WC Store API nonce cookie opens /checkout | Checkout loads their cart — proxy recovery drops the stale WC session first (keeping the WP login), then falls back to a clean guest session; never a hard "Checkout unavailable" from a stale cookie |
+| CHK-36 | Force a checkout load failure (stop WP) and read the error banner | Banner shows the upstream message, or "Could not load checkout (code N)" — code 0 = no response reached the browser, otherwise the proxy HTTP status; browser console has `[checkout] state load failed: status=...` |
+
+## TC-CERT-OPTIN — Product Certification Opt-in (SOW)
+
+Setup (WP admin, per certifiable product): on the PHYSICAL product, set the custom field `_certificate_file_url` to the cert PDF URL. No separate $0 WooCommerce product is created. These are PRODUCT certifications (MFR C of C, material/process certs, test reports) — completely separate from TAX exemption certificates (TC-TAX).
+
+| ID | Steps | Expected |
+|---|---|---|
+| CERT-01 | Checkout with a certifiable product in cart | "Add certification — Free" checkbox under that item in the Order Summary; non-certifiable items get no checkbox |
+| CERT-02 | Tick the opt-in checkbox | Checkbox checked (pure UI state); order total unchanged; unticking unchecks |
+| CERT-03 | Cart page with items in cart | All products show as rows; no hidden cert rows; remove removes only that item |
+| CERT-04 | Mini-cart (YOUR ORDER dropdown) with items in cart | All items visible; count badge reflects `item_count` from WC |
+| CERT-05 | Place order WITH opt-in | `_mmf_cert_opted_in = 1` stamped on the order line item; cert URL recorded on the line item as `_mmf_certificate_file_url` |
+| CERT-06 | Order WITH opt-in → admin marks Shipped/Completed | Customer email "Your product certificates are ready" with per-item Download Certificate links + link to {MMF_FRONTEND_URL}/my-account |
+| CERT-07 | Same order in My Account | Certifications tab lists the cert; order detail line item shows the cert download; order history exposes it — all only AFTER shipped/completed |
+| CERT-08 | Place order WITHOUT opt-in (product has a cert file) | NO cert email, NO cert in Certifications tab / order detail / history — opt-in at purchase is the only delivery path (SOW) |
+| CERT-09 | Order with opt-in on product A but not product B (both certifiable) | Only product A's certificate is delivered/downloadable |
+| CERT-10 | Cert-eligible order re-marked completed→processing→completed | "Certificates ready" email sent ONCE (no re-send spam) |
 
 ## TC-COUPON — Coupons
 
@@ -200,6 +230,14 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | PM-06 | Unauthenticated GET /api/account/payment-methods | 401 (WP cookie auth required) |
 | PM-07 | DELETE /api/account/payment-methods/pm_xxx as different user | 403 — ownership verified via Stripe customer ID match |
 | PM-08 | Skeleton while loading | Two skeleton card rows while initial fetch runs |
+| PM-09 | Click "Make Default" on a non-default card (2+ cards saved) | Navy "Default" badge moves to that card instantly; toast "Default payment method updated."; button hidden on the default card |
+| PM-09b | Only ONE card saved | No "Make Default" button at all — a single card is inherently the default (WC standard) |
+| PM-10 | Open /checkout after setting a default card | The DEFAULT card is preselected (not simply the first in the list) — WC-standard behaviour |
+| PM-11 | POST /api/account/payment-methods/{other user's token id}/default | 404 — ownership checked WP-side (no IDOR) |
+| PM-12 | My Account → Documents tab when the documents API returns an error/unexpected shape | Friendly error text or empty state — no client crash (orders array is shape-guarded) |
+| PM-13 | Add a card in My Account, then check Stripe Dashboard → Customers | The PM is attached to the SAME Stripe customer that checkout uses (`WC_Stripe_Customer` user option `_stripe_customer_id`) — ONE customer per user, never a duplicate |
+| PM-14 | Add a card in My Account, then open /checkout | The new card appears in the saved-cards radio list (WC token registered via finalize + attached to the shared customer, so WC Stripe's token sync keeps it) |
+| PM-15 | Card added BEFORE the single-customer fix (attached to the orphaned duplicate customer) | Correctly absent from the list — re-add it once; no crash, no phantom entries |
 
 ## TC-ACC — My Account
 

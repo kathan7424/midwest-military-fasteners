@@ -11,11 +11,12 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Download } from "lucide-react";
+import { ArrowUpDown, Download, Info } from "lucide-react";
 import Link from "next/link";
 
 import { DataTable } from "@/components/ui/data-table";
 import QtyAddToOrder from "@/components/shared_Ui/QtyAddToOrder";
+import { Tooltip, TooltipTrigger } from "@/components/base/tooltip/tooltip";
 import { build_product_path } from "@/utils/catalog-url.utils";
 import { has_product_spec_sheet } from "@/utils/spec-parts.utils";
 
@@ -109,7 +110,22 @@ export const productColumns: ColumnDef<Product>[] = [
   },
   {
     accessorKey: "pkgQty",
-    header: () => <span className={`block text-center ${thClass}`}>Pkg Qty</span>,
+    header: () => (
+      <span className={`flex items-center justify-center gap-1 ${thClass}`}>
+        Pkg Qty
+        <Tooltip
+          title="Package Quantity"
+          description="Number of units per package. All prices are per package — not per individual unit. e.g. Pkg Qty 100 + order 1 PKG = 100 units received."
+          placement="bottom"
+          arrow
+          delay={100}
+        >
+          <TooltipTrigger aria-label="Package quantity info">
+            <Info className="size-3.5 text-white/70 hover:text-white" />
+          </TooltipTrigger>
+        </Tooltip>
+      </span>
+    ),
     cell: ({ row }) => (
       <span className="block text-center">{display_table_value(row.original.pkgQty)}</span>
     ),

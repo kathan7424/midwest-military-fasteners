@@ -143,6 +143,9 @@
   p {
     margin: 0px 0px 16px;
   }
+  p:last-child {
+    margin-bottom: 0;
+  }
 
   /* --- Heading Styles — from Figma Brand Guide --- */
   h1, .h1,

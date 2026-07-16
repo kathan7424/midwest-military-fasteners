@@ -53,16 +53,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const wpResponse = await wcStoreMutation(request, "cart/update-customer", {
-      billing_address: pickWcAddress(
-        (body.billing_address ?? body.shipping_address) as Record<string, string>,
-        true
-      ),
-      shipping_address: pickWcAddress(
-        (body.shipping_address ?? body.billing_address) as Record<string, string>,
-        false
-      ),
-    });
+    // Only send each address to WC when the caller explicitly provided it.
+    // Falling back to shipping for billing would silently overwrite the WC
+    // session's stored billing address on every shipping-rate recalculation.
+    const wcPayload: Record<string, Record<string, string>> = {};
+    if (body.shipping_address) {
+      wcPayload.shipping_address = pickWcAddress(body.shipping_address, false);
+    }
+    if (body.billing_address) {
+      wcPayload.billing_address = pickWcAddress(body.billing_address, true);
+    }
+
+    const wpResponse = await wcStoreMutation(request, "cart/update-customer", wcPayload);
 
     return buildCheckoutCartStateResponse(wpResponse);
   } catch (error) {

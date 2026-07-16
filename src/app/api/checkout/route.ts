@@ -24,13 +24,22 @@ export const fetchCache = "force-no-store";
 const WC_BILLING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone","email"] as const;
 const WC_SHIPPING_KEYS = ["first_name","last_name","company","address_1","address_2","city","state","postcode","country","phone"] as const;
 
+// Optional address fields — skip them entirely when blank so WC validators
+// never receive an empty string for a field the customer didn't fill in.
+const WC_ADDRESS_OPTIONAL = new Set(["company", "address_2", "phone"]);
+
 function pickWcAddress(
   addr: Record<string, string>,
   isBilling: boolean
 ): Record<string, string> {
   const keys = isBilling ? WC_BILLING_KEYS : WC_SHIPPING_KEYS;
   const out: Record<string, string> = {};
-  for (const k of keys) if (k in addr) out[k] = addr[k] ?? "";
+  for (const k of keys) {
+    if (!(k in addr)) continue;
+    const v = addr[k] ?? "";
+    if (v === "" && WC_ADDRESS_OPTIONAL.has(k)) continue;
+    out[k] = v;
+  }
   return out;
 }
 
@@ -50,9 +59,10 @@ export async function POST(request: NextRequest) {
       billing_address?: Record<string, string>;
       shipping_address?: Record<string, string>;
       payment_method?: string;
-      payment_data?: Array<{ key: string; value: string | boolean }>;
+      payment_data?: Array<{ key: string; value: string }>;
       customer_note?: string;
       create_account?: boolean;
+      cert_opted_in?: Record<string, boolean>;
     };
 
     if (!body.billing_address || !body.payment_method) {
@@ -77,6 +87,12 @@ export async function POST(request: NextRequest) {
       payment_data: body.payment_data ?? [],
       customer_note: (body.customer_note ?? "").slice(0, 1000),
       create_account: body.create_account === true,
+      // Pass cert opt-in selections as Store API extension data so the
+      // mmf_cert update_callback can save them to WC session before order
+      // line items are created.
+      ...(body.cert_opted_in && Object.keys(body.cert_opted_in).length > 0
+        ? { extensions: { mmf_cert: { cert_opted_in: body.cert_opted_in } } }
+        : {}),
     });
 
     const raw = (await wpResponse.json().catch(() => null)) as Record<
@@ -97,6 +113,13 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(raw, { status: wpResponse.status });
     response.headers.set("Cache-Control", "no-store, private");
+    // Forward any WC session cookies rotated after order placement
+    // (e.g. WC clears the cart session and issues a fresh nonce).
+    wpResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        response.headers.append("set-cookie", value);
+      }
+    });
     return response;
   } catch (error) {
     console.error("Checkout POST proxy error:", error);

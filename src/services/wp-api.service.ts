@@ -14,12 +14,7 @@ const WP_FETCH_TIMEOUT_MS = 15_000;
 
 const WP_DYNAMIC_FETCH_OPTIONS: RequestInit = {
   cache: "no-store",
-  next: { revalidate: 0 },
-  headers: {
-    Accept: "application/json",
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    Pragma: "no-cache",
-  },
+  headers: { Accept: "application/json" },
 };
 
 export type WpFetchMode = "dynamic" | "static";
