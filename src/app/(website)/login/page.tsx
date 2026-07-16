@@ -12,7 +12,6 @@ import { Suspense } from "react";
 
 import LoginPanel from "@/components/pages/Auth/LoginPanel";
 import { requireGuest } from "@/services/auth.service";
-import { fetch_checkout_settings } from "@/services/currency.service";
 
 export const metadata: Metadata = {
   title: "Login | Midwest Military Fasteners",
@@ -20,14 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  const [, settings] = await Promise.all([
-    requireGuest(),
-    fetch_checkout_settings(),
-  ]);
-
-  // WC → Accounts & Privacy → Account creation → "On My account page".
-  // When disabled, admins want to prevent self-registration — hide the link.
-  const canRegister = settings.registration_enabled !== false;
+  await requireGuest();
 
   return (
     <section className="bg-white px-5 py-12 lg:py-[150px]">
@@ -36,17 +28,15 @@ export default async function LoginPage() {
           <LoginPanel />
         </Suspense>
 
-        {canRegister ? (
-          <p className="mt-6 text-center text-link text-dark-gray">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/register"
-              className="font-semibold text-blue transition-colors hover:text-navy"
-            >
-              Register
-            </Link>
-          </p>
-        ) : null}
+        <p className="mt-6 text-center text-link text-dark-gray">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-blue transition-colors hover:text-navy"
+          >
+            Register
+          </Link>
+        </p>
       </div>
     </section>
   );

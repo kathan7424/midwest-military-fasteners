@@ -272,5 +272,6 @@ export const useCartStore = create<CartState>((set, get) => ({
 }));
 
 export function getCartItemCount(cart: CartData | null): number {
-  return cart?.item_count ?? 0;
+  if (!cart) return 0;
+  return cart.item_count ?? 0;
 }

@@ -48,10 +48,12 @@ add_filter( 'rest_authentication_errors', 'mmf_headless_cookie_auth', 200 );
  * @return WP_Error|true|null
  */
 function mmf_headless_cookie_auth( $result ) {
-	if ( is_wp_error( $result ) ) {
-		return $result;
-	}
-
+	// Check the proxy secret FIRST, before inspecting $result.
+	// rest_cookie_check_errors (priority 10) sets a WP_Error when a WP login
+	// cookie is present but X-WP-Nonce is absent — which is always true for our
+	// server-side proxy (it can't obtain a WP nonce). The old early-return on
+	// is_wp_error() meant we passed that error through unchanged, causing every
+	// logged-in user with a stale WC Store API nonce to get a 401.
 	if ( empty( $_SERVER['HTTP_X_MMF_PROXY'] ) ) {
 		return $result;
 	}
@@ -62,17 +64,23 @@ function mmf_headless_cookie_auth( $result ) {
 		return $result;
 	}
 
-	if ( get_current_user_id() > 0 ) {
-		return $result;
+	// Valid proxy request — restore the logged-in user from the cookie without
+	// requiring X-WP-Nonce. CSRF-safe: the proxy secret is a long random value
+	// only our Next.js server sends; browsers cannot forge custom headers
+	// cross-origin. We validate the cookie with wp_validate_auth_cookie so we
+	// never accept a tampered value.
+	if ( get_current_user_id() === 0 ) {
+		$user_id = (int) wp_validate_auth_cookie( '', 'logged_in' );
+		if ( $user_id > 0 ) {
+			wp_set_current_user( $user_id );
+		}
 	}
 
-	$user_id = (int) wp_validate_auth_cookie( '', 'logged_in' );
-
-	if ( $user_id > 0 ) {
-		wp_set_current_user( $user_id );
-	}
-
-	return $result;
+	// Return null ("no authentication error") so WP's REST API proceeds with
+	// whichever user is now current. This overrides any WP_Error that
+	// rest_cookie_check_errors set — intentionally, because the proxy secret
+	// is our CSRF protection, making the X-WP-Nonce requirement redundant here.
+	return null;
 }
 add_action( 'gform_after_submission_' . MMF_REGISTRATION_FORM_ID, 'mmf_create_customer_from_gravity_entry', 10, 2 );
 
@@ -152,6 +160,16 @@ function mmf_register_auth_routes(): void {
 
 	register_rest_route(
 		'custom/v1',
+		'/auth/reset-password',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_auth_reset_password',
+			'permission_callback' => '__return_true',
+		)
+	);
+
+	register_rest_route(
+		'custom/v1',
 		'/account/details',
 		array(
 			'methods'             => WP_REST_Server::CREATABLE,
@@ -215,6 +233,47 @@ function mmf_register_auth_routes(): void {
 				'pm_id' => array(
 					'validate_callback' => function ( $param ) {
 						return (bool) preg_match( '/^pm_[a-zA-Z0-9]+$/', $param );
+					},
+				),
+			),
+		)
+	);
+
+	// After the browser confirms the SetupIntent, register the card as a WC
+	// payment token — the same thing WC Stripe's add_payment_method() does.
+	// Without this the card exists at Stripe but never appears in the WC
+	// token list (which checkout and the account panel read).
+	register_rest_route(
+		'custom/v1',
+		'/account/payment-methods/finalize',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_finalize_payment_method',
+			'permission_callback' => 'is_user_logged_in',
+			'args'                => array(
+				'pm_id' => array(
+					'required'          => true,
+					'validate_callback' => function ( $param ) {
+						return (bool) preg_match( '/^pm_[a-zA-Z0-9]+$/', (string) $param );
+					},
+				),
+			),
+		)
+	);
+
+	// WC-standard "Make default" (same behaviour as My Account → Payment
+	// methods in core WooCommerce): the default token is preselected at checkout.
+	register_rest_route(
+		'custom/v1',
+		'/account/payment-methods/(?P<token_id>\d+)/default',
+		array(
+			'methods'             => WP_REST_Server::CREATABLE,
+			'callback'            => 'mmf_set_default_payment_method',
+			'permission_callback' => 'is_user_logged_in',
+			'args'                => array(
+				'token_id' => array(
+					'validate_callback' => function ( $param ) {
+						return is_numeric( $param ) && (int) $param > 0;
 					},
 				),
 			),
@@ -521,6 +580,69 @@ function mmf_auth_register_check_email( WP_REST_Request $request ) {
  * @param WP_REST_Request $request Request object.
  * @return WP_REST_Response|WP_Error
  */
+/**
+ * Build a branded HTML email using the site header/footer design.
+ *
+ * @param string $heading    Email heading shown inside the white card.
+ * @param string $body_html  Inner HTML body (already escaped).
+ * @return string
+ */
+function mmf_branded_email_html( string $heading, string $body_html ): string {
+	$site_name = esc_html( get_bloginfo( 'name' ) );
+	$home_url  = esc_url( home_url( '/' ) );
+	$logo_url  = esc_url( get_option( 'mmf_email_logo', 'https://dev-mmf-wp.pantheonsite.io/wp-content/uploads/2026/07/logo-email.png' ) );
+	$year      = esc_html( gmdate( 'Y' ) );
+
+	$footer_text = wp_kses_post(
+		wpautop( wptexturize( apply_filters( 'woocommerce_email_footer_text', get_option( 'woocommerce_email_footer_text', '' ) ) ) )
+	);
+
+	return '<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>' . esc_html( $heading ) . '</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:sans-serif;">
+&nbsp;
+<table role="presentation" border="0" width="100%" cellspacing="0" cellpadding="0">
+<tbody><tr><td style="padding:20px 0 30px 0;">
+<table style="border-collapse:collapse;border:1px solid rgba(0,25,19,0.1);" border="0" width="600" cellspacing="0" cellpadding="0" align="center">
+<tbody>
+<tr align="center">
+<td style="padding:20px 15px;" bgcolor="#ffffff">
+	<a href="' . $home_url . '" target="_blank" rel="noopener">
+		<img style="width:284px;height:auto;display:block;margin:0 auto;" src="' . $logo_url . '" alt="' . $site_name . '" width="284" />
+	</a>
+</td>
+</tr>
+<tr>
+<td style="padding:20px 15px;" bgcolor="#F9F9F9">
+<table style="border-collapse:collapse;" border="0" width="560" cellspacing="0" cellpadding="0" align="center">
+<tbody><tr>
+<td style="text-align:left;background-color:#ffffff;padding:30px 25px;border-radius:5px;">
+<h2 style="font-size:20px;color:#000000;font-family:sans-serif;margin:0 0 18px 0;">' . esc_html( $heading ) . '</h2>
+' . $body_html . '
+</td>
+</tr></tbody>
+</table>
+</td>
+</tr>
+<tr>
+<td style="padding:20px 30px;text-align:center;" bgcolor="#CC9900">
+	' . ( $footer_text ? '<p style="font-size:14px;margin:0 0 6px 0;color:#ffffff;font-family:sans-serif;">' . $footer_text . '</p>' : '' ) . '
+	<p style="font-size:13px;margin:0;color:#ffffff;font-family:sans-serif;opacity:0.85;">&copy; ' . $year . ' ' . $site_name . '</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td></tr></tbody>
+</table>
+</body>
+</html>';
+}
+
 function mmf_auth_forgot_password( WP_REST_Request $request ) {
 	$email_or_login = sanitize_text_field( (string) $request->get_param( 'email' ) );
 
@@ -532,24 +654,123 @@ function mmf_auth_forgot_password( WP_REST_Request $request ) {
 		);
 	}
 
+	// Never reveal whether an email exists — always return the same message.
+	$success_response = array(
+		'success' => true,
+		'message' => 'If that email address is in our system, you will receive password reset instructions shortly.',
+	);
+
 	$user = is_email( $email_or_login )
 		? get_user_by( 'email', $email_or_login )
 		: get_user_by( 'login', $email_or_login );
 
 	if ( ! $user instanceof WP_User ) {
+		return rest_ensure_response( $success_response );
+	}
+
+	$key = get_password_reset_key( $user );
+	if ( is_wp_error( $key ) ) {
 		return new WP_Error(
-			'user_not_found',
-			'No account found with that email address.',
-			array( 'status' => 404 )
+			'reset_key_failed',
+			'Unable to process your request. Please try again.',
+			array( 'status' => 500 )
 		);
 	}
 
-	retrieve_password( $user->user_login );
+	// Build reset URL pointing at the headless Next.js frontend.
+	$frontend_url = apply_filters(
+		'mmf_frontend_url',
+		defined( 'MMF_FRONTEND_URL' ) ? MMF_FRONTEND_URL : home_url()
+	);
+	$reset_url = rtrim( $frontend_url, '/' )
+		. '/reset-password?key=' . rawurlencode( $key )
+		. '&login=' . rawurlencode( $user->user_login );
+
+	$site_name    = get_bloginfo( 'name' );
+	$display_name = esc_html( $user->display_name );
+	$reset_url_e  = esc_url( $reset_url );
+
+	$body_html =
+		'<p style="font-size:16px;color:#333333;font-family:sans-serif;margin:0 0 14px 0;">Hi ' . $display_name . ',</p>'
+		. '<p style="font-size:16px;color:#333333;font-family:sans-serif;margin:0 0 14px 0;">Someone requested a password reset for your ' . esc_html( $site_name ) . ' account. If this was you, click the button below to set a new password.</p>'
+		. '<p style="font-size:16px;color:#333333;font-family:sans-serif;margin:0 0 28px 0;">This link expires in <strong>24 hours</strong>. If you did not request this, you can safely ignore this email — your account remains secure.</p>'
+		. '<table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:0 0 28px 0;"><tbody><tr><td>'
+		. '<a href="' . $reset_url_e . '" target="_blank" rel="noopener" style="display:inline-block;background-color:#CC9900;color:#ffffff;font-family:sans-serif;font-size:15px;font-weight:600;text-decoration:none;padding:13px 28px;text-transform:uppercase;letter-spacing:0.05em;">Reset Your Password</a>'
+		. '</td></tr></tbody></table>'
+		. '<p style="font-size:13px;color:#888888;font-family:sans-serif;margin:0;word-break:break-all;">If the button does not work, copy and paste this URL into your browser:<br />'
+		. '<a href="' . $reset_url_e . '" style="color:#CC9900;font-size:13px;word-break:break-all;">' . esc_html( $reset_url ) . '</a></p>';
+
+	$subject = sprintf( '[%s] Password Reset Request', $site_name );
+	$html    = mmf_branded_email_html( 'Password Reset Request', $body_html );
+
+	$set_html_content_type = static fn() => 'text/html';
+	add_filter( 'wp_mail_content_type', $set_html_content_type );
+	wp_mail( $user->user_email, $subject, $html );
+	remove_filter( 'wp_mail_content_type', $set_html_content_type );
+
+	return rest_ensure_response( $success_response );
+}
+
+/**
+ * Validate a password reset key and set a new password.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_auth_reset_password( WP_REST_Request $request ) {
+	$key              = sanitize_text_field( (string) $request->get_param( 'key' ) );
+	$login            = sanitize_text_field( (string) $request->get_param( 'login' ) );
+	$new_password     = (string) $request->get_param( 'password' );
+	$confirm_password = (string) $request->get_param( 'confirm_password' );
+
+	if ( empty( $key ) || empty( $login ) ) {
+		return new WP_Error(
+			'missing_params',
+			'Reset key and login are required.',
+			array( 'status' => 400 )
+		);
+	}
+
+	if ( empty( $new_password ) ) {
+		return new WP_Error(
+			'missing_password',
+			'Password is required.',
+			array( 'status' => 400 )
+		);
+	}
+
+	if ( strlen( $new_password ) < 8 ) {
+		return new WP_Error(
+			'weak_password',
+			'Password must be at least 8 characters.',
+			array( 'status' => 400 )
+		);
+	}
+
+	if ( $new_password !== $confirm_password ) {
+		return new WP_Error(
+			'password_mismatch',
+			'Passwords do not match.',
+			array( 'status' => 400 )
+		);
+	}
+
+	$user = check_password_reset_key( $key, $login );
+
+	if ( is_wp_error( $user ) ) {
+		return new WP_Error(
+			'invalid_key',
+			'This password reset link is invalid or has expired. Please request a new one.',
+			array( 'status' => 400 )
+		);
+	}
+
+	reset_password( $user, $new_password );
 
 	return rest_ensure_response(
 		array(
 			'success' => true,
-			'message' => 'Password reset instructions have been sent to your email.',
+			'message' => 'Your password has been reset. You can now log in with your new password.',
 		)
 	);
 }
@@ -904,12 +1125,25 @@ function mmf_account_update_details( WP_REST_Request $request ) {
 		return new WP_Error( 'update_failed', $result->get_error_message(), array( 'status' => 500 ) );
 	}
 
-	update_user_meta( $user_id, 'first_name', $first_name );
-	update_user_meta( $user_id, 'last_name', $last_name );
-	update_user_meta( $user_id, 'billing_first_name', $first_name );
-	update_user_meta( $user_id, 'billing_last_name', $last_name );
-	update_user_meta( $user_id, 'billing_email', $email );
-	update_user_meta( $user_id, 'billing_company', $company );
+	// Use WC_Customer->save() so WooCommerce address-change hooks fire
+	// (e.g. TaxJar cache invalidation on billing address change).
+	if ( function_exists( 'WC' ) && WC()->customer ) {
+		$customer = new WC_Customer( $user_id );
+		$customer->set_first_name( $first_name );
+		$customer->set_last_name( $last_name );
+		$customer->set_billing_first_name( $first_name );
+		$customer->set_billing_last_name( $last_name );
+		$customer->set_billing_email( $email );
+		$customer->set_billing_company( $company );
+		$customer->save();
+	} else {
+		update_user_meta( $user_id, 'first_name', $first_name );
+		update_user_meta( $user_id, 'last_name', $last_name );
+		update_user_meta( $user_id, 'billing_first_name', $first_name );
+		update_user_meta( $user_id, 'billing_last_name', $last_name );
+		update_user_meta( $user_id, 'billing_email', $email );
+		update_user_meta( $user_id, 'billing_company', $company );
+	}
 
 	return rest_ensure_response(
 		array(
@@ -1027,111 +1261,122 @@ function mmf_stripe_secret_key(): string {
 }
 
 /**
- * Get or create a Stripe customer ID for a given WP user.
- * WC Stripe stores IDs in _stripe_customer_id / _stripe_test_customer_id.
+ * Look up the user's Stripe customer ID through WC Stripe itself.
+ *
+ * MUST go through WC_Stripe_Customer (user option `_stripe_customer_id`) —
+ * the same identity WC Stripe uses at checkout and in its payment-token sync.
+ * Reading/writing our own user-meta key created a SECOND Stripe customer:
+ * cards added via SetupIntent attached to it, and WC Stripe's token filter
+ * (which lists PMs from ITS customer) silently removed those tokens from
+ * every list — "card added successfully" but never visible, and saved-card
+ * payments would fail with a customer/PM mismatch.
+ *
+ * @param int $user_id WordPress user ID.
+ * @return string Stripe customer ID ('' when none exists yet).
+ */
+function mmf_stripe_customer_id( int $user_id ): string {
+	if ( ! class_exists( 'WC_Stripe_Customer' ) ) {
+		return '';
+	}
+	$customer = new WC_Stripe_Customer( $user_id );
+	return (string) $customer->get_id();
+}
+
+/**
+ * Get or create a Stripe customer ID for a given WP user (WC Stripe standard).
  *
  * @param int $user_id WordPress user ID.
  * @return string|WP_Error Stripe customer ID or WP_Error on failure.
  */
 function mmf_get_or_create_stripe_customer( int $user_id ) {
-	$settings  = get_option( 'woocommerce_stripe_settings', array() );
-	$is_test   = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
-	$meta_key  = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
-	$secret    = mmf_stripe_secret_key();
+	if ( ! class_exists( 'WC_Stripe_Customer' ) ) {
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	}
 
-	$customer_id = get_user_meta( $user_id, $meta_key, true );
+	$customer    = new WC_Stripe_Customer( $user_id );
+	$customer_id = (string) $customer->get_id();
+
 	if ( $customer_id ) {
 		return $customer_id;
 	}
 
-	if ( ! $secret ) {
-		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	// create_customer() builds the payload from the WP user (email, name,
+	// metadata) and persists the ID in WC Stripe's own user option, so the
+	// checkout gateway and this account flow share ONE Stripe customer.
+	$created = $customer->create_customer();
+
+	if ( is_wp_error( $created ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to create Stripe customer.', array( 'status' => 502 ) );
 	}
 
-	$user     = get_userdata( $user_id );
-	$name     = trim( ( $user->first_name ?? '' ) . ' ' . ( $user->last_name ?? '' ) ) ?: $user->display_name;
-	$response = wp_remote_post(
-		'https://api.stripe.com/v1/customers',
-		array(
-			'headers' => array(
-				'Authorization' => 'Bearer ' . $secret,
-				'Content-Type'  => 'application/x-www-form-urlencoded',
-			),
-			'body'    => array(
-				'email'                   => $user->user_email,
-				'name'                    => $name,
-				'metadata[wp_user_id]'    => (string) $user_id,
-			),
-		)
-	);
+	$customer_id = (string) $customer->get_id();
 
-	if ( is_wp_error( $response ) ) {
-		return $response;
-	}
-
-	$body = json_decode( wp_remote_retrieve_body( $response ), true );
-	if ( empty( $body['id'] ) ) {
+	if ( ! $customer_id ) {
 		return new WP_Error( 'stripe_customer_failed', 'Failed to create Stripe customer.', array( 'status' => 500 ) );
 	}
 
-	update_user_meta( $user_id, $meta_key, $body['id'] );
-	return $body['id'];
+	return $customer_id;
 }
 
 /**
  * GET /account/payment-methods — list saved Stripe cards for the current user.
  *
+ * Uses WC payment tokens (the WC source of truth) so that the integer token ID
+ * is returned as `id`. WC Stripe reads `wc-stripe-payment-method` from checkout
+ * payment_data as a WC token integer ID — passing a raw Stripe PM ID there fails.
+ * `stripe_pm_id` is returned separately so the frontend can construct the delete URL.
+ *
  * @return WP_REST_Response|WP_Error
  */
 function mmf_get_payment_methods() {
-	$user_id  = get_current_user_id();
-	$settings = get_option( 'woocommerce_stripe_settings', array() );
-	$is_test  = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
-	$meta_key = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
-	$secret   = mmf_stripe_secret_key();
+	$user_id = get_current_user_id();
 
-	$customer_id = get_user_meta( $user_id, $meta_key, true );
-	if ( ! $customer_id ) {
-		return rest_ensure_response( array( 'payment_methods' => array() ) );
-	}
-
-	if ( ! $secret ) {
-		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
-	}
-
-	$response = wp_remote_get(
-		add_query_arg(
-			array(
-				'customer' => $customer_id,
-				'type'     => 'card',
-				'limit'    => 20,
-			),
-			'https://api.stripe.com/v1/payment_methods'
-		),
-		array(
-			'headers' => array( 'Authorization' => 'Bearer ' . $secret ),
-		)
-	);
-
-	if ( is_wp_error( $response ) ) {
-		return new WP_Error( 'stripe_api_error', 'Failed to fetch payment methods.', array( 'status' => 502 ) );
-	}
-
-	$body    = json_decode( wp_remote_retrieve_body( $response ), true );
+	// WC_Payment_Tokens::get_customer_tokens returns all tokens saved by WC Stripe
+	// for this user. Each token's integer ID is what WC Stripe reads at checkout;
+	// get_token() returns the underlying Stripe PM ID used for the delete route.
+	$tokens  = WC_Payment_Tokens::get_customer_tokens( $user_id, 'stripe' );
 	$methods = array();
 
-	foreach ( $body['data'] ?? array() as $pm ) {
-		$card      = $pm['card'] ?? array();
+	foreach ( $tokens as $token ) {
+		if ( ! ( $token instanceof WC_Payment_Token_CC ) ) {
+			continue;
+		}
 		$methods[] = array(
-			'id'        => $pm['id'],
-			'brand'     => $card['brand'] ?? 'card',
-			'last4'     => $card['last4'] ?? '****',
-			'exp_month' => (int) ( $card['exp_month'] ?? 0 ),
-			'exp_year'  => (int) ( $card['exp_year'] ?? 0 ),
+			'id'           => (string) $token->get_id(),
+			'stripe_pm_id' => $token->get_token(),
+			'brand'        => $token->get_card_type() ?: 'card',
+			'last4'        => $token->get_last4(),
+			'exp_month'    => (int) $token->get_expiry_month(),
+			'exp_year'     => (int) $token->get_expiry_year(),
+			'is_default'   => $token->is_default(),
 		);
 	}
 
 	return rest_ensure_response( array( 'payment_methods' => $methods ) );
+}
+
+/**
+ * POST /account/payment-methods/{token_id}/default — WC-standard default card.
+ *
+ * Ownership-checked (no IDOR): the token must belong to the current user and
+ * the stripe gateway before WC_Payment_Tokens::set_users_default runs.
+ *
+ * @param WP_REST_Request $request Request.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_set_default_payment_method( WP_REST_Request $request ) {
+	$user_id  = get_current_user_id();
+	$token_id = absint( $request->get_param( 'token_id' ) );
+
+	$token = WC_Payment_Tokens::get( $token_id );
+
+	if ( ! $token || (int) $token->get_user_id() !== $user_id || 'stripe' !== $token->get_gateway_id() ) {
+		return new WP_Error( 'invalid_token', 'Payment method not found.', array( 'status' => 404 ) );
+	}
+
+	WC_Payment_Tokens::set_users_default( $user_id, $token_id );
+
+	return rest_ensure_response( array( 'success' => true ) );
 }
 
 /**
@@ -1177,6 +1422,75 @@ function mmf_create_setup_intent() {
 }
 
 /**
+ * POST /account/payment-methods/finalize — register a confirmed SetupIntent
+ * card as a WC payment token (mirrors WC Stripe's add_payment_method()).
+ *
+ * Ownership-checked: the Stripe PM must be attached to this user's Stripe
+ * customer. Idempotent: re-finalizing an already-saved PM returns success.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_finalize_payment_method( WP_REST_Request $request ) {
+	$pm_id   = sanitize_text_field( (string) $request->get_param( 'pm_id' ) );
+	$user_id = get_current_user_id();
+	$secret  = mmf_stripe_secret_key();
+
+	if ( ! $secret ) {
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+	}
+
+	// WC Stripe's customer identity — the SAME one the checkout gateway and
+	// token sync use. Any other lookup here re-creates the split-customer bug.
+	$customer_id = mmf_stripe_customer_id( $user_id );
+
+	$pm_response = wp_remote_get(
+		'https://api.stripe.com/v1/payment_methods/' . rawurlencode( $pm_id ),
+		array(
+			'headers' => array( 'Authorization' => 'Bearer ' . $secret ),
+		)
+	);
+
+	if ( is_wp_error( $pm_response ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to verify payment method.', array( 'status' => 502 ) );
+	}
+
+	$pm_data = json_decode( wp_remote_retrieve_body( $pm_response ), true );
+
+	if ( '' === $customer_id || ( $pm_data['customer'] ?? '' ) !== $customer_id || empty( $pm_data['card'] ) ) {
+		return new WP_Error(
+			'unauthorized',
+			'Payment method does not belong to this account.',
+			array( 'status' => 403 )
+		);
+	}
+
+	// Idempotent: already registered as a WC token → success.
+	foreach ( WC_Payment_Tokens::get_customer_tokens( $user_id, 'stripe' ) as $existing ) {
+		if ( $existing->get_token() === $pm_id ) {
+			return rest_ensure_response( array( 'success' => true, 'token_id' => $existing->get_id() ) );
+		}
+	}
+
+	$card = $pm_data['card'];
+
+	$token = new WC_Payment_Token_CC();
+	$token->set_token( $pm_id );
+	$token->set_gateway_id( 'stripe' );
+	$token->set_user_id( $user_id );
+	$token->set_card_type( sanitize_text_field( (string) ( $card['brand'] ?? 'card' ) ) );
+	$token->set_last4( sanitize_text_field( (string) ( $card['last4'] ?? '' ) ) );
+	$token->set_expiry_month( str_pad( (string) absint( $card['exp_month'] ?? 0 ), 2, '0', STR_PAD_LEFT ) );
+	$token->set_expiry_year( (string) absint( $card['exp_year'] ?? 0 ) );
+
+	if ( ! $token->save() ) {
+		return new WP_Error( 'token_save_failed', 'Card could not be saved.', array( 'status' => 500 ) );
+	}
+
+	return rest_ensure_response( array( 'success' => true, 'token_id' => $token->get_id() ) );
+}
+
+/**
  * DELETE /account/payment-methods/{pm_id} — detach a card.
  * Verifies ownership: the PM must belong to this user's Stripe customer.
  *
@@ -1184,18 +1498,16 @@ function mmf_create_setup_intent() {
  * @return WP_REST_Response|WP_Error
  */
 function mmf_delete_payment_method( WP_REST_Request $request ) {
-	$pm_id    = sanitize_text_field( (string) $request->get_param( 'pm_id' ) );
-	$user_id  = get_current_user_id();
-	$settings = get_option( 'woocommerce_stripe_settings', array() );
-	$is_test  = isset( $settings['testmode'] ) && 'yes' === $settings['testmode'];
-	$meta_key = $is_test ? '_stripe_test_customer_id' : '_stripe_customer_id';
-	$secret   = mmf_stripe_secret_key();
+	$pm_id   = sanitize_text_field( (string) $request->get_param( 'pm_id' ) );
+	$user_id = get_current_user_id();
+	$secret  = mmf_stripe_secret_key();
 
 	if ( ! $secret ) {
 		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
 	}
 
-	$customer_id = get_user_meta( $user_id, $meta_key, true );
+	// WC Stripe's customer identity — same as checkout/token sync.
+	$customer_id = mmf_stripe_customer_id( $user_id );
 
 	// Retrieve PM and verify it belongs to this customer before detaching.
 	$pm_response = wp_remote_get(
@@ -1210,7 +1522,7 @@ function mmf_delete_payment_method( WP_REST_Request $request ) {
 	}
 
 	$pm_data = json_decode( wp_remote_retrieve_body( $pm_response ), true );
-	if ( ( $pm_data['customer'] ?? '' ) !== $customer_id ) {
+	if ( '' === $customer_id || ( $pm_data['customer'] ?? '' ) !== $customer_id ) {
 		return new WP_Error(
 			'unauthorized',
 			'Payment method does not belong to this account.',
@@ -1218,7 +1530,7 @@ function mmf_delete_payment_method( WP_REST_Request $request ) {
 		);
 	}
 
-	wp_remote_post(
+	$detach_response = wp_remote_post(
 		'https://api.stripe.com/v1/payment_methods/' . rawurlencode( $pm_id ) . '/detach',
 		array(
 			'headers' => array(
@@ -1228,6 +1540,24 @@ function mmf_delete_payment_method( WP_REST_Request $request ) {
 			'body'    => array(),
 		)
 	);
+
+	if ( is_wp_error( $detach_response ) ) {
+		return new WP_Error( 'stripe_api_error', 'Failed to remove payment method.', array( 'status' => 502 ) );
+	}
+
+	$detach_body = json_decode( wp_remote_retrieve_body( $detach_response ), true );
+	if ( empty( $detach_body['id'] ) ) {
+		$stripe_message = $detach_body['error']['message'] ?? 'Payment method could not be removed.';
+		return new WP_Error( 'stripe_detach_failed', $stripe_message, array( 'status' => 400 ) );
+	}
+
+	// Also remove the WC payment token — the account list and checkout read
+	// WC tokens, so a lingering token would show a card Stripe can't charge.
+	foreach ( WC_Payment_Tokens::get_customer_tokens( $user_id, 'stripe' ) as $token ) {
+		if ( $token->get_token() === $pm_id ) {
+			WC_Payment_Tokens::delete( $token->get_id() );
+		}
+	}
 
 	return rest_ensure_response( array( 'success' => true ) );
 }

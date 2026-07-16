@@ -10,10 +10,11 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
+import type { StripeCardNumberElement, StripeCardExpiryElement, StripeCardCvcElement } from "@stripe/stripe-js";
 import {
   CardNumberElement,
   CardExpiryElement,
@@ -25,7 +26,7 @@ import {
 
 import CartTaxExemptionNotice from "@/components/pages/Cart/CartTaxExemptionNotice";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { useCartStore } from "@/stores/cart.store";
 import {
   apply_coupon,
@@ -35,8 +36,10 @@ import {
   remove_coupon,
   select_shipping_rate,
   update_checkout_address,
+  verify_payment_intent,
   type CheckoutStateResponse,
 } from "@/services/checkout.client";
+import { API_ROUTES } from "@/config/routes";
 import type { CartData } from "@/types/cart.types";
 import type {
   CheckoutAddress,
@@ -88,11 +91,13 @@ const INPUT_CLASS =
 
 /** Saved Stripe card offered at checkout (WC Stripe "saved payment methods"). */
 interface SavedCheckoutCard {
-  id: string;
+  id: string;           // WC payment token integer ID — passed as wc-stripe-payment-token
+  stripe_pm_id: string; // Stripe PM ID — not used at checkout, here for type completeness
   brand: string;
   last4: string;
   exp_month: number;
   exp_year: number;
+  is_default?: boolean; // WC default token — preselected at checkout
 }
 
 /** Sentinel for the "Use a new payment method" option. */
@@ -212,15 +217,21 @@ function OrderSummary({
   cart,
   checkout,
   onRemoveCoupon,
+  onCertToggle,
+  certOptedIn,
   isBusy,
   isUpdating,
 }: {
   cart: CartData;
   checkout: CheckoutCartState;
   onRemoveCoupon: (code: string) => void;
+  onCertToggle: (cartItemKey: string) => void;
+  certOptedIn: Set<string>;
   isBusy: boolean;
   isUpdating: boolean;
 }) {
+  const regularItems = cart.items;
+
   return (
     <aside className="h-fit border border-light-gray bg-off-white p-6">
       <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
@@ -228,20 +239,45 @@ function OrderSummary({
       </h2>
 
       <ul className="mb-5 space-y-3 border-b border-light-gray pb-5">
-        {cart.items.map((item) => (
-          <li key={item.key} className="flex items-start justify-between gap-4 text-link">
-            <span className="min-w-0">
-              <span className="block font-semibold text-near-black">
-                {item.sku || item.name}
-              </span>
-              <span className="text-dark-gray">Qty: {item.quantity}</span>
-            </span>
-            <span
-              className="whitespace-nowrap text-near-black"
-              dangerouslySetInnerHTML={{ __html: item.price_html }}
-            />
-          </li>
-        ))}
+        {regularItems.map((item) => {
+          const hasCert = Boolean(item.has_certificate);
+          const certChecked = certOptedIn.has(item.key);
+
+          return (
+            <li key={item.key} className="flex flex-col gap-1.5 text-link">
+              <div className="flex items-start justify-between gap-4">
+                <span className="min-w-0">
+                  <span className="block font-semibold text-near-black">
+                    {item.sku || item.name}
+                  </span>
+                  <span className="text-dark-gray">Qty: {item.quantity}</span>
+                </span>
+                <span className="whitespace-nowrap text-near-black">
+                  {item.price_html}
+                </span>
+              </div>
+
+              {hasCert ? (
+                <div className="flex items-center justify-between gap-2 rounded border border-light-gray bg-white px-3 py-2 text-sm">
+                  <label className="flex cursor-pointer items-center gap-2 text-dark-gray">
+                    <input
+                      type="checkbox"
+                      checked={certChecked}
+                      disabled={isBusy}
+                      onChange={() => onCertToggle(item.key)}
+                      className="size-3.5 shrink-0 accent-amber"
+                    />
+                    <ShieldCheck className="size-3.5 shrink-0 text-amber" aria-hidden="true" />
+                    Add certification
+                  </label>
+                  <span className={certChecked ? "font-semibold text-near-black" : "text-dark-gray"}>
+                    {certChecked ? "FREE" : "Free"}
+                  </span>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
 
       {isUpdating ? (
@@ -301,9 +337,11 @@ function OrderSummary({
 function CheckoutForm({
   settings,
   isLoggedIn,
+  onOrderComplete,
 }: {
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
+  onOrderComplete: () => void;
 }) {
   const router = useRouter();
   const stripe = useStripe();
@@ -330,7 +368,12 @@ function CheckoutForm({
   const [showBillingApt, setShowBillingApt] = useState(false);
 
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
+  const [pendingRateId, setPendingRateId] = useState<string | null>(null);
+  const [showAllRates, setShowAllRates] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  // Cart item keys the customer opted into receiving certification for.
+  // Pure local state — sent as extensions.mmf_cert.cert_opted_in on place_order.
+  const [certOptedIn, setCertOptedIn] = useState<Set<string>>(new Set());
   const [cardBrand, setCardBrand] = useState("unknown");
   const [cardNumberComplete, setCardNumberComplete] = useState(false);
   const [cardExpiryComplete, setCardExpiryComplete] = useState(false);
@@ -341,6 +384,8 @@ function CheckoutForm({
   const [cardNumberFocused, setCardNumberFocused] = useState(false);
   const [cardExpiryFocused, setCardExpiryFocused] = useState(false);
   const [cardCvcFocused, setCardCvcFocused] = useState(false);
+  const cardExpiryRef = useRef<StripeCardExpiryElement | null>(null);
+  const cardCvcRef = useRef<StripeCardCvcElement | null>(null);
   const [createAccount, setCreateAccount] = useState(false);
   const [orderNote, setOrderNote] = useState("");
   const [selectedGateway, setSelectedGateway] = useState("stripe");
@@ -423,10 +468,16 @@ function CheckoutForm({
           if (savedBilling.address_2) setShowBillingApt(true);
         }
       } else {
+        // Diagnostic trail: status 0 = client-side network error/timeout
+        // (never reached the proxy); anything else is the proxy's status.
+        console.error(
+          `[checkout] state load failed: status=${stateResult.status}`,
+          "message" in data ? data.message : "(no message)"
+        );
         setLoadError(
           "message" in data && data.message
             ? data.message
-            : "Could not load checkout. Please refresh and try again."
+            : `Could not load checkout (code ${stateResult.status}). Please refresh and try again.`
         );
       }
 
@@ -445,14 +496,16 @@ function CheckoutForm({
 
     void (async () => {
       try {
-        const res = await fetch("/api/account/payment-methods", { cache: "no-store" });
+        const res = await fetch(API_ROUTES.account.paymentMethods, { cache: "no-store" });
         if (!res.ok || !active) return;
         const data = (await res.json()) as { payment_methods?: SavedCheckoutCard[] };
         const cards = data.payment_methods ?? [];
         if (!active || cards.length === 0) return;
         setSavedCards(cards);
-        // WC standard: the saved card is preselected for returning customers.
-        setSelectedCardId(cards[0].id);
+        // WC standard: the customer's DEFAULT token is preselected at
+        // checkout; fall back to the first card when none is marked default.
+        const defaultCard = cards.find((card) => card.is_default) ?? cards[0];
+        setSelectedCardId(defaultCard.id);
       } catch {
         // Card list is a convenience — checkout works without it.
       }
@@ -483,12 +536,12 @@ function CheckoutForm({
   const shippingCountries = locations?.shipping_countries ?? locations?.countries ?? [];
   const shippingStates =
     locations?.shipping_states?.[shipping.country] ??
-    locations?.states[shipping.country] ??
+    locations?.states?.[shipping.country] ??
     [];
   const hasShippingStates = shippingStates.length > 0;
 
   const billingCountries = locations?.countries ?? [];
-  const billingStates = locations?.states[billing.country] ?? [];
+  const billingStates = locations?.states?.[billing.country] ?? [];
   const hasBillingStates = billingStates.length > 0;
 
   // Effective addresses sent to WooCommerce.
@@ -522,10 +575,11 @@ function CheckoutForm({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationReady, shipping, billing, email, sameAsBilling, applyState]);
 
+  // WC uses only city/state/postcode/country for rate and tax calculation —
+  // address_1 changes never affect rates, so omit it to avoid extra round-trips.
   const addressKey = useMemo(
     () =>
       [
-        shipping.address_1,
         shipping.city,
         shipping.state,
         shipping.postcode,
@@ -565,11 +619,13 @@ function CheckoutForm({
   }, [cart?.total]);
 
   const handleSelectRate = async (package_id: number | string, rate_id: string) => {
+    setPendingRateId(rate_id);
     setIsUpdatingRates(true);
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
     if (ok && "cart" in data) applyState(data);
     else if ("message" in data && data.message) notifyError(data.message);
     setIsUpdatingRates(false);
+    setPendingRateId(null);
   };
 
   const handleApplyCoupon = async () => {
@@ -662,6 +718,18 @@ function CheckoutForm({
     return true;
   };
 
+  const handleCertToggle = (cartItemKey: string) => {
+    setCertOptedIn((prev) => {
+      const next = new Set(prev);
+      if (next.has(cartItemKey)) {
+        next.delete(cartItemKey);
+      } else {
+        next.add(cartItemKey);
+      }
+      return next;
+    });
+  };
+
   const handlePlaceOrder = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!validateForm()) return;
@@ -680,7 +748,33 @@ function CheckoutForm({
     setIsPlacingOrder(true);
 
     try {
-      let paymentData: { key: string; value: string | boolean }[] = [];
+      // WC Stripe 10.x (verified against 10.8.3 source): deferred intent is the ONLY
+      // code path — the wc-stripe-is-deferred-intent flag was removed in 10.5.0.
+      //
+      // BOTH paths require payment_method: "stripe" INSIDE payment_data. The Store API
+      // copies only payment_data entries into $_POST (never the top-level field), and
+      // the gateway reads $_POST['payment_method'] in two places:
+      //   - get_selected_payment_method_type_from_request(): missing → type "" instead
+      //     of "card" → PI creation fails ("Unable to process this payment…")
+      //   - get_token_from_request(): builds "wc-{payment_method}-payment-token" —
+      //     missing → "wc--payment-token" → "The selected payment method isn't valid."
+      //
+      //   New card:   stripe.createPaymentMethod() client-side → pm_xxx, sent as
+      //               wc-stripe-payment-method. WC creates + confirms the PI server-side;
+      //               a PI secret appears in redirect_url only when 3DS is required.
+      //   Saved card: wc-stripe-payment-token: <WC token integer ID>.
+      //   Either path: stripe.confirmCardPayment(secret, { return_url }) completes 3DS.
+
+      let paymentData: { key: string; value: string }[] = [];
+      let cardNumberElement: StripeCardNumberElement | null = null;
+      // Card identity for the order-received page ("Visa ending in 4242" —
+      // WC standard shows the card, not the gateway name).
+      let cardBrand = "";
+      let cardLast4 = "";
+      let billingDetails: {
+        name?: string; email?: string; phone?: string;
+        address?: { line1: string; line2?: string; city: string; state: string; postal_code: string; country: string };
+      } | null = null;
 
       if (!isNet30) {
         if (!stripe || !elements) {
@@ -689,13 +783,18 @@ function CheckoutForm({
         }
 
         if (usingSavedCard) {
-          // WC Stripe "saved payment methods": pay with the card stored at
-          // Stripe — no card entry, no card data through the store.
+          // Saved token: WC token integer ID + payment_method (required inside
+          // payment_data — see block comment above). Matches the payload the
+          // official WC Blocks saved-token handler sends.
           paymentData = [
             { key: "payment_method", value: "stripe" },
-            { key: "wc-stripe-payment-method", value: selectedCardId },
-            { key: "wc-stripe-is-deferred-intent", value: true },
+            { key: "wc-stripe-payment-token", value: selectedCardId },
+            { key: "isSavedToken", value: "true" },
           ];
+
+          const savedCard = savedCards.find((card) => card.id === selectedCardId);
+          cardBrand = savedCard?.brand ?? "";
+          cardLast4 = savedCard?.last4 ?? "";
         } else {
           let cardValid = true;
           if (!cardNumberComplete) { setCardNumberError("Enter your card number."); cardValid = false; }
@@ -703,45 +802,54 @@ function CheckoutForm({
           if (!cardCvcComplete) { setCardCvcError("Enter the security code."); cardValid = false; }
           if (!cardValid) { setIsPlacingOrder(false); return; }
 
-          const cardNumberElement = elements.getElement(CardNumberElement);
+          cardNumberElement = elements.getElement(CardNumberElement) as StripeCardNumberElement | null;
           if (!cardNumberElement) { checkoutError("Card details are required."); return; }
 
           const billingAddr = effectiveBilling;
-          const { paymentMethod, error } = await stripe.createPaymentMethod({
+          billingDetails = {
+            name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
+            email,
+            phone: billingAddr.phone || undefined,
+            address: {
+              line1: billingAddr.address_1,
+              line2: billingAddr.address_2 || undefined,
+              city: billingAddr.city,
+              state: billingAddr.state,
+              postal_code: billingAddr.postcode,
+              country: billingAddr.country,
+            },
+          };
+
+          // Create the Stripe PaymentMethod client-side BEFORE the order POST —
+          // the deferred-intent server flow requires an existing PM to confirm with.
+          const { paymentMethod: stripePm, error: pmError } = await stripe.createPaymentMethod({
             type: "card",
             card: cardNumberElement,
-            billing_details: {
-              name: `${billingAddr.first_name} ${billingAddr.last_name}`.trim(),
-              email,
-              phone: billingAddr.phone || undefined,
-              address: {
-                line1: billingAddr.address_1,
-                line2: billingAddr.address_2 || undefined,
-                city: billingAddr.city,
-                state: billingAddr.state,
-                postal_code: billingAddr.postcode,
-                country: billingAddr.country,
-              },
-            },
+            billing_details: billingDetails,
           });
 
-          if (error || !paymentMethod) {
-            checkoutError(error?.message || "Card could not be processed.");
+          if (pmError || !stripePm) {
+            checkoutError(pmError?.message || "Card could not be processed — check your details.");
+            setIsPlacingOrder(false);
             return;
           }
 
           paymentData = [
             { key: "payment_method", value: "stripe" },
-            { key: "wc-stripe-payment-method", value: paymentMethod.id },
-            { key: "wc-stripe-is-deferred-intent", value: true },
+            { key: "wc-stripe-payment-method", value: stripePm.id },
+            ...(isLoggedIn && settings.saved_cards && saveNewCard
+              ? [{ key: "wc-stripe-new-payment-method", value: "1" }]
+              : []),
           ];
 
-          // "Save payment information to my account for future purchases."
-          if (isLoggedIn && settings.saved_cards && saveNewCard) {
-            paymentData.push({ key: "wc-stripe-new-payment-method", value: true });
-          }
+          cardBrand = stripePm.card?.brand ?? "";
+          cardLast4 = stripePm.card?.last4 ?? "";
         }
       }
+
+      const certOptedInMap = certOptedIn.size > 0
+        ? Object.fromEntries([...certOptedIn].map((k) => [k, true]))
+        : undefined;
 
       const { ok, data } = await place_order({
         billing_address: effectiveBilling,
@@ -750,6 +858,7 @@ function CheckoutForm({
         payment_data: paymentData,
         customer_note: orderNote.trim(),
         create_account: settings.signup_enabled && !isLoggedIn && createAccount,
+        cert_opted_in: certOptedInMap,
       });
 
       if (!ok || !("order_id" in data)) {
@@ -761,15 +870,34 @@ function CheckoutForm({
       const paymentStatus = paymentResult?.payment_status;
       const redirectUrl = paymentResult?.redirect_url ?? "";
 
-      const secretMatch = redirectUrl.match(/confirm-pi:[^:]*:((pi|seti)_[^:#]+_secret_[^:#]+)/);
+      // WC Stripe embeds the PI/SI client secret in redirect_url when the
+      // payment needs client action (3DS). Formats vary by plugin version:
+      //   #confirm-pi:{secret}:{encoded-verify-url}
+      //   #wc-stripe-confirm-pi:{order_id}:{secret}:{nonce}
+      const secretMatch = redirectUrl.match(/((pi|seti)_[A-Za-z0-9]+_secret_[A-Za-z0-9]+)/);
 
       if (secretMatch && stripe && !isNet30) {
-        const { error: confirmError } = await stripe.confirmCardPayment(secretMatch[1]);
-        if (confirmError) {
-          checkoutError(confirmError.message || "Card authentication failed.");
+        const secret = secretMatch[1];
+        // The PM is already attached to the PI server-side (deferred intent).
+        // confirmCardPayment runs the 3DS challenge; return_url is required
+        // for redirect-based 3DS (common for EU cards).
+        const confirmResult = await stripe.confirmCardPayment(secret, {
+          return_url: `${window.location.origin}/checkout`,
+        });
+
+        if (confirmResult.error) {
+          checkoutError(confirmResult.error.message || "Card authentication failed.");
           return;
         }
-      } else if (paymentStatus !== "success" && paymentStatus !== "pending") {
+
+        // Classic WC redirects to wc_stripe_verify_intent after 3DS so the
+        // order is marked paid immediately. Replicate that server-side —
+        // non-fatal: the Stripe webhook is the fallback if this misses.
+        await verify_payment_intent({
+          redirect_url: redirectUrl,
+          order_id: Number(data.order_id),
+        });
+      } else if (!isNet30 && paymentStatus !== "success" && paymentStatus !== "pending") {
         checkoutError(data.message || "Payment failed — please try another card.");
         return;
       }
@@ -778,12 +906,14 @@ function CheckoutForm({
       // otherwise the null-cart guard renders the error/empty screen for a
       // frame while router.push is still in flight.
       setOrderComplete(true);
+      onOrderComplete();
 
       const successParams = new URLSearchParams({
         order_id: String(data.order_id),
         total: checkout?.totals.total ?? "",
-        email,
         method: isNet30 ? "net30" : "card",
+        ...(cardBrand ? { card_brand: cardBrand } : {}),
+        ...(cardLast4 ? { card_last4: cardLast4 } : {}),
       });
 
       router.push(`/checkout/success?${successParams.toString()}`);
@@ -1085,35 +1215,65 @@ function CheckoutForm({
                 Shipping options
               </h2>
 
-              {isUpdatingRates ? (
+              {shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
+                shippingRates.map((pkg) => {
+                  const LIMIT = 5;
+                  const rates = pkg.shipping_rates;
+                  const activeId = pendingRateId ?? rates.find((r) => r.selected)?.rate_id;
+                  const visible = showAllRates
+                    ? rates
+                    : rates.filter((r, i) => i < LIMIT || r.rate_id === activeId);
+                  const hiddenCount = rates.length - visible.length;
+
+                  return (
+                    <div key={pkg.package_id}>
+                      <ul className="space-y-2">
+                        {visible.map((rate) => (
+                          <li key={rate.rate_id}>
+                            <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
+                              <span className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  name={`shipping-${pkg.package_id}`}
+                                  checked={pendingRateId !== null ? pendingRateId === rate.rate_id : rate.selected}
+                                  onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
+                                />
+                                <span className="text-link text-near-black">{rate.name}</span>
+                              </span>
+                              <span className="text-link font-semibold text-near-black">
+                                {isFreeRate(rate.price) ? "Free" : rate.price}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      {!showAllRates && hiddenCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(true)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See {hiddenCount} more option{hiddenCount !== 1 ? "s" : ""}
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : showAllRates && rates.length > LIMIT ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllRates(false)}
+                          className="mt-2 flex w-full items-center justify-center gap-1.5 border border-light-gray bg-off-white px-4 py-2.5 text-link text-dark-gray transition-colors hover:bg-white hover:text-near-black"
+                        >
+                          See less
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : isUpdatingRates ? (
                 <div className="flex items-center gap-2 border border-light-gray bg-off-white px-4 py-3 text-link text-dark-gray" aria-busy="true">
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                   Loading shipping options…
                 </div>
-              ) : shippingRates.some((pkg) => pkg.shipping_rates.length > 0) ? (
-                shippingRates.map((pkg) => (
-                  <ul key={pkg.package_id} className="space-y-2">
-                    {pkg.shipping_rates.map((rate) => (
-                      <li key={rate.rate_id}>
-                        <label className="flex cursor-pointer items-center justify-between gap-4 border border-light-gray bg-white px-4 py-3 transition-colors has-[:checked]:border-blue">
-                          <span className="flex items-center gap-3">
-                            <input
-                              type="radio"
-                              name={`shipping-${pkg.package_id}`}
-                              checked={rate.selected}
-                              disabled={isUpdatingRates}
-                              onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
-                            />
-                            <span className="text-link text-near-black">{rate.name}</span>
-                          </span>
-                          <span className="text-link font-semibold text-near-black">
-                            {isFreeRate(rate.price) ? "Free" : rate.price}
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                ))
               ) : locationReady ? (
                 <p className="border-l-4 border-amber bg-[#fdf6e7] px-4 py-3 text-link text-near-black">
                   There are no shipping options available for this address.
@@ -1203,68 +1363,108 @@ function CheckoutForm({
                 ) : null}
 
                 {usingSavedCard ? null : (
-                <>
-                <div
-                  className={`flex items-stretch overflow-hidden border bg-white transition-colors ${
-                    cardNumberError || cardExpiryError || cardCvcError
-                      ? "border-red-400"
-                      : cardNumberFocused || cardExpiryFocused || cardCvcFocused
-                        ? "border-blue"
-                        : "border-light-gray"
-                  }`}
-                >
-                  <div className="flex-1 border-r border-light-gray px-4 py-3">
-                    <CardNumberElement
-                      options={{ ...STRIPE_ELEMENT_STYLE, showIcon: false }}
-                      onFocus={() => setCardNumberFocused(true)}
-                      onBlur={() => setCardNumberFocused(false)}
-                      onChange={(e) => {
-                        setCardBrand(e.brand ?? "unknown");
-                        setCardNumberComplete(e.complete);
-                        if (e.error) setCardNumberError(e.error.message);
-                        else if (e.complete) setCardNumberError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[130px] border-r border-light-gray px-3 py-3">
-                    <CardExpiryElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardExpiryFocused(true)}
-                      onBlur={() => setCardExpiryFocused(false)}
-                      onChange={(e) => {
-                        setCardExpiryComplete(e.complete);
-                        if (e.error) setCardExpiryError(e.error.message);
-                        else if (e.complete) setCardExpiryError("");
-                      }}
-                    />
-                  </div>
-                  <div className="w-[110px] px-3 py-3">
-                    <CardCvcElement
-                      options={STRIPE_ELEMENT_STYLE}
-                      onFocus={() => setCardCvcFocused(true)}
-                      onBlur={() => setCardCvcFocused(false)}
-                      onChange={(e) => {
-                        setCardCvcComplete(e.complete);
-                        if (e.error) setCardCvcError(e.error.message);
-                        else if (e.complete) setCardCvcError("");
-                      }}
-                    />
-                  </div>
-                </div>
+                  <>
+                    {/* WooCommerce-standard Stripe card layout — each field has
+                        its own border + error message directly beneath it */}
 
-                {cardNumberError || cardExpiryError || cardCvcError ? (
-                  <div className="space-y-0.5">
-                    {cardNumberError ? <p className="text-xs text-red-600">{cardNumberError}</p> : null}
-                    {cardExpiryError ? <p className="text-xs text-red-600">{cardExpiryError}</p> : null}
-                    {cardCvcError ? <p className="text-xs text-red-600">{cardCvcError}</p> : null}
-                  </div>
-                ) : null}
+                    {/* Card number — full width */}
+                    <div>
+                      <div
+                        className={`border bg-white px-4 py-3 transition-colors ${
+                          cardNumberError
+                            ? "border-red-400"
+                            : cardNumberFocused
+                              ? "border-blue"
+                              : "border-light-gray"
+                        }`}
+                      >
+                        <CardNumberElement
+                          options={{ ...STRIPE_ELEMENT_STYLE, showIcon: true }}
+                          onFocus={() => setCardNumberFocused(true)}
+                          onBlur={() => setCardNumberFocused(false)}
+                          onChange={(e) => {
+                            setCardBrand(e.brand ?? "unknown");
+                            setCardNumberComplete(e.complete);
+                            if (e.error) setCardNumberError(e.error.message);
+                            else {
+                              setCardNumberError("");
+                              if (e.complete) cardExpiryRef.current?.focus();
+                            }
+                          }}
+                        />
+                      </div>
+                      {cardNumberError ? (
+                        <p className="mt-1 text-xs text-red-600">{cardNumberError}</p>
+                      ) : null}
+                    </div>
 
-                <CardBrandRow detected={cardBrand} />
+                    {/* Expiry + CVC — side by side, each with own error */}
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <div
+                          className={`border bg-white px-4 py-3 transition-colors ${
+                            cardExpiryError
+                              ? "border-red-400"
+                              : cardExpiryFocused
+                                ? "border-blue"
+                                : "border-light-gray"
+                          }`}
+                        >
+                          <CardExpiryElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardExpiryRef.current = el; }}
+                            onFocus={() => setCardExpiryFocused(true)}
+                            onBlur={() => setCardExpiryFocused(false)}
+                            onChange={(e) => {
+                              setCardExpiryComplete(e.complete);
+                              if (e.error) setCardExpiryError(e.error.message);
+                              else {
+                                setCardExpiryError("");
+                                if (e.complete) cardCvcRef.current?.focus();
+                              }
+                            }}
+                          />
+                        </div>
+                        {cardExpiryError ? (
+                          <p className="mt-1 text-xs text-red-600">{cardExpiryError}</p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex-1">
+                        <div
+                          className={`border bg-white px-4 py-3 transition-colors ${
+                            cardCvcError
+                              ? "border-red-400"
+                              : cardCvcFocused
+                                ? "border-blue"
+                                : "border-light-gray"
+                          }`}
+                        >
+                          <CardCvcElement
+                            options={STRIPE_ELEMENT_STYLE}
+                            onReady={(el) => { cardCvcRef.current = el; }}
+                            onFocus={() => setCardCvcFocused(true)}
+                            onBlur={() => setCardCvcFocused(false)}
+                            onChange={(e) => {
+                              setCardCvcComplete(e.complete);
+                              if (e.error) setCardCvcError(e.error.message);
+                              else setCardCvcError("");
+                            }}
+                          />
+                        </div>
+                        {cardCvcError ? (
+                          <p className="mt-1 text-xs text-red-600">{cardCvcError}</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <CardBrandRow detected={cardBrand} />
+                  </>
+                )}
 
                 {/* WC Stripe: "Save payment information to my account for
                     future purchases." — logged-in customers, setting on. */}
-                {isLoggedIn && settings.saved_cards ? (
+                {!usingSavedCard && isLoggedIn && settings.saved_cards ? (
                   <label className="flex cursor-pointer items-center gap-3 pt-1 text-link text-near-black">
                     <input
                       type="checkbox"
@@ -1275,8 +1475,6 @@ function CheckoutForm({
                     Save payment information to my account for future purchases.
                   </label>
                 ) : null}
-                </>
-                )}
               </div>
             )}
 
@@ -1338,6 +1536,8 @@ function CheckoutForm({
           cart={cart}
           checkout={checkout}
           onRemoveCoupon={(code) => void handleRemoveCoupon(code)}
+          onCertToggle={handleCertToggle}
+          certOptedIn={certOptedIn}
           isBusy={isApplyingCoupon || isPlacingOrder}
           isUpdating={isUpdatingRates}
         />
@@ -1353,6 +1553,8 @@ export default function CheckoutPageView({
   settings: WcCheckoutSettings;
   isLoggedIn: boolean;
 }) {
+  const [orderComplete, setOrderComplete] = useState(false);
+
   if (!stripePromise) {
     return (
       <div className="mx-auto max-w-3xl px-5 py-16">
@@ -1360,6 +1562,21 @@ export default function CheckoutPageView({
         <p className="text-body text-dark-gray">
           Payment is not configured — set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in
           the environment and reload.
+        </p>
+      </div>
+    );
+  }
+
+  if (orderComplete) {
+    return (
+      <div
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <Loader2 className="size-8 animate-spin text-amber" aria-hidden="true" />
+        <p className="text-body font-semibold text-near-black">
+          Order received — taking you to your confirmation&hellip;
         </p>
       </div>
     );
@@ -1373,11 +1590,15 @@ export default function CheckoutPageView({
 
       {/* SOW: pending/expired exemption status notice at checkout */}
       <div className="mb-6">
-        <CartTaxExemptionNotice />
+        <CartTaxExemptionNotice isLoggedIn={isLoggedIn} />
       </div>
 
       <Elements stripe={stripePromise}>
-        <CheckoutForm settings={settings} isLoggedIn={isLoggedIn} />
+        <CheckoutForm
+          settings={settings}
+          isLoggedIn={isLoggedIn}
+          onOrderComplete={() => setOrderComplete(true)}
+        />
       </Elements>
     </div>
   );

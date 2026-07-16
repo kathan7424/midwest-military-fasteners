@@ -24,9 +24,11 @@ export function appendSetCookie(
   value: string,
   options: { expire?: boolean } = {}
 ): void {
+  // 172800s = 48 hours — matches WooCommerce's default session lifetime so the
+  // guest cart survives a browser restart (WC standard behaviour).
   let attributes = options.expire
     ? "Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; HttpOnly; SameSite=Lax"
-    : "Path=/; HttpOnly; SameSite=Lax";
+    : "Path=/; HttpOnly; SameSite=Lax; Max-Age=172800";
 
   // Secure in production only — local dev serves over plain http.
   if (process.env.NODE_ENV === "production") {

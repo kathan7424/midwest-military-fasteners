@@ -55,27 +55,38 @@ block convention: required fields are plain, optional fields show
 3. Customer picks a rate → `POST /wc/store/v1/cart/select-shipping-rate` → totals update
 4. Customer enters card → **Stripe Elements** creates a PaymentMethod
    **in the browser, directly with Stripe** (card data never touches our servers — PCI standard)
-5. `POST /wc/store/v1/checkout` with `payment_data` keys the Stripe gateway
-   (UPE / deferred intent) requires:
-   `payment_method: "stripe"`, `wc-stripe-payment-method: pm_...`,
-   `wc-stripe-is-deferred-intent: true`
+5. `POST /wc/store/v1/checkout` with the `payment_data` keys the WC Stripe
+   10.x gateway requires (deferred intent is the only path since 10.5.0):
+   `payment_method: "stripe"` (INSIDE payment_data — the Store API copies only
+   payment_data entries into `$_POST`, and the gateway reads
+   `$_POST['payment_method']` for both the payment type and the saved-token
+   key) + `wc-stripe-payment-method: pm_...` for a new card
 
    **Saved payment methods** (WC → Payments → Stripe → "Enable saved payment
    methods", `saved_cards` in `woocommerce_stripe_settings`, exposed via
    `/custom/v1/checkout/locations` → `checkout.saved_cards`):
    - Logged-in customers see their cards stored at Stripe (same list as
      My Account → Payment Methods) as radio options above the card fields;
-     the first card is preselected, "Use a new payment method" reopens the
-     Stripe Elements fields. Paying with a saved card sends the stored
-     `pm_...` id as `wc-stripe-payment-method` — no card entry, no card data
-     through the store.
+     the customer's DEFAULT token is preselected (first card when none is
+     default), "Use a new payment method" reopens the Stripe Elements fields.
+     Paying with a saved card sends the WC payment token integer ID as
+     `wc-stripe-payment-token` (plus `payment_method: "stripe"` inside
+     payment_data) — no card entry, no card data through the store; the
+     gateway resolves the token to its Stripe PM.
+   - My Account → Payment Methods has WC-standard "Make Default": POST
+     `/custom/v1/account/payment-methods/{token_id}/default` runs
+     `WC_Payment_Tokens::set_users_default()` after an ownership check;
+     the default card shows a badge and is preselected at checkout.
    - New-card entry shows "Save payment information to my account for future
      purchases." (logged-in only). Checked → `wc-stripe-new-payment-method:
      true` is added and the gateway attaches the card to the Stripe customer.
    - Setting OFF or guest checkout → no saved-card list, no save checkbox
      (plain card entry only).
 6. 3D Secure cards: the gateway returns a confirm hash in `redirect_url` —
-   the checkout runs `stripe.confirmCardPayment()` in the browser, then continues
+   the checkout runs `stripe.confirmCardPayment()` in the browser, then POSTs
+   `/api/checkout/verify-intent` so WP's `wc_stripe_verify_intent` endpoint
+   marks the order paid immediately (server-side, WP-origin-locked proxy; the
+   Stripe webhook remains the fallback if verification misses)
 7. Order created in WooCommerce → customer lands on `/checkout/success` — a
    WooCommerce-style order-received page (order number, date, total, payment method)
 

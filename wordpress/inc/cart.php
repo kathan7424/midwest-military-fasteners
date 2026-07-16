@@ -7,46 +7,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
-add_action( 'rest_api_init', 'mmf_register_cart_routes' );
-
-/**
- * Register cart REST routes.
- */
-function mmf_register_cart_routes(): void {
-	register_rest_route(
-		'custom/v1',
-		'/cart',
-		array(
-			array(
-				'methods'             => 'GET',
-				'callback'            => 'mmf_cart_get',
-				'permission_callback' => 'mmf_cart_permission',
-			),
-			array(
-				'methods'             => 'POST',
-				'callback'            => 'mmf_cart_add',
-				'permission_callback' => 'mmf_cart_permission',
-			),
-		)
-	);
-
-	register_rest_route(
-		'custom/v1',
-		'/cart/remove',
-		array(
-			'methods'             => 'POST',
-			'callback'            => 'mmf_cart_remove',
-			'permission_callback' => 'mmf_cart_permission',
-		)
-	);
-}
-
-/**
- * Cart routes require a logged-in customer.
- */
-function mmf_cart_permission(): bool {
-	return is_user_logged_in();
-}
+// Custom /custom/v1/cart endpoints removed — all cart operations now go
+// through the WooCommerce Store API (/wc/store/v1/cart/*) which supports
+// guest carts via Cart-Token. The old custom endpoints required login
+// (mmf_cart_permission returned is_user_logged_in()) which blocked guest
+// checkout — WooCommerce standard allows guest carts.
 
 /**
  * Bootstrap WooCommerce session and cart for REST requests.
@@ -252,5 +217,109 @@ function mmf_cart_remove( WP_REST_Request $request ) {
 			'message' => 'Item removed from your order.',
 			'cart'    => mmf_format_cart_response(),
 		)
+	);
+}
+
+// ---------------------------------------------------------------------------
+// WooCommerce Store API extension — exposes has_certificate per cart item
+// so the headless checkout knows which items have a cert file available.
+// No separate $0 product is created; the cert file URL lives on the physical
+// product (_certificate_file_url meta). Opt-in is recorded at order time via
+// the checkout extensions payload (woocommerce_store_api_register_update_callback).
+// ---------------------------------------------------------------------------
+
+add_action(
+	'woocommerce_blocks_loaded',
+	function () {
+		// Cart item read extension — tells headless checkout if a cert is available.
+		if ( function_exists( 'woocommerce_store_api_register_endpoint_data' ) ) {
+			woocommerce_store_api_register_endpoint_data(
+				array(
+					'endpoint'        => Automattic\WooCommerce\StoreApi\Schemas\V1\CartItemSchema::IDENTIFIER,
+					'namespace'       => 'mmf_cert',
+					'data_callback'   => 'mmf_cert_store_api_data',
+					'schema_callback' => 'mmf_cert_store_api_schema',
+					'schema_type'     => ARRAY_A,
+				)
+			);
+		}
+
+		// Checkout update callback — captures the cert opt-in map from the
+		// checkout POST body (extensions.mmf_cert.cert_opted_in) and stashes
+		// it in the WC session so the line-item hook can read it.
+		if ( function_exists( 'woocommerce_store_api_register_update_callback' ) ) {
+			woocommerce_store_api_register_update_callback(
+				array(
+					'namespace' => 'mmf_cert',
+					'callback'  => 'mmf_cert_checkout_update_callback',
+				)
+			);
+		}
+	}
+);
+
+/**
+ * Request-scoped store for the cert opt-in map.
+ *
+ * In WC Blocks, the update_callback fires AFTER order line items are created.
+ * Using a PHP global means the map is available in the same request even if
+ * the session write happens too late for woocommerce_checkout_create_order_line_item.
+ * The authoritative stamp is done in mmf_stamp_cert_opted_in_fallback (order-documents.php)
+ * which runs on woocommerce_store_api_checkout_order_processed.
+ *
+ * @var array<string, bool>
+ */
+$mmf_cert_opted_in_request_map = array();
+
+/**
+ * Capture cert opt-in selections from the checkout POST.
+ *
+ * Stores in both a PHP global (same-request access) and the WC session
+ * (cross-hook access). Called by the WC Store API update_callback mechanism.
+ *
+ * @param array $data extensions.mmf_cert from the checkout POST body.
+ */
+function mmf_cert_checkout_update_callback( array $data ): void {
+	global $mmf_cert_opted_in_request_map;
+
+	$opted_in = ( isset( $data['cert_opted_in'] ) && is_array( $data['cert_opted_in'] ) )
+		? $data['cert_opted_in']
+		: array();
+
+	$mmf_cert_opted_in_request_map = $opted_in;
+
+	if ( WC()->session ) {
+		WC()->session->set( 'mmf_cert_opted_in', $opted_in );
+	}
+}
+
+/**
+ * Data injected into each Store API cart item under extensions.mmf_cert.
+ *
+ * @param array $cart_item Raw WC cart item array.
+ * @return array
+ */
+function mmf_cert_store_api_data( array $cart_item ): array {
+	$product_id      = isset( $cart_item['product_id'] ) ? (int) $cart_item['product_id'] : 0;
+	$has_certificate = ! empty( get_post_meta( $product_id, '_certificate_file_url', true ) );
+
+	return array(
+		'has_certificate' => $has_certificate,
+	);
+}
+
+/**
+ * JSON Schema for extensions.mmf_cert on each Store API cart item.
+ *
+ * @return array
+ */
+function mmf_cert_store_api_schema(): array {
+	return array(
+		'has_certificate' => array(
+			'description' => 'True when a certificate file is available for this product.',
+			'type'        => 'boolean',
+			'context'     => array( 'view', 'edit' ),
+			'readonly'    => true,
+		),
 	);
 }

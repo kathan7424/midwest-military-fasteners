@@ -10,7 +10,6 @@ import { NextResponse } from "next/server";
 import { get_cached_spec_parts_categories } from "@/services/catalog-data.service";
 
 export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
 
 export async function GET() {
   try {

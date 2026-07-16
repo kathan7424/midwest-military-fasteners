@@ -21,6 +21,8 @@ async function get_cookie_header(): Promise<string | null> {
   return cookie_header || null;
 }
 
+export const dynamic = "force-dynamic";
+
 // Reject uploads over 10 MB before parsing the form data.
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
@@ -33,7 +35,9 @@ export async function GET() {
     });
 
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const res = NextResponse.json(data, { status: response.status });
+    res.headers.set("Cache-Control", "private, no-store");
+    return res;
   } catch (error) {
     console.error("Tax exemption GET proxy error:", error);
     return NextResponse.json(

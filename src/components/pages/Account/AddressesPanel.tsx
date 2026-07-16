@@ -41,17 +41,17 @@ function AddressDisplay({ address }: { address: AccountAddress }) {
 
   return (
     <address className="space-y-0.5 text-link not-italic text-dark-gray">
-      <p className="font-semibold text-near-black">
+      <p className="font-semibold text-near-black capitalize mb-2">
         {`${address.first_name} ${address.last_name}`.trim()}
       </p>
-      {address.company ? <p>{address.company}</p> : null}
+      {address.company ? <p className="mb-2">{address.company}</p> : null}
       <p>{address.address_1}</p>
       {address.address_2 ? <p>{address.address_2}</p> : null}
       <p>
         {address.city}, {address.state} {address.postcode}
       </p>
       <p>{address.country}</p>
-      {address.email ? <p className="pt-1">{address.email}</p> : null}
+      {address.email ? <p className="pt-2">{address.email}</p> : null}
       {address.phone ? <p>{address.phone}</p> : null}
     </address>
   );

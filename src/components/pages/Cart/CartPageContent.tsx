@@ -27,7 +27,7 @@ function CartCheckoutButton() {
   return (
     <Link
       href="/checkout"
-      className="inline-flex w-full items-center justify-center gap-2.5 bg-amber px-5 py-3 text-link font-semibold uppercase text-white transition-colors hover:bg-blue sm:w-auto"
+       className="inline-flex w-auto items-center justify-center gap-2.5 bg-amber px-5 lg:px-[30px] py-3.5 text-link font-semibold uppercase text-white transition-colors hover:bg-blue"
     >
       Checkout
       <FaChevronRight size={12} aria-hidden="true" />
@@ -177,7 +177,7 @@ function CartMobileCard({
   );
 }
 
-export default function CartPageContent() {
+export default function CartPageContent({ couponsEnabled }: { couponsEnabled: boolean }) {
   const cart = useCartStore((state) => state.cart);
   const setCart = useCartStore((state) => state.setCart);
   const isLoading = useCartStore((state) => state.isLoading);
@@ -314,55 +314,57 @@ export default function CartPageContent() {
         ))}
       </div>
 
-      {/* WooCommerce-style coupon notice */}
-      <div className="mt-8 max-w-[1320px]">
-        <div className="mb-6 border-l-4 border-amber bg-[#eef6fb] px-4 py-3 text-link text-black sm:px-5">
-          <p className="mb-0">
-            Have a coupon?{" "}
-            <button
-              type="button"
-              onClick={() => { setCouponOpen((o) => !o); setCouponError(""); }}
-              className="font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
-            >
-              Click here to enter your code
-            </button>
-          </p>
-          {couponOpen ? (
-            <div className="mt-3 border-t border-[#c9dcea] pt-3">
-              <div className="flex max-w-[420px] gap-2">
-                <input
-                  type="text"
-                  value={couponCode}
-                  onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }}
-                  placeholder="Coupon code"
-                  className="min-w-0 flex-1 border border-light-gray bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
-                />
-                <button
-                  type="button"
-                  disabled={isApplyingCoupon}
-                  onClick={() => void handleApplyCoupon()}
-                  className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
-                >
-                  {isApplyingCoupon ? "Applying..." : "Apply coupon"}
-                </button>
+      {/* Coupon notice — only shown when WooCommerce coupons are enabled */}
+      {couponsEnabled && (
+        <div className="mt-8 max-w-[1320px]">
+          <div className="mb-6 border-l-4 border-amber bg-[#eef6fb] px-4 py-3 text-link text-black sm:px-5">
+            <p className="mb-0">
+              Have a coupon?{" "}
+              <button
+                type="button"
+                onClick={() => { setCouponOpen((o) => !o); setCouponError(""); }}
+                className="font-semibold text-blue underline underline-offset-2 transition-colors hover:text-amber"
+              >
+                Click here to enter your code
+              </button>
+            </p>
+            {couponOpen ? (
+              <div className="mt-3 border-t border-[#c9dcea] pt-3">
+                <div className="flex max-w-[420px] gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => { setCouponCode(e.target.value); setCouponError(""); }}
+                    placeholder="Coupon code"
+                    className="min-w-0 flex-1 border border-light-gray bg-white px-4 py-2.5 text-link text-near-black outline-none transition-colors focus:border-blue"
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleApplyCoupon(); } }}
+                  />
+                  <button
+                    type="button"
+                    disabled={isApplyingCoupon}
+                    onClick={() => void handleApplyCoupon()}
+                    className="shrink-0 bg-amber px-5 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
+                  >
+                    {isApplyingCoupon ? "Applying..." : "Apply coupon"}
+                  </button>
+                </div>
+                {couponError ? (
+                  <p className="mt-2 text-sm text-[#b81c23]">{couponError}</p>
+                ) : null}
               </div>
-              {couponError ? (
-                <p className="mt-2 text-sm text-[#b81c23]">{couponError}</p>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* WooCommerce-style cart totals */}
-      <div className="flex flex-col items-stretch gap-6 sm:items-end">
+      <div className="mt-8 flex flex-col gap-6 items-start sm:items-end">
         <dl className="w-full max-w-[360px] space-y-2 border border-light-gray bg-off-white p-5 text-link">
           <div className="flex justify-between">
-            <dt className="text-dark-gray">Subtotal</dt>
+          <dt className="text-dark-gray font-semibold">Subtotal</dt>
             <dd className="font-semibold text-near-black">{cart.subtotal}</dd>
           </div>
-          {cart.coupons.map((coupon) => (
+          {couponsEnabled && cart.coupons.map((coupon) => (
             <div key={coupon.code} className="flex justify-between">
               <dt className="text-dark-gray">
                 Coupon: <span className="uppercase">{coupon.code}</span>{" "}
@@ -395,7 +397,7 @@ export default function CartPageContent() {
             <dd className="text-near-black">{cart.total}</dd>
           </div>
           {shippingNum === 0 ? (
-            <p className="pt-1 text-sm text-dark-gray">
+            <p className="pt-1 text-sm text-dark-gray mb-0">
               Shipping calculated at checkout.
             </p>
           ) : null}

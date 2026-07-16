@@ -28,10 +28,19 @@ export function decodeHtmlEntities(text: string): string {
 }
 
 /**
+ * Strip HTML tags from a string, collapsing runs of whitespace.
+ * WooCommerce wraps many notice strings in <p> tags — this makes them
+ * safe for plain-text contexts (toast messages, aria-labels, etc.).
+ */
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
  * Normalize WooCommerce / WordPress notice text for UI display.
  */
 export function formatNoticeMessage(message: string): string {
-  const decoded = decodeHtmlEntities(message).trim();
+  const decoded = stripHtml(decodeHtmlEntities(message));
 
   const maxQuantityMatch = decoded.match(
     /maximum quantity of ["']?(.+?)["']? allowed in the cart is (\d+)/i

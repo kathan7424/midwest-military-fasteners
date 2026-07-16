@@ -141,11 +141,6 @@ export default function QtyAddToOrder({
         quantity: parsedQty,
       });
 
-      if (added) {
-        // Back to blank, ready for the next entry.
-        setQuantity("");
-      }
-
       if (added && stock_message) {
         notifyWarning(stock_message);
       }

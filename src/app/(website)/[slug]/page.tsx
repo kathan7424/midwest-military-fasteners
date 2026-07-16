@@ -37,17 +37,19 @@ export default async function Page({ params, searchParams }: Props) {
   const normalized_slug = slug.toLowerCase();
   const listing_params = await searchParams;
 
-  const settings = await fetchSiteSettings().catch(() => null);
+  // All three fetches are independent — run in parallel to eliminate the
+  // settings→content waterfall. For catalog slugs, menu/page resolve unused.
+  const [settings_result, menu_result, page_result] = await Promise.allSettled([
+    fetchSiteSettings(),
+    fetchMenu(),
+    fetchPageBySlug(normalized_slug),
+  ]);
+
+  const settings = settings_result.status === "fulfilled" ? settings_result.value : null;
 
   if (is_catalog_listing_slug(normalized_slug, settings?.woocommerce)) {
     return <CatalogListingPage searchParams={listing_params} />;
   }
-
-  // Menu and page content are independent — fetch in parallel.
-  const [menu_result, page_result] = await Promise.allSettled([
-    fetchMenu(),
-    fetchPageBySlug(normalized_slug),
-  ]);
 
   const menu: MenuItem[] =
     menu_result.status === "fulfilled" ? menu_result.value : [];

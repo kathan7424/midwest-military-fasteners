@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ENV } from "@/config/env";
 import { buildWpCookieHeader } from "@/utils/auth-proxy.utils";
 
+export const dynamic = "force-dynamic";
+
 async function getCookieHeader(): Promise<string> {
   const store = await cookies();
   return store
@@ -43,5 +45,7 @@ export async function DELETE(
   );
 
   const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  const res = NextResponse.json(data, { status: response.status });
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
 }

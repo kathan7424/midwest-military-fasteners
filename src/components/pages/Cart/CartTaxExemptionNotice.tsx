@@ -42,7 +42,11 @@ function UploadDocumentIcon() {
   );
 }
 
-export default function CartTaxExemptionNotice() {
+interface CartTaxExemptionNoticeProps {
+  isLoggedIn?: boolean;
+}
+
+export default function CartTaxExemptionNotice({ isLoggedIn = false }: CartTaxExemptionNoticeProps) {
   const [status, setStatus] = useState<TaxExemptionStatus | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -52,10 +56,11 @@ export default function CartTaxExemptionNotice() {
   const [dateError, setDateError] = useState("");
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     fetch_tax_exemption_status()
       .then(setStatus)
       .catch(() => setStatus(null));
-  }, []);
+  }, [isLoggedIn]);
 
   if (!status?.show_notice) {
     return null;
@@ -132,7 +137,7 @@ export default function CartTaxExemptionNotice() {
       {canUpload && isFormOpen ? (
         <form
           onSubmit={handleUpload}
-          className="mt-4 flex flex-col gap-3 border-t border-[#c9dcea] pt-4 sm:flex-row sm:items-end"
+          className="mt-4 flex flex-col flex-wrap gap-3 border-t border-[#c9dcea] pt-4 sm:flex-row sm:items-start"
         >
           <div className="flex-1">
             <SalesTaxExemptionUpload
@@ -164,7 +169,7 @@ export default function CartTaxExemptionNotice() {
               minValue={parseDate(new Date().toISOString().slice(0, 10))}
               placeholder="Expiration Date"
               size="md"
-              buttonClassName="h-12 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
+              buttonClassName="h-10 w-full rounded-none border border-[#666666] bg-white px-3 text-left font-normal focus-visible:outline-offset-0 focus:ring focus-within:ring-1 focus-within:ring-brand shadow-none text-[16px] text-[#989898]"
             />
             {dateError ? (
               <p className="mt-1 text-xs text-red-600">{dateError}</p>
