@@ -12,5 +12,8 @@ import { fetchWpJson } from "@/services/wp-api.service";
 import { SiteSettings } from "@/types/site-settings.types";
 
 export const fetchSiteSettings = cache(async (): Promise<SiteSettings> => {
-  return fetchWpJson<SiteSettings>("/custom/v1/site-settings", { mode: "static" });
+  return fetchWpJson<SiteSettings>("/custom/v1/site-settings", {
+    mode: "static",
+    tags: ["site-settings"],
+  });
 });

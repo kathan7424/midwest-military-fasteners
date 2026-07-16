@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ENV } from "@/config/env";
 import { buildWpCookieHeader } from "@/utils/auth-proxy.utils";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -6,6 +6,8 @@
  * Created Date: 2026-07-09
  */
 
+import { cache } from "react";
+
 import { ENV } from "@/config/env";
 import type {
   CheckoutLocations,
@@ -18,8 +20,9 @@ const IS_DEV = process.env.NODE_ENV === "development";
 /**
  * WooCommerce settings for server components. 5-min ISR in prod (admins
  * change these rarely); always fresh in dev so WC changes reflect instantly.
+ * Wrapped in React cache() so multiple callers in the same render pay one fetch.
  */
-export async function fetch_store_settings(): Promise<CheckoutLocations | null> {
+export const fetch_store_settings = cache(async (): Promise<CheckoutLocations | null> => {
   try {
     const response = await fetch(
       `${ENV.WP_SITE_URL}/wp-json/custom/v1/checkout/locations`,
@@ -39,7 +42,7 @@ export async function fetch_store_settings(): Promise<CheckoutLocations | null> 
   } catch {
     return null;
   }
-}
+});
 
 export async function fetch_store_currency(): Promise<WcCurrencySettings | null> {
   const settings = await fetch_store_settings();

@@ -61,6 +61,18 @@ export interface AuthMeResponse {
   user: AuthUser;
 }
 
+export interface ResetPasswordPayload {
+  key: string;
+  login: string;
+  password: string;
+  confirm_password: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
 export interface AuthErrorResponse {
   code?: string;
   message?: string;

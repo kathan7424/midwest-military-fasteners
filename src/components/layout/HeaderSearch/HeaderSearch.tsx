@@ -3,11 +3,12 @@
  * Description: Responsive header global search with live WordPress suggestions.
  * Developer: KP-184
  * Created Date: 2026-06-25
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-16
  */
 
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FaMagnifyingGlass } from "react-icons/fa6";
 
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
@@ -20,6 +21,8 @@ interface HeaderSearchProps {
 }
 
 export default function HeaderSearch({ className }: HeaderSearchProps) {
+  const router = useRouter();
+
   const {
     query,
     setQuery,
@@ -31,6 +34,12 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
     clearSearch,
   } = useGlobalSearch<HTMLFormElement>();
 
+  function handleSearch() {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+  }
+
   return (
     <form
       ref={wrapperRef}
@@ -40,7 +49,10 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
         "relative hidden w-full max-w-[690px] flex-1 items-center lg:flex",
         className
       )}
-      onSubmit={(event) => event.preventDefault()}
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSearch();
+      }}
     >
       <div className="flex w-full">
         <input
@@ -66,7 +78,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
           className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-link text-near-black outline-none placeholder:text-[#A5A5A5]"
         />
         <button
-          type="button"
+          type="submit"
           aria-label="Search"
           className="h-12 rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
         >

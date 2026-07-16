@@ -160,11 +160,11 @@ export default function ContactForm() {
         />
       </div>
       {errors.message ? (
-        <p className="text-xs text-error-primary">{errors.message.message}</p>
+        <p className="mt-1.5 text-sm text-error-primary">{errors.message.message}</p>
       ) : null}
 
       {serverError ? (
-        <p role="alert" className="text-xs text-error-primary">
+        <p role="alert" className="mt-1.5 text-sm text-error-primary">
           {serverError}
         </p>
       ) : null}

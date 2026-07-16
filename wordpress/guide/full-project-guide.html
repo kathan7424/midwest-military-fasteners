@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Midwest Military Fasteners — Full Project Guide</title>
+<style>
+:root {
+  --navy:#1a3659; --blue:#1a56db; --amber:#d9a521; --gold:#f6c90e;
+  --ink:#1d2327; --gray:#50575e; --light:#e5e7eb; --bg:#f0f2f5;
+  --green:#1a7f37; --red:#b32d2e; --orange:#9a6700; --card:#ffffff;
+  --navy-dark:#0f2240; --sidebar-w:240px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;display:flex;min-height:100vh;}
+
+/* SIDEBAR NAV */
+#sidebar{position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;background:var(--navy-dark);overflow-y:auto;z-index:100;padding-bottom:40px;}
+#sidebar .brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.1);}
+#sidebar .brand strong{display:block;color:#fff;font-size:14px;text-transform:uppercase;letter-spacing:.8px;line-height:1.3;}
+#sidebar .brand span{color:var(--gold);font-size:11px;letter-spacing:.4px;}
+#sidebar nav{padding:12px 0;}
+#sidebar nav a{display:block;padding:8px 16px;color:#a8bdd4;font-size:13px;text-decoration:none;border-left:3px solid transparent;transition:all .15s;}
+#sidebar nav a:hover,#sidebar nav a.active{color:#fff;background:rgba(255,255,255,.06);border-left-color:var(--gold);}
+#sidebar nav .group{padding:14px 16px 4px;color:var(--gold);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;}
+
+/* MAIN */
+main{margin-left:var(--sidebar-w);flex:1;padding:0 0 80px;}
+.page-header{background:var(--navy);color:#fff;padding:32px 40px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;}
+.page-header h1{font-size:18px;text-transform:uppercase;letter-spacing:.8px;}
+.page-header h1 span{color:var(--gold);}
+.page-header small{color:#a8bdd4;font-size:12px;margin-left:auto;}
+.content{padding:36px 40px;}
+
+/* SECTIONS */
+section{margin-bottom:48px;scroll-margin-top:80px;}
+h2{font-size:17px;text-transform:uppercase;color:var(--navy);border-left:4px solid var(--gold);padding-left:12px;margin-bottom:18px;letter-spacing:.3px;}
+h3{font-size:14px;font-weight:700;color:var(--navy);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.3px;}
+h4{font-size:13px;font-weight:700;color:var(--gray);margin:14px 0 6px;}
+p{color:var(--gray);font-size:13.5px;margin-bottom:10px;}
+a{color:var(--blue);}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--light);padding:18px 20px;margin-bottom:12px;border-radius:2px;}
+.card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+.grid{display:grid;gap:12px;}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.g3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;margin-bottom:14px;}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);}
+th{background:var(--navy);color:#fff;text-align:left;padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;}
+td{padding:9px 12px;border-top:1px solid var(--light);vertical-align:top;}
+tr:hover td{background:#fafbfc;}
+td code{background:#eef1f5;padding:1px 5px;font-size:11.5px;border-radius:2px;font-family:Consolas,Menlo,monospace;}
+
+/* CODE */
+code{background:#eef1f5;padding:1px 6px;font-size:12px;border-radius:2px;font-family:Consolas,Menlo,monospace;color:#1a3659;}
+pre{background:var(--navy-dark);color:#dbe6f3;padding:16px 20px;overflow-x:auto;font-size:12px;font-family:Consolas,Menlo,monospace;line-height:1.8;margin:10px 0;border-radius:2px;}
+pre b{color:var(--gold);}
+
+/* BADGES */
+.badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 7px;border-radius:3px;letter-spacing:.3px;margin-left:6px;vertical-align:middle;}
+.badge-done{background:#e6f4ea;color:var(--green);}
+.badge-pend{background:#fdf3e0;color:var(--orange);}
+.badge-crit{background:#fce8e8;color:var(--red);}
+.badge-info{background:#eef6fb;color:#0e6990;}
+.badge-sec{background:#f3e8ff;color:#6b21a8;}
+
+/* TEST CASES */
+.tc{border:1px solid var(--light);background:var(--card);margin-bottom:8px;border-radius:2px;overflow:hidden;}
+.tc-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;}
+.tc-head:hover{background:#f8f9fa;}
+.tc-id{font-size:10px;font-weight:700;color:#fff;background:var(--navy);padding:2px 7px;border-radius:2px;min-width:52px;text-align:center;letter-spacing:.3px;}
+.tc-title{font-size:13px;font-weight:600;color:var(--ink);flex:1;}
+.tc-status{font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:12px;}
+.tc-status.pass{background:#e6f4ea;color:var(--green);}
+.tc-status.check{background:#fdf3e0;color:var(--orange);}
+.tc-status.sec{background:#fce8e8;color:var(--red);}
+.tc-body{display:none;padding:10px 14px 14px;border-top:1px solid var(--light);background:#fafbfc;}
+.tc-body.open{display:block;}
+.tc-row{display:grid;grid-template-columns:90px 1fr;gap:4px 12px;font-size:12.5px;margin-bottom:4px;}
+.tc-label{font-weight:700;color:var(--gray);text-transform:uppercase;font-size:11px;padding-top:1px;}
+.tc-val{color:var(--ink);}
+ul.steps{font-size:12.5px;color:var(--ink);padding-left:18px;margin:4px 0;}
+ul.steps li{margin-bottom:3px;}
+
+/* FLOW */
+.flow{background:var(--navy-dark);color:#dbe6f3;padding:14px 18px;font-size:12px;font-family:Consolas,Menlo,monospace;line-height:1.9;border-radius:2px;margin:10px 0;}
+.flow b{color:var(--gold);}
+
+/* ROUTE TABLE */
+.method{font-size:10px;font-weight:700;padding:2px 7px;border-radius:2px;font-family:Consolas,Menlo,monospace;}
+.GET{background:#e6f4ea;color:var(--green);}
+.POST{background:#eef6fb;color:#0e6990;}
+.PUT{background:#fdf3e0;color:var(--orange);}
+.DELETE{background:#fce8e8;color:var(--red);}
+
+/* STAT CARDS */
+.stat-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+.stat{background:var(--card);border:1px solid var(--light);padding:16px 20px;min-width:160px;text-align:center;border-radius:2px;}
+.stat-num{font-size:28px;font-weight:700;color:var(--navy);line-height:1;}
+.stat-label{font-size:11px;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-top:4px;}
+
+footer{text-align:center;color:var(--gray);font-size:12px;padding:32px 40px;border-top:1px solid var(--light);}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div class="brand">
+    <strong>MMF Project</strong>
+    <span>Full Guide &amp; Test Cases</span>
+  </div>
+  <nav>
+    <div class="group">Overview</div>
+    <a href="#overview">Project Summary</a>
+    <a href="#arch">Architecture</a>
+    <a href="#stack">Tech Stack</a>
+    <a href="#routes">Page Routes</a>
+
+    <div class="group">Modules</div>
+    <a href="#auth">Auth (Login / Register)</a>
+    <a href="#catalog">Product Catalog</a>
+    <a href="#cart">Cart</a>
+    <a href="#checkout">Checkout</a>
+    <a href="#account">My Account</a>
+    <a href="#tax">Tax Exemption</a>
+    <a href="#net30">Net 30 Terms</a>
+    <a href="#docs">Order Documents</a>
+
+    <div class="group">API Reference</div>
+    <a href="#api-next">Next.js Proxy Routes</a>
+    <a href="#api-wp">WordPress Endpoints</a>
+
+    <div class="group">Quality</div>
+    <a href="#testcases">Test Cases</a>
+    <a href="#security">Security Rules</a>
+    <a href="#wcsettings">WC Settings Map</a>
+    <a href="#deploy">Deploy Checklist</a>
+    <a href="#conventions">Code Conventions</a>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<main>
+<div class="page-header">
+  <h1>Midwest Military <span>Fasteners</span> — Full Project Guide</h1>
+  <small>Updated 2026-07-14</small>
+</div>
+<div class="content">
+
+<!-- ───────────── OVERVIEW ───────────── -->
+<section id="overview">
+<h2>Project Summary</h2>
+<div class="stat-row">
+  <div class="stat"><div class="stat-num">1,900+</div><div class="stat-label">Products (SKUs)</div></div>
+  <div class="stat"><div class="stat-num">8</div><div class="stat-label">My Account Panels</div></div>
+  <div class="stat"><div class="stat-num">30+</div><div class="stat-label">API Routes</div></div>
+  <div class="stat"><div class="stat-num">80+</div><div class="stat-label">Test Cases</div></div>
+</div>
+<p>Midwest Military Fasteners is a headless WooCommerce B2B storefront. The browser only talks to Next.js. WordPress/WooCommerce is the single source of truth for products, pricing, tax, stock, orders, and every store setting. No prices, currency symbols, or checkout behaviours are hardcoded — all come from WC admin.</p>
+<div class="grid g3">
+  <div class="card">
+    <div class="card-title">Headless Checkout</div>
+    <p>WC Store API — address → shipping rates → TaxJar tax → Stripe UPE → 3DS → success page.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Tax Exemption</div>
+    <p>Upload cert on register or via My Account. Admin HMAC-email approval. Approved = $0 tax at checkout. Daily expiry cron.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Net 30 Terms</div>
+    <p>COD gateway repurposed. Per-customer admin flag. Checkout skips card entry. Gateway filtered server-side — never exposed to unlisted customers.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Order Documents</div>
+    <p>Spec sheets available after purchase. Certificates unlocked after order ships/completes. Customer notified by email. Bulk download.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Product Catalog</div>
+    <p>Spec-parts CSV import pipeline. Package quantity pricing tiers. Series/category filter sidebar. Tier pricing shown to logged-in users only.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">My Account (Figma)</div>
+    <p>Sidebar layout: Orders, Certifications, Spec Sheets, Documents (Tax Cert), Addresses, Account Details, Logout.</p>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── ARCHITECTURE ───────────── -->
+<section id="arch">
+<h2>Architecture</h2>
+<div class="flow">
+Browser (React + Stripe Elements iframes)
+  │  HTTPS only — WP session cookies are HttpOnly/Secure, never readable by JS
+  ▼
+<b>Next.js App Router</b>  (RSC pages · ISR · /api/* proxy · security headers)
+  │  forwards WP auth cookies + X-MMF-Proxy shared secret header
+  ▼
+<b>WordPress / WooCommerce</b>  (Pantheon, PHP 8.x)
+  ├── <b>wc/store/v1</b>   → cart · checkout · coupons · shipping · payment
+  ├── <b>custom/v1</b>     → auth · tax-exemption · orders · settings · search
+  ├── <b>spec-parts/v1</b> → catalog API (categories, products, series)
+  ├── Stripe Gateway (UPE deferred intent — card charged server-side at WC checkout)
+  ├── TaxJar          → rooftop-accurate sales tax (needs full address)
+  └── Shippo          → labels + tracking (pending client credentials)
+</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Cache Strategy</div>
+    <ul class="steps">
+      <li><strong>Static/ISR</strong> — menus, site settings, catalog pages: 5-min ISR (<code>revalidate:300</code>)</li>
+      <li><strong>Dynamic / no-store</strong> — cart, auth, orders, account data: <code>cache:"no-store"</code></li>
+      <li><strong>React cache()</strong> — <code>fetch_store_settings</code> deduplicated within a request</li>
+      <li><strong>Dev cache</strong> — in-memory 2-min TTL for static fetches (bypasses persistent Data Cache during dev)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Auth Flow</div>
+    <ul class="steps">
+      <li>Login → WP sets <code>wordpress_logged_in_*</code> cookie</li>
+      <li>Next.js proxy forwards cookie + <code>X-MMF-Proxy</code> secret header</li>
+      <li>WP <code>mmf_headless_cookie_auth</code> validates cookie → sets current user</li>
+      <li>WC Store API reads session via <code>Nonce</code> + <code>Cart-Token</code> headers</li>
+      <li>Tax-exempt flag checked server-side per request</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── STACK ───────────── -->
+<section id="stack">
+<h2>Tech Stack</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Key files</th></tr>
+<tr><td>Frontend framework</td><td>Next.js 16 App Router (React 19)</td><td><code>src/app/</code></td></tr>
+<tr><td>UI components</td><td>Untitled UI (Tailwind + Radix primitives)</td><td><code>src/components/base/ · application/</code></td></tr>
+<tr><td>State</td><td>Zustand (cart)</td><td><code>src/stores/cart.store.ts</code></td></tr>
+<tr><td>Forms</td><td>react-hook-form + Zod</td><td>Checkout, Auth panels</td></tr>
+<tr><td>Data fetching (server)</td><td>Next.js fetch + React cache()</td><td><code>src/services/*.service.ts</code></td></tr>
+<tr><td>Data fetching (client)</td><td>fetch + SWR-style manual state</td><td><code>src/services/*.client.ts</code></td></tr>
+<tr><td>Payment</td><td>Stripe UPE (stripe-js Elements)</td><td><code>src/components/pages/Checkout/</code></td></tr>
+<tr><td>CMS/Commerce</td><td>WordPress 6.x + WooCommerce 9.x</td><td><code>wordpress/</code></td></tr>
+<tr><td>Custom fields</td><td>Advanced Custom Fields (ACF)</td><td>About / Quality / Contact page content</td></tr>
+<tr><td>Tax</td><td>TaxJar (WC plugin)</td><td>Automatic at checkout</td></tr>
+<tr><td>Shipping</td><td>Shippo (pending) / WC flat rate</td><td>WC shipping zones</td></tr>
+<tr><td>Email</td><td>wp_mail() (deferred via wp-cron to prevent 504)</td><td><code>wordpress/functions.php</code></td></tr>
+<tr><td>Hosting</td><td>Pantheon (WP) + Vercel/custom (Next.js)</td><td>—</td></tr>
+</table>
+</div>
+</section>
+
+<!-- ───────────── ROUTES ───────────── -->
+<section id="routes">
+<h2>Page Routes</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>URL</th><th>Page / Component</th><th>Auth</th><th>Cache</th></tr>
+<tr><td><code>/</code></td><td>Home page (hero, featured products)</td><td>Public</td><td>ISR 300s</td></tr>
+<tr><td><code>/[slug]</code></td><td>CMS page OR Catalog listing page (detected via WC shop slug)</td><td>Public</td><td>ISR 300s</td></tr>
+<tr><td><code>/product-category/[...slug]</code></td><td>Category archive / product table</td><td>Public</td><td>ISR 300s</td></tr>
+<tr><td><code>/product/[...segments]</code></td><td>Product detail page</td><td>Public</td><td>ISR 300s</td></tr>
+<tr><td><code>/login</code></td><td>Login form</td><td>Guest only</td><td>Static</td></tr>
+<tr><td><code>/register</code></td><td>Registration form (+ optional tax cert upload)</td><td>Guest only</td><td>Static</td></tr>
+<tr><td><code>/forgot-password</code></td><td>Password reset request form</td><td>Guest only</td><td>Static</td></tr>
+<tr><td><code>/reset-password</code></td><td>Set new password (via emailed link)</td><td>Guest only</td><td>Dynamic</td></tr>
+<tr><td><code>/checkout</code></td><td>Checkout (address → shipping → payment)</td><td>Configurable via WC</td><td>Dynamic</td></tr>
+<tr><td><code>/checkout/success</code></td><td>Order success page</td><td>Public (URL token)</td><td>Dynamic</td></tr>
+<tr><td><code>/my-account</code></td><td>My Account (sidebar + panels)</td><td>Required → redirect</td><td>Dynamic</td></tr>
+<tr><td><code>/about</code>, <code>/quality</code>, <code>/contact</code></td><td>CMS content pages</td><td>Public</td><td>ISR 300s</td></tr>
+</table>
+</div>
+</section>
+
+<!-- ───────────── AUTH ───────────── -->
+<section id="auth">
+<h2>Authentication — Login &amp; Register</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Login</div>
+    <ul class="steps">
+      <li>POST <code>/api/auth/login</code> → WP sets session cookie</li>
+      <li>Cookie forwarded via Next.js proxy on all subsequent requests</li>
+      <li>Redirect to <code>/my-account</code> on success</li>
+      <li>Open-redirect blocked — only internal paths allowed</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Register</div>
+    <ul class="steps">
+      <li>Fields: First name, Last name, Company (optional), Email, Password × 2</li>
+      <li>Optional: Sales tax exemption certificate upload + expiry date</li>
+      <li>Expiry date DatePicker: today + future selectable, only past dates disabled (minValue = today)</li>
+      <li>Zod validation: today or future date required if cert uploaded</li>
+      <li>On success → auto-login → <code>/my-account</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Password Reset (Headless Flow)</div>
+    <ul class="steps">
+      <li>User submits email on <code>/forgot-password</code> → POST <code>/api/auth/forgot-password</code></li>
+      <li>WP: <code>get_password_reset_key()</code> generates a secure key, custom <code>wp_mail()</code> sends email with link to <code>{MMF_FRONTEND_URL}/reset-password?key=...&amp;login=...</code></li>
+      <li><code>MMF_FRONTEND_URL</code> constant (or <code>mmf_frontend_url</code> filter) in <code>wp-config.php</code> sets the Next.js domain</li>
+      <li>User clicks link → Next.js <code>/reset-password</code> page reads <code>key</code> + <code>login</code> from searchParams</li>
+      <li>User enters new password → POST <code>/api/auth/reset-password</code> → WP <code>check_password_reset_key()</code> validates, <code>reset_password()</code> saves</li>
+      <li>Success state: inline confirmation + "Go to Login" button. Invalid/missing params: redirect to <code>/forgot-password?invalid=1</code> with error notice.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Session / Logout</div>
+    <ul class="steps">
+      <li>Logout: POST <code>/api/auth/logout</code> → WP clears session + cookie</li>
+      <li><code>requireAuth()</code> server action used on <code>/my-account</code></li>
+      <li>Unauthenticated → redirect to <code>/login?redirect=/my-account</code></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── CATALOG ───────────── -->
+<section id="catalog">
+<h2>Product Catalog</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Catalog Listing Page</div>
+    <ul class="steps">
+      <li>Slug detected as "shop" via WC admin setting (dynamic, not hardcoded)</li>
+      <li>Left sidebar: category tree (ISR-cached)</li>
+      <li>Filter bar: series dropdown, search input</li>
+      <li>Product table: P/N (link), Description, Pkg Qty (+tooltip), 1/3/5/10 Pkg prices, Mfr, Country, Spec Sheet, QTY + Add to Order</li>
+      <li>Tier pricing columns (3/5/10 Pkg) hidden for guest users</li>
+      <li>Pagination: 10 per page</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Product Detail Page</div>
+    <ul class="steps">
+      <li>Hero with product image, part number, description</li>
+      <li>Spec table: all attributes</li>
+      <li>QTY + Add to Order widget (lg size)</li>
+      <li>Spec sheet download if available</li>
+      <li>Back to series breadcrumb</li>
+      <li>ISR (<code>revalidate=300</code>) + <code>generateStaticParams</code> pre-renders top 50 SKUs at build time — subsequent products SSR on demand then cached</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">PKG QTY Column</div>
+    <ul class="steps">
+      <li>Shows number of units per package</li>
+      <li>Info (i) icon with Tooltip: "Number of units per package. All prices are per package — not per individual unit."</li>
+      <li>Column header uppercase via Tailwind class</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Add to Order (QtyAddToOrder)</div>
+    <ul class="steps">
+      <li>QTY input blank by default — user types desired quantity</li>
+      <li>Quantity retained after successful add (no reset)</li>
+      <li>Out-of-stock products show "Out of Stock" label instead</li>
+      <li>Max quantity capped at stock_quantity if available</li>
+      <li>Notifies user if low stock</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Home Page Product Catalog</div>
+    <ul class="steps">
+      <li>ACF repeater field <code>product_catalog</code> on the Home Page builds Nuts/Screws/etc. sections</li>
+      <li>Each child row's <code>product</code> ACF field is a <strong>Taxonomy (multi_select)</strong> pointing to the <em>Product Series</em> taxonomy (<code>product-series</code>, hyphen slug, <code>return_format: "id"</code>)</li>
+      <li>WP endpoint <code>custom/v1/home-page</code> → <code>mmf_build_product_catalog()</code> → for each selected series term, returns one catalog item: <code>{ id: term_id, name: term_name, slug: "", sku: "", permalink: "/product-category/{parent}/{child}?series={term_slug}" }</code> — the series name is the link label; clicking navigates to the category page filtered by that series</li>
+      <li><code>build_home_catalog_product_href()</code> detects empty <code>slug</code> + <code>sku</code> and uses the normalized permalink directly (avoids extracting a category slug as a product slug)</li>
+      <li>Filter <code>mmf_product_series_taxonomy</code> available to override the taxonomy slug if it changes</li>
+      <li>Legacy Post Relationship values fall back to direct post ID resolution</li>
+      <li>Next.js: <code>fetchProductCatalog()</code> → <code>CategoryGrid</code> → <code>CategoryColumn</code></li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── CART ───────────── -->
+<section id="cart">
+<h2>Cart</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Cart State</div>
+    <ul class="steps">
+      <li>Zustand store: <code>useCartStore</code></li>
+      <li>Bootstrapped on first load via GET <code>/api/cart</code></li>
+      <li>WC Store API session managed via <code>Nonce</code> + <code>Cart-Token</code> cookies</li>
+      <li>Guest cart persisted via cart token (no login required)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Operations</div>
+    <ul class="steps">
+      <li>Add: POST <code>/api/cart/add</code> → <code>wc/store/v1/cart/add-item</code></li>
+      <li>Remove: DELETE <code>/api/cart/remove</code> → <code>wc/store/v1/cart/remove-item</code></li>
+      <li>Update qty: POST <code>/api/cart/update</code> → PUT <code>wc/store/v1/cart/update-item</code></li>
+      <li>Apply coupon: POST <code>/api/cart/coupon/apply</code></li>
+      <li>Remove coupon: DELETE <code>/api/cart/coupon/remove</code></li>
+      <li>All mutations return fresh cart state; session cookies are refreshed</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── CHECKOUT ───────────── -->
+<section id="checkout">
+<h2>Checkout</h2>
+<div class="flow">
+1. <b>Address form</b> → debounce 800ms → PUT /api/checkout/customer (updates WC customer)
+   → live shipping rates + TaxJar tax recalculate
+2. <b>Coupon</b> (optional) → apply/remove → totals refresh
+3. <b>Shipping method</b> → select rate → POST /api/checkout/shipping
+4. <b>Payment</b>
+   ├── Card (Stripe Elements): card data goes browser→Stripe direct; only a PM token reaches our server
+   │   ├── Save card checked (logged-in): POST /api/account/payment-methods → SetupIntent → confirmCardSetup
+   │   │     → PM is attached to Stripe Customer before order → appears in My Account immediately
+   │   ├── No save: createPaymentMethod → detached PM used for this transaction only
+   │   ├── Saved card selected: send existing pm_xxx ID — no card entry required
+   │   └── POST /wc/store/v1/checkout with payment_data → [3DS if required: confirmCardPayment]
+   └── Net 30: skip card entry → POST /wc/store/v1/checkout with COD gateway
+5. <b>Success</b> → /checkout/success?order_id=N&key=K (WC order key validates access)
+   Emails: order confirmation deferred via wp-cron (prevents 504 timeouts)
+</div>
+<div class="grid g3">
+  <div class="card">
+    <div class="card-title">Address Validation</div>
+    <ul class="steps">
+      <li>Inline errors per WC standard field definitions</li>
+      <li>Phone required/optional/hidden follows WC Customizer setting</li>
+      <li>Company, Address 2 same</li>
+      <li>Billing = Shipping checkbox</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Coupons</div>
+    <ul class="steps">
+      <li>Gated by <code>fetch_checkout_settings().coupons_enabled</code> (reads <code>wc_coupons_enabled()</code> via <code>custom/v1/settings/checkout</code>)</li>
+      <li>When disabled: "Have a coupon?" notice hidden, applied-coupon rows hidden, apply/remove UI removed entirely</li>
+      <li>When enabled: "Have a coupon?" notice shown → enter code → Apply → discount row in totals with Remove button</li>
+      <li>Applied-coupon rows in totals also gated — no orphaned [Remove] buttons if coupons later disabled</li>
+      <li>Data flows: <code>cart/page.tsx</code> → <code>CartPageView</code> (<code>couponsEnabled</code> prop) → <code>CartPageContent</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Guest Checkout</div>
+    <ul class="steps">
+      <li>Access follows WC "Allow guest checkout" setting</li>
+      <li>"Returning customer?" notice follows WC "Show login reminder" setting</li>
+      <li>Guest ↔ member flow identical from UI perspective</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── MY ACCOUNT ───────────── -->
+<section id="account">
+<h2>My Account</h2>
+<p>Protected route — unauthenticated users are redirected to <code>/login?redirect=/my-account</code>. Sidebar layout matching Figma.</p>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Orders Panel</div>
+    <ul class="steps">
+      <li>Table: Order #, Date, Status, Items, Certificate, Total</li>
+      <li>Certificate column: "—" / single Download link / "Download All (N)" bulk button</li>
+      <li>Expandable rows: line items with spec + cert downloads per item</li>
+      <li>Bulk download: 700ms stagger to avoid browser blocking</li>
+      <li>View Order: full detail panel</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Order Detail Panel</div>
+    <ul class="steps">
+      <li>Billing + shipping address</li>
+      <li>Line items: SKU, qty, subtotal</li>
+      <li>Spec Sheet + Certificate download per item</li>
+      <li>"Download All Spec Sheets (N)" / "Download All Certificates (N)" bulk buttons when N &gt; 1</li>
+      <li>Tracking info if available (via Shipment Tracking plugin or Shippo)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Certifications Panel</div>
+    <ul class="steps">
+      <li>Flat table: PART #, DESCRIPTION, ORDERED, Certificate Download</li>
+      <li>Description = product short description (not SKU)</li>
+      <li>Only shows orders with status shipped or completed</li>
+      <li>No group headers — one row per line item</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Spec Sheets Panel</div>
+    <ul class="steps">
+      <li>Flat table: PART #, DESCRIPTION, ORDERED, Spec Sheet Download</li>
+      <li>Available for all statuses (processing, completed, shipped)</li>
+      <li>Description = product short description</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Addresses Panel</div>
+    <ul class="steps">
+      <li>Billing address + Shipping address cards</li>
+      <li>Edit inline form with WC-standard fields</li>
+      <li>Saves via PUT <code>/api/account/address</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Account Details Panel</div>
+    <ul class="steps">
+      <li>First name, Last name, Email, Display name</li>
+      <li>Password change (current + new + confirm)</li>
+      <li>Saves via PUT <code>/api/account/update</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Payment Methods Panel</div>
+    <ul class="steps">
+      <li>Lists saved Stripe cards: brand icon, "Visa ending in 4242", expiry, Remove button</li>
+      <li>Add card: POST <code>/api/account/payment-methods</code> → SetupIntent → <code>confirmCardSetup</code> → card attached to Stripe Customer</li>
+      <li>Remove: DELETE <code>/api/account/payment-methods/{pm_id}</code> → Stripe detach (ownership verified server-side)</li>
+      <li>Saved cards auto-appear in checkout card picker (pre-selected for returning customers)</li>
+      <li>Only shown when WC Stripe "Enable saved payment methods" is ON (<code>settings.saved_cards</code>)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Documents (Tax) Panel</div>
+    <ul class="steps">
+      <li>Current certificate status: Approved / Expiring Soon / Pending / Expired / Rejected / Not Submitted</li>
+      <li>Shows: expiry date, approval status, submitted date, link to view cert</li>
+      <li>Upload form: PDF/JPG/PNG/DOC/DOCX, max 5 MB</li>
+      <li>Expiry DatePicker: minValue = today, today + future selectable, only past dates disabled</li>
+      <li>Submit validates ALL fields at once — date error + file error shown simultaneously; red border on upload input</li>
+      <li>Live date error on change; file error clears as soon as a file is chosen</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── TAX EXEMPTION ───────────── -->
+<section id="tax">
+<h2>Tax Exemption Module</h2>
+<div class="flow">
+<b>Customer lifecycle:</b>
+Register (optional cert upload) ──► status: <b>pending</b>
+                                         │ admin notified by email
+                                         ▼
+                              Admin APPROVES (email HMAC link / WP admin / user profile)
+                                         │
+                                         ▼
+                              status: <b>approved</b> ──► customer email sent ──► $0 tax at checkout
+                                         │
+                              (expiry − 30d) ──► <b>expiring soon</b> reminder email ──► banner in My Account
+                                         │
+                              (past expiry) ──► <b>expired</b> ──► banner + re-upload form
+                                         │
+                              Customer re-uploads ──► status: <b>pending</b> (cycle repeats)
+
+<b>Rejection path:</b>  Admin REJECTS → status: rejected → customer email → re-upload form shown
+</div>
+<div class="grid g3">
+  <div class="card">
+    <div class="card-title">Certificate Upload</div>
+    <ul class="steps">
+      <li>Allowed: PDF, JPG, JPEG, PNG, DOC, DOCX</li>
+      <li>Max size: 5 MB</li>
+      <li>Server: MIME type validation (not just extension)</li>
+      <li>Stored private — owner-gated download</li>
+      <li>Expiry date required</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Admin Approval</div>
+    <ul class="steps">
+      <li>HMAC-signed email link (14-day expiry)</li>
+      <li>WP Admin → Tax Exemptions list table</li>
+      <li>User profile → approve/reject checkbox</li>
+      <li>One-click AJAX on user list column</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Checkout Effect</div>
+    <ul class="steps">
+      <li>Approved + not expired → TaxJar returns $0</li>
+      <li>Expired/rejected → normal tax applies</li>
+      <li>Checked server-side on every checkout request</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── NET 30 ───────────── -->
+<section id="net30">
+<h2>Net 30 Terms</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">How it works</div>
+    <ul class="steps">
+      <li>COD gateway repurposed as "Net 30 — Purchase Order Terms"</li>
+      <li>Per-customer meta flag: <code>_mmf_net30_enabled</code></li>
+      <li>Server-side WC filter: gateway only shown to flagged customers</li>
+      <li>At checkout: no card entry required — PO number / notes optional</li>
+      <li>Order created with payment method "Net 30"</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Admin controls</div>
+    <ul class="steps">
+      <li>WP Users list → "Net 30" column → one-click AJAX toggle</li>
+      <li>User profile page → "Net 30 Terms" checkbox</li>
+      <li>WC admin: COD gateway enabled + renamed (one-time setup)</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── ORDER DOCS ───────────── -->
+<section id="docs">
+<h2>Order Documents</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Spec Sheets</div>
+    <ul class="steps">
+      <li>Available immediately after order is placed (any status)</li>
+      <li>URL stored on order line item meta at purchase time</li>
+      <li>Fallback: reads from product if meta missing</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Product Certificates</div>
+    <ul class="steps">
+      <li>Unlocked when order status = <code>shipped</code> or <code>completed</code></li>
+      <li>Customer receives email notification on first transition to cert-eligible status</li>
+      <li>"shipped" is a registered WC custom status (not just a string)</li>
+      <li>Email: navy header, gold CTA button, link to My Account</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── API: NEXT.JS ───────────── -->
+<section id="api-next">
+<h2>Next.js Proxy Routes (<code>src/app/api/</code>)</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>Route</th><th>Method</th><th>Proxies to</th><th>Auth</th></tr>
+<tr><td><code>/api/auth/login</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/login</code></td><td>Public</td></tr>
+<tr><td><code>/api/auth/logout</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/logout</code></td><td>Session</td></tr>
+<tr><td><code>/api/auth/register</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/register</code></td><td>Public</td></tr>
+<tr><td><code>/api/auth/forgot-password</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/auth/forgot-password</code></td><td>Public</td></tr>
+<tr><td><code>/api/auth/reset-password</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/auth/reset-password</code></td><td>Public</td></tr>
+<tr><td><code>/api/cart</code></td><td><span class="method GET">GET</span></td><td><code>wc/store/v1/cart</code></td><td>Session</td></tr>
+<tr><td><code>/api/cart/add</code></td><td><span class="method POST">POST</span></td><td><code>wc/store/v1/cart/add-item</code></td><td>Session</td></tr>
+<tr><td><code>/api/cart/remove</code></td><td><span class="method DELETE">DELETE</span></td><td><code>wc/store/v1/cart/remove-item</code></td><td>Session</td></tr>
+<tr><td><code>/api/cart/update</code></td><td><span class="method POST">POST</span></td><td>PUT <code>wc/store/v1/cart/update-item</code></td><td>Session</td></tr>
+<tr><td><code>/api/cart/coupon/apply</code></td><td><span class="method POST">POST</span></td><td><code>wc/store/v1/cart/apply-coupon</code></td><td>Session</td></tr>
+<tr><td><code>/api/cart/coupon/remove</code></td><td><span class="method DELETE">DELETE</span></td><td><code>wc/store/v1/cart/remove-coupon</code></td><td>Session</td></tr>
+<tr><td><code>/api/checkout/customer</code></td><td><span class="method PUT">PUT</span></td><td><code>wc/store/v1/cart/update-customer</code></td><td>Session</td></tr>
+<tr><td><code>/api/checkout/shipping</code></td><td><span class="method POST">POST</span></td><td><code>wc/store/v1/cart/select-shipping-rate</code></td><td>Session</td></tr>
+<tr><td><code>/api/checkout/place-order</code></td><td><span class="method POST">POST</span></td><td><code>wc/store/v1/checkout</code></td><td>Session</td></tr>
+<tr><td><code>/api/orders</code></td><td><span class="method GET">GET</span></td><td><code>custom/v1/orders</code></td><td>WP session</td></tr>
+<tr><td><code>/api/orders/[id]</code></td><td><span class="method GET">GET</span></td><td><code>custom/v1/orders/:id</code></td><td>WP session</td></tr>
+<tr><td><code>/api/account/update</code></td><td><span class="method PUT">PUT</span></td><td><code>custom/v1/account/update</code></td><td>WP session</td></tr>
+<tr><td><code>/api/account/address</code></td><td><span class="method PUT">PUT</span></td><td><code>custom/v1/account/address</code></td><td>WP session</td></tr>
+<tr><td><code>/api/tax-exemption</code></td><td><span class="method GET">GET</span></td><td><code>custom/v1/tax-exemption/status</code></td><td>WP session</td></tr>
+<tr><td><code>/api/tax-exemption/upload</code></td><td><span class="method POST">POST</span></td><td><code>custom/v1/tax-exemption/upload</code></td><td>WP session</td></tr>
+<tr><td><code>/api/revalidate</code></td><td><span class="method POST">POST</span></td><td>Next.js cache revalidation</td><td>Secret header</td></tr>
+</table>
+</div>
+</section>
+
+<!-- ───────────── API: WP ───────────── -->
+<section id="api-wp">
+<h2>WordPress Custom Endpoints (<code>custom/v1</code>)</h2>
+<div class="tbl-wrap">
+<table>
+<tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+<tr><td><code>/login</code></td><td><span class="method POST">POST</span></td><td>Sets WP session cookie</td></tr>
+<tr><td><code>/logout</code></td><td><span class="method POST">POST</span></td><td>Destroys session</td></tr>
+<tr><td><code>/register</code></td><td><span class="method POST">POST</span></td><td>Create user + optional cert upload</td></tr>
+<tr><td><code>/forgot-password</code></td><td><span class="method POST">POST</span></td><td>Generates reset key, sends custom email with Next.js link; always returns success (no email enumeration)</td></tr>
+<tr><td><code>/reset-password</code></td><td><span class="method POST">POST</span></td><td>Validates key via <code>check_password_reset_key()</code>, sets new password via <code>reset_password()</code></td></tr>
+<tr><td><code>/orders</code></td><td><span class="method GET">GET</span></td><td>Customer order history (last 50)</td></tr>
+<tr><td><code>/orders/:id</code></td><td><span class="method GET">GET</span></td><td>Single order detail (own orders only)</td></tr>
+<tr><td><code>/orders/documents</code></td><td><span class="method GET">GET</span></td><td>Spec sheets + certs for all orders</td></tr>
+<tr><td><code>/account/update</code></td><td><span class="method POST">POST</span></td><td>Name / email / password change</td></tr>
+<tr><td><code>/account/address</code></td><td><span class="method POST">POST</span></td><td>Billing + shipping address update</td></tr>
+<tr><td><code>/tax-exemption/status</code></td><td><span class="method GET">GET</span></td><td>Current cert status + metadata</td></tr>
+<tr><td><code>/tax-exemption/upload</code></td><td><span class="method POST">POST</span></td><td>Upload new certificate (multipart)</td></tr>
+<tr><td><code>/checkout/locations</code></td><td><span class="method GET">GET</span></td><td>Currency + checkout settings (ISR)</td></tr>
+<tr><td><code>/menu</code></td><td><span class="method GET">GET</span></td><td>Navigation menu (ISR)</td></tr>
+<tr><td><code>/site-settings</code></td><td><span class="method GET">GET</span></td><td>WC shop slug, name, etc. (ISR)</td></tr>
+<tr><td><code>spec-parts/v1/categories</code></td><td><span class="method GET">GET</span></td><td>Product category tree</td></tr>
+<tr><td><code>spec-parts/v1/products</code></td><td><span class="method GET">GET</span></td><td>Paginated product list (10/page)</td></tr>
+</table>
+</div>
+</section>
+
+<!-- ───────────── TEST CASES ───────────── -->
+<section id="testcases">
+<h2>Test Cases</h2>
+<p>Click any row to expand the full test detail.</p>
+
+<script>
+function toggle(el){
+  const body=el.nextElementSibling;
+  body.classList.toggle('open');
+}
+</script>
+
+<h3>Auth — Login &amp; Register</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A01</span>
+    <span class="tc-title">Successful login redirects to My Account</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Go to /login</li><li>Enter valid email + password</li><li>Click Login</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Redirect to /my-account. Nav shows user name. Toast "Logged in".</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A02</span>
+    <span class="tc-title">Login with wrong password shows inline error</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Go to /login</li><li>Enter valid email + wrong password</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Error toast / inline message. No redirect. Password field clearable.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A03</span>
+    <span class="tc-title">Register — all fields valid, no cert upload</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Go to /register</li><li>Fill all required fields with valid data</li><li>Leave cert upload empty</li><li>Click Register</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Account created. Auto-login. Redirect to /my-account.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A04</span>
+    <span class="tc-title">Register — past date blocked in expiry date picker; today selectable</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Upload a certificate file</li><li>Open date picker — navigate to last month, attempt to click a past date</li><li>Navigate to today, click today's date</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Past dates greyed out (minValue = today). Today is selectable. Zod validation accepts today. Error message reads "Expiration date must be today or a future date." only for past dates.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A05</span>
+    <span class="tc-title">Register — cert uploaded, no expiry date, submit blocked</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Upload a valid cert file</li><li>Leave expiry date blank</li><li>Click Register</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Inline error below date picker: "Expiration date is required when uploading a certificate." Form not submitted.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A06</span>
+    <span class="tc-title">Register — passwords do not match</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Enter password "abc12345"</li><li>Enter confirm password "abc12346"</li><li>Click Register</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Inline error on confirm_password field: "Passwords do not match."</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-A07</span>
+    <span class="tc-title">Logout clears session and redirects</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in</li><li>Go to My Account → Logout</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Session cleared. Redirect to /. Visiting /my-account redirects to /login.</span></div>
+  </div>
+</div>
+
+<h3>Forgot Password &amp; Reset Password</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP01</span>
+    <span class="tc-title">Forgot password — valid email sends reset email</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Visit <code>/forgot-password</code></li><li>Enter a registered email address</li><li>Click "Send Reset Link"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Success toast shown. Email received containing a link to <code>{MMF_FRONTEND_URL}/reset-password?key=...&amp;login=...</code> (Next.js URL, not wp-login.php). Form resets.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP02</span>
+    <span class="tc-title">Forgot password — unknown email returns success (no enumeration)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Submit forgot-password form with a non-existent email</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Same success message shown as for a valid email — no "account not found" error (prevents email enumeration attacks).</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP03</span>
+    <span class="tc-title">Reset password — valid key, passwords match</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Click the reset link from the email</li><li>Enter a new password (≥8 chars) in both fields</li><li>Click "Save New Password"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Success state shown inline: "Your password has been reset." and "Go to Login" button. User can log in with new password. Old password no longer works.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP04</span>
+    <span class="tc-title">Reset password — passwords do not match</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>On <code>/reset-password</code>, enter mismatched passwords</li><li>Submit</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Inline error "Passwords do not match." shown under confirm field. No API call made (Zod catches client-side).</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP05</span>
+    <span class="tc-title">Reset password — expired or invalid key</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Visit <code>/reset-password</code> with a tampered or expired <code>?key=</code></li><li>Enter valid passwords and submit</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">WP returns 400. Inline error: "This password reset link is invalid or has expired. Please request a new one." Link to <code>/forgot-password</code> shown below the form.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-FP06</span>
+    <span class="tc-title">Reset password — missing key/login params redirect to forgot-password</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Visit <code>/reset-password</code> with no query params</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Server redirects to <code>/forgot-password?invalid=1</code>. Red error notice shown: "Your password reset link is invalid or has expired. Please request a new one below."</span></div>
+  </div>
+</div>
+
+<h3>Product Catalog</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C01</span>
+    <span class="tc-title">Catalog listing page loads with products</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Navigate to /[shop-slug] (e.g. /parts)</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Sidebar categories. Product table with P/N, Description, Pkg Qty, 1 Pkg price, Mfr, Country, Specs, Add to Order columns.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C02</span>
+    <span class="tc-title">Guest user sees only 1-Pkg price column</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Browse catalog without logging in</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">3 Pkg, 5 Pkg, 10 Pkg columns hidden. Only 1 Pkg price visible.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C03</span>
+    <span class="tc-title">Logged-in user sees all tier price columns</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in → browse catalog</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">1 Pkg, 3 Pkg, 5 Pkg, 10 Pkg columns all visible.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C04</span>
+    <span class="tc-title">PKG QTY tooltip appears on hover</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Hover over the (i) icon next to "PKG QTY" column header</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Tooltip appears: "Package Quantity — Number of units per package. All prices are per package..."</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C05</span>
+    <span class="tc-title">Qty field retains value after Add to Order</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Enter qty 5 for a product</li><li>Click "Add to Order"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Cart updates. QTY field still shows "5". User can change qty and add again without re-typing.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C06</span>
+    <span class="tc-title">Out-of-stock product shows "Out of Stock" button</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Find product with stock_status = outofstock</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">"Out of Stock" label shown instead of qty + button. No add is possible.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C07</span>
+    <span class="tc-title">Series filter narrows product table</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Select a series from the series dropdown</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Product table updates to show only that series. URL updates with <code>?series=</code> param. Pagination resets to page 1.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-C08</span>
+    <span class="tc-title">Home page catalog shows Series names as category links (not individual products)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Open home page</li><li>Observe the Nuts / Screws (or configured) catalog sections</li><li>In WP Admin → Home Page ACF → product_catalog repeater → set a child row's "Product Series" field to one or more Product Series terms (e.g. MS35307, MS35308)</li><li>Hard-refresh home page</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Each selected series appears by name (e.g. "MS35307") as a link under the correct child category. Clicking a series link navigates to <code>/product-category/{parent}/{child}?series={slug}</code>. No individual product SKUs shown. No duplicate entries. No React key collision error in the console.</span></div>
+  </div>
+</div>
+
+<h3>Cart</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CT01</span>
+    <span class="tc-title">Add product to cart</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Enter qty 2, click "Add to Order"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Cart count increments. Cart drawer/icon updates. Success notification.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CT02</span>
+    <span class="tc-title">Remove item from cart</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Open cart → click remove on an item</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Item removed. Totals recalculate. If last item, cart shows empty state.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CT03</span>
+    <span class="tc-title">Update cart quantity via mini-cart QTY input (matches catalog page style)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Add a product to cart and open the header mini-cart dropdown</li><li>Edit the number in the QTY input field and press Enter or Tab away</li><li>Try typing an out-of-range value (below min or above stock)</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Non-sold-individually items show a plain QTY number input (same border/style as the catalog page). Typing a new value and pressing Enter or blurring updates the cart. Out-of-range values clamp to min/max. Sold-individually items show a read-only quantity value. Cart total and line price update after each change. POST to <code>/api/cart/update</code> fires.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CT04</span>
+    <span class="tc-title">Apply valid coupon</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WC coupons enabled → enter valid code → Apply</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Discount row appears in cart summary. Total reduced. Coupon code shown with remove option.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CT05</span>
+    <span class="tc-title">Coupon UI hidden when WooCommerce coupons disabled</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WC Admin → General → uncheck "Enable coupon codes" → save</li><li>Visit /cart with items in cart</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">"Have a coupon?" notice absent. No coupon input field. Applied-coupon rows in totals also hidden. Cart total and checkout button still render normally.</span></div>
+    <div class="tc-row"><span class="tc-label">Files</span><span class="tc-val"><code>cart/page.tsx</code> → <code>CartPageView</code> → <code>CartPageContent</code> (all three gated via <code>couponsEnabled</code> prop)</span></div>
+  </div>
+</div>
+
+<h3>Checkout</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK01</span>
+    <span class="tc-title">Complete checkout — card payment</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Add item to cart</li><li>Go to /checkout</li><li>Fill billing address</li><li>Select shipping rate</li><li>Enter Stripe test card 4242 4242 4242 4242, future expiry, any CVC</li><li>Click Place Order</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Redirect to /checkout/success. Order created in WC. Order confirmation email queued via wp-cron.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK02</span>
+    <span class="tc-title">Shipping rates refresh after address change</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Fill address with State = CA</li><li>Change State to TX</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">After 800ms debounce, shipping options and tax amount update. Loading state shown during refresh.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK03</span>
+    <span class="tc-title">Tax-exempt customer sees $0 tax</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in as customer with approved tax certificate</li><li>Go through checkout</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Tax row shows $0.00. TaxJar returns 0 for this customer. Confirmed server-side.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK04</span>
+    <span class="tc-title">Net 30 customer sees COD option only (no card fields)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in as Net-30-enabled customer</li><li>Go to checkout</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">"Net 30 — Purchase Order Terms" gateway shown. No Stripe card fields. Place Order succeeds without card.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK05</span>
+    <span class="tc-title">Guest checkout (when WC setting allows)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WC: Allow guest checkout = ON</li><li>Add item, go to /checkout without logging in</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Checkout accessible. Order placed successfully without account.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK06</span>
+    <span class="tc-title">Guest checkout blocked (when WC setting off)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WC: Allow guest checkout = OFF</li><li>Try /checkout without login</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Redirect to /login with return URL. After login, resumes checkout.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK07</span>
+    <span class="tc-title">Save card at checkout — appears in My Account payment methods</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WC Stripe → "Enable saved payment methods" = ON</li><li>Log in → add item → /checkout</li><li>Enter card 4242 4242 4242 4242 → check "Save payment information to my account" → Place Order</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Order succeeds. Navigate to My Account → Payment Methods — card appears immediately (Visa ending 4242). Flow: SetupIntent created → confirmCardSetup attaches PM to Stripe Customer before checkout, not via plugin flag.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK08</span>
+    <span class="tc-title">Saved card preselected on next checkout</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>After TC-CK07, add another item → /checkout</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Saved card shown as preselected radio option "Visa ending in 4242". No card entry required. "Use a new payment method" option also available.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-CK09</span>
+    <span class="tc-title">Pay with saved card at checkout</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Saved card preselected → click Place Order without entering card details</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Order placed successfully using the stored pm_xxx ID sent as <code>wc-stripe-payment-method</code>. No card fields shown.</span></div>
+  </div>
+</div>
+
+<h3>My Account — Payment Methods</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-PM01</span>
+    <span class="tc-title">Add card via My Account payment methods</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>My Account → Payment Methods → Add Payment Method</li><li>Enter 5555 5555 5555 4444 → Save Card</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Mastercard ending in 4444 appears in list. SetupIntent flow: POST /api/account/payment-methods → client_secret → confirmCardSetup → PM attached to customer.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-PM02</span>
+    <span class="tc-title">Remove saved card from My Account</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>My Account → Payment Methods → Remove on a saved card</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Card removed from list immediately (optimistic). DELETE /api/account/payment-methods/{pm_id} → Stripe detach. Card no longer appears in checkout picker on next visit.</span></div>
+  </div>
+</div>
+
+<h3>My Account — Orders</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-MA01</span>
+    <span class="tc-title">Order list shows certificate column</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in → My Account → Orders</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Table columns: Order #, Date, Status, Items, Certificate, Total. Certificate column shows "—" for processing orders, download link for shipped/completed.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-MA02</span>
+    <span class="tc-title">Download All certificates (multiple products)</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Shipped order with 3 products with certificates</li><li>Click "Download All (3)" in Certificate column</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">3 certificate files downloaded in sequence (700ms stagger). Browser allows multiple downloads.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-MA03</span>
+    <span class="tc-title">Certificate email sent when order ships</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>WP Admin: change order status to "Shipped"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Customer receives email: "Your product certificates are ready — Order #X". Navy header, gold CTA "Go to My Account". Only fires once (not on shipped→completed).</span></div>
+  </div>
+</div>
+
+<h3>My Account — Documents (Tax Cert)</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-TX01</span>
+    <span class="tc-title">Past date blocked in tax cert expiry picker (My Account); today selectable</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>My Account → Documents → Upload form</li><li>Open date picker, try selecting yesterday</li><li>Then select today's date</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Yesterday greyed out. Today is selectable and passes validation. Inline error (when yesterday is typed): "Expiration date must be today or a future date." Red border on picker.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-TX02</span>
+    <span class="tc-title">Submit blocked without expiry date</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Upload a cert file, leave date blank, click Submit</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Inline error below date picker: "Certificate expiration date is required." Red border on picker. No upload sent.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-TX05</span>
+    <span class="tc-title">Submit with both fields empty — both errors shown simultaneously</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Leave date blank AND no file selected</li><li>Click "Submit for Approval"</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Both errors appear at the same time: "Certificate expiration date is required." below the date picker (red border) AND "Please upload your sales tax exemption document." below the upload input (red border on upload box). Neither error blocks the other.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-TX03</span>
+    <span class="tc-title">Approved customer shows green status badge</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Admin approves cert → customer logs in → My Account → Documents</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Green "Approved" badge. "✓ Tax exempt at checkout" shown. Expiry date shown.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-TX04</span>
+    <span class="tc-title">Invalid file type rejected</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Try uploading a .exe or .php file</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Rejected client-side (type check) AND server-side (MIME validation). Error: "Only PDF, JPG, JPEG, PNG, DOC, and DOCX files are allowed."</span></div>
+  </div>
+</div>
+
+<h3>Certifications &amp; Spec Sheets Panels</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-DS01</span>
+    <span class="tc-title">Certifications panel — flat table, no group headers</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>My Account → Certifications</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Single flat table: PART #, DESCRIPTION, ORDERED (MM/DD/YY), Certificate. No order group headers. Same product in 3 orders = 3 rows.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-DS02</span>
+    <span class="tc-title">Description column shows short description, not SKU</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>View Certifications or Spec Sheets panel</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">DESCRIPTION column shows product short description (or long description fallback). NOT the SKU/part number.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-DS03</span>
+    <span class="tc-title">Spec sheets available for processing orders; certs only after shipped</span>
+    <span class="tc-status pass">Pass</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Order in "processing" status</li><li>Check Spec Sheets and Certifications panels</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Spec Sheets: download link shown. Certifications: row shows "—" for certificate (not shipped yet).</span></div>
+  </div>
+</div>
+
+<h3>Security</h3>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-S01</span>
+    <span class="tc-title">My Account inaccessible without login</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log out</li><li>Visit /my-account directly</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Redirect to /login?redirect=/my-account. No account data rendered.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-S02</span>
+    <span class="tc-title">Order detail IDOR — cannot view another user's order</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in as User A</li><li>Call GET /api/orders/[order_id_of_user_B]</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">403 Forbidden. WP endpoint checks customer_id === current_user_id.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-S03</span>
+    <span class="tc-title">Tax cert download requires ownership</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Try accessing cert URL of another user</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">403. Files stored private in WP. Owner-gated download via signed URL or auth check.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-S04</span>
+    <span class="tc-title">Net 30 gateway hidden from non-flagged customers</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Log in as regular customer (no Net 30 flag)</li><li>Go to checkout</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Only Stripe card option shown. COD/Net 30 gateway not listed — filtered server-side by WC gateway filter.</span></div>
+  </div>
+</div>
+
+<div class="tc">
+  <div class="tc-head" onclick="toggle(this)">
+    <span class="tc-id">TC-S05</span>
+    <span class="tc-title">Open redirect blocked on login</span>
+    <span class="tc-status sec">Security</span>
+  </div>
+  <div class="tc-body">
+    <div class="tc-row"><span class="tc-label">Steps</span><span class="tc-val"><ul class="steps"><li>Visit /login?redirect=https://evil.com</li><li>Log in successfully</li></ul></span></div>
+    <div class="tc-row"><span class="tc-label">Expect</span><span class="tc-val">Redirect goes to /my-account (or internal fallback), NOT to external URL.</span></div>
+  </div>
+</div>
+
+</section>
+
+<!-- ───────────── SECURITY ───────────── -->
+<section id="security">
+<h2>Security Rules</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">Sessions &amp; Cookies</div>
+    <ul class="steps">
+      <li>WP session cookies: HttpOnly, Secure, SameSite=Lax</li>
+      <li>WC cart cookies: SameSite=Lax (SameSite=None if 3DS POST-back needed)</li>
+      <li><code>MMF_PROXY_SECRET</code> must be a long random string (not "1") in <code>wp-config.php</code> + Next.js env</li>
+      <li>Open redirect: only relative paths accepted in <code>?redirect=</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Data Access</div>
+    <ul class="steps">
+      <li>All order/account endpoints scoped to <code>get_current_user_id()</code></li>
+      <li>Tax cert files stored private — not public media</li>
+      <li>Card data never touches our servers (PCI SAQ-A via Stripe Elements)</li>
+      <li>No IDOR: ID params validated against current user</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Uploads</div>
+    <ul class="steps">
+      <li>Allowed: PDF, JPG, JPEG, PNG, DOC, DOCX only</li>
+      <li>Server: MIME type check (not just extension)</li>
+      <li>Max 5 MB enforced client + server</li>
+      <li>Files stored outside webroot or private</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Input / Admin Actions</div>
+    <ul class="steps">
+      <li>All admin AJAX actions check <code>check_ajax_referer()</code> + <code>current_user_can()</code></li>
+      <li>HMAC + 14-day expiry on tax cert approval email links</li>
+      <li>WP REST endpoints sanitize all input (<code>sanitize_text_field</code>, <code>absint</code>, etc.)</li>
+      <li>Next.js proxy caps payload sizes</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Headers (Next.js)</div>
+    <ul class="steps">
+      <li>HSTS, X-Frame-Options: DENY, X-Content-Type-Options: nosniff</li>
+      <li>Referrer-Policy: strict-origin-when-cross-origin</li>
+      <li>Permissions-Policy restricts camera/mic/geolocation</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Pre-commit Checklist</div>
+    <ul class="steps">
+      <li><code>npx tsc --noEmit</code> — must pass clean</li>
+      <li><code>npx next lint</code> — zero errors</li>
+      <li><code>php -l wordpress/inc/*.php</code> — no syntax errors</li>
+      <li>No <code>style=</code> inline CSS introduced</li>
+      <li>No hardcoded prices, currency, or secrets</li>
+    </ul>
+  </div>
+</div>
+</section>
+
+<!-- ───────────── WC SETTINGS ───────────── -->
+<section id="wcsettings">
+<h2>WooCommerce Settings → Frontend Map</h2>
+<p>Every setting listed here is dynamic — change in WC admin, storefront follows within 5 minutes (ISR TTL in production, instant in dev).</p>
+<div class="tbl-wrap">
+<table>
+<tr><th>WC Admin Setting</th><th>Frontend Effect</th></tr>
+<tr><td>General → Currency options (symbol, position, separators, decimals)</td><td>Every displayed price site-wide (product table, cart, checkout, My Account)</td></tr>
+<tr><td>General → Selling locations / Shipping locations</td><td>Checkout country + state dropdowns</td></tr>
+<tr><td>General → Enable coupons</td><td>"Have a coupon?" section shown/hidden. Apply/remove coupon UI.</td></tr>
+<tr><td>Accounts → Allow guest checkout</td><td>Unauthenticated users can access /checkout vs. forced login redirect</td></tr>
+<tr><td>Accounts → Show login reminder during checkout</td><td>"Returning customer?" notice shown/hidden</td></tr>
+<tr><td>Customizer → Checkout → Company field</td><td>Company input: hidden / optional / required</td></tr>
+<tr><td>Customizer → Checkout → Address line 2</td><td>Address 2 input: hidden / optional / required</td></tr>
+<tr><td>Customizer → Checkout → Phone field</td><td>Phone input: hidden / optional / required</td></tr>
+<tr><td>WC Shop page slug</td><td>Which URL becomes the product catalog (detected dynamically)</td></tr>
+<tr><td>Shipping zones and methods</td><td>Shipping rate options shown at checkout</td></tr>
+<tr><td>Payments → Enabled gateways</td><td>Payment options. COD (= Net 30) only appears for flagged customers.</td></tr>
+<tr><td>Tax + TaxJar plugin</td><td>Tax amount in cart/checkout. Approved tax-exempt customers get $0.</td></tr>
+</table>
+</div>
+</section>
+
+<!-- ───────────── DEPLOY ───────────── -->
+<section id="deploy">
+<h2>Deploy Checklist</h2>
+<div class="card">
+<h4>WordPress (Pantheon)</h4>
+<ul class="steps">
+  <li>Push all <code>wordpress/inc/*.php</code> + <code>functions.php</code> + <code>style.css</code></li>
+  <li><b>Pantheon Varnish cache:</b> all <code>wp-json</code> routes return <code>Cache-Control: no-store</code> + <code>Surrogate-Control: no-store</code> via <code>rest_post_dispatch</code> filters — product/page/post updates reflect immediately. Strategy per namespace:
+    <ul>
+      <li><code>/wc/store/*</code> — <code>no-store</code> (cart is session-specific)</li>
+      <li><code>/custom/v1/*</code> — <code>no-store</code> per route; menus: <code>public, max-age=300 + Surrogate-Control: no-store</code></li>
+      <li><code>/spec-parts/v1/*</code> — <code>no-store</code> (Next.js ISR=300s is the caching layer)</li>
+      <li><code>/wp/v2, /wc/v3, /wc/v2</code>, any other namespace — catch-all priority-99 filter applies <code>no-store</code> if no header already set</li>
+    </ul>
+  </li>
+  <li><code>wp-config.php</code>: <code>define('MMF_PROXY_SECRET', '&lt;long random string&gt;');</code></li>
+  <li>WC Admin: enable COD → rename to "Net 30 — Purchase Order Terms"</li>
+  <li>WC Admin: configure shipping zones (flat/free until Shippo)</li>
+  <li>WC Admin: set shop page slug, currency, tax settings</li>
+  <li>Activate TaxJar plugin + configure API key</li>
+  <li>Verify "shipped" status appears in WC order status dropdown (registered via plugin)</li>
+</ul>
+</div>
+<div class="card">
+<h4>Next.js (Vercel / host)</h4>
+<ul class="steps">
+  <li><code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>: live key (<code>pk_live_…</code>)</li>
+  <li><code>MMF_PROXY_SECRET</code>: same value as wp-config.php</li>
+  <li><code>WP_SITE_URL</code>: production WP domain</li>
+  <li><code>REVALIDATION_SECRET</code>: random string for ISR webhook</li>
+  <li>Build passes: <code>npx tsc --noEmit</code> + <code>next lint</code></li>
+</ul>
+</div>
+<div class="card">
+<h4>Post-deploy Smoke Test</h4>
+<ul class="steps">
+  <li>Login + logout cycle</li>
+  <li>Add product to cart → checkout → place test order (Stripe test mode)</li>
+  <li>My Account → Orders → verify order appears</li>
+  <li>Upload tax cert (small test PDF with future date) → verify pending status</li>
+  <li>Admin: approve cert → verify customer email received → verify $0 tax at checkout</li>
+  <li>Admin: change order to Shipped → verify cert email received</li>
+  <li>Certifications panel → verify download link appears</li>
+</ul>
+</div>
+</section>
+
+<!-- ───────────── CONVENTIONS ───────────── -->
+<section id="conventions">
+<h2>Code Conventions</h2>
+<div class="grid g2">
+  <div class="card">
+    <div class="card-title">File Header (required on every file)</div>
+    <pre>/**
+ * File Name: example.tsx
+ * Description: One sentence.
+ * Developer: KP-184
+ * Created Date: 2026-07-01
+ * Last Modified: 2026-07-14
+ */</pre>
+  </div>
+  <div class="card">
+    <div class="card-title">No Inline CSS</div>
+    <p>Use Tailwind classes only. Exception: runtime-computed values (progress bar widths, scroll offsets). Never <code>style="color:red"</code>.</p>
+    <div class="card-title" style="margin-top:12px;">No Hardcoded Prices</div>
+    <p>All prices via <code>mmf_plain_price()</code> (PHP) or WC currency settings. Never <code>"$"</code> or <code>".toFixed(2)"</code> in isolation.</p>
+  </div>
+  <div class="card">
+    <div class="card-title">Naming</div>
+    <ul class="steps">
+      <li>React components: PascalCase</li>
+      <li>Services / utils: snake_case functions</li>
+      <li>PHP functions: <code>mmf_</code> prefix</li>
+      <li>PHP constants: <code>MMF_</code> prefix</li>
+      <li>WP post meta: <code>_mmf_</code> prefix</li>
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-title">Cache Strategy Reference</div>
+    <table>
+      <tr><th>Data type</th><th>Strategy</th></tr>
+      <tr><td>Menus, site settings, catalog</td><td><code>mode:"static"</code> → ISR 300s</td></tr>
+      <tr><td>Cart, auth, orders</td><td><code>cache:"no-store"</code> + <code>force-dynamic</code></td></tr>
+      <tr><td>Store settings (multi-caller)</td><td>React <code>cache()</code> wrapping ISR fetch</td></tr>
+      <tr><td>Category archive pages</td><td><code>export const revalidate = 300</code></td></tr>
+    </table>
+  </div>
+</div>
+</section>
+
+<footer>Midwest Military Fasteners · Internal documentation · Update this file with every feature change · 2026-07-14</footer>
+</div>
+</main>
+
+<script>
+// Sidebar active link highlight
+const links = document.querySelectorAll('#sidebar nav a');
+const sections = document.querySelectorAll('section[id]');
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const a = document.querySelector('#sidebar nav a[href="#'+e.target.id+'"]');
+      if(a) a.classList.add('active');
+    }
+  });
+},{rootMargin:'-60px 0px -60% 0px'});
+sections.forEach(s=>obs.observe(s));
+</script>
+</body>
+</html>

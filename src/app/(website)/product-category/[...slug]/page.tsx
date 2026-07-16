@@ -22,6 +22,27 @@ import {
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
 import { isUserLoggedIn } from "@/services/auth.service";
 
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    const categories = await fetch_spec_parts_categories();
+    const paths: { slug: string[] }[] = [];
+
+    for (const parent of categories) {
+      paths.push({ slug: [parent.slug] });
+      for (const child of parent.children ?? []) {
+        paths.push({ slug: [parent.slug, child.slug] });
+      }
+    }
+
+    return paths;
+  } catch {
+    return [];
+  }
+}
+
 type Props = {
   params: Promise<{
     slug: string[];
@@ -65,7 +86,11 @@ export default async function ProductCategoryPage({
   const active_category =
     direct_category ?? find_spec_parts_category(categories, active_category_slug);
 
-  if (!active_category) {
+  // Only show 404 when the category definitely doesn't exist in WP: no
+  // category metadata AND no products for this slug. When only the category
+  // endpoint fails (timeout, duplicate-slug normalisation, dev-mode flake),
+  // we still have products to show — render with a fallback title instead.
+  if (!active_category && products_response.products.length === 0) {
     notFound();
   }
 

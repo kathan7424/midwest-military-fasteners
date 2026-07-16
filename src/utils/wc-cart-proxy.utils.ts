@@ -53,6 +53,11 @@ interface StoreCartItem {
     text?: string;
     class?: string;
   };
+  extensions?: {
+    mmf_cert?: {
+      has_certificate?: boolean;
+    };
+  };
   low_stock_remaining?: number | null;
   backorders_allowed?: boolean;
   sold_individually?: boolean;
@@ -168,7 +173,7 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
       item.prices.currency_minor_unit ?? minorUnit,
       currency
     );
-    const sku = decodeHtmlEntities(item.sku || item.name);
+    const sku = decodeHtmlEntities(item.sku || "");
     const name = decodeHtmlEntities(item.name);
 
     return {
@@ -189,6 +194,7 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
       backorders_allowed: Boolean(item.backorders_allowed),
       sold_individually: Boolean(item.sold_individually),
       is_in_stock: mapIsInStock(item),
+      has_certificate: Boolean(item.extensions?.mmf_cert?.has_certificate),
     };
   });
 
@@ -259,7 +265,9 @@ export function mapStoreCartToCheckoutState(
       total: formatMinorUnits(storeCart.totals.total_price, minorUnit, currency),
     },
     shipping_packages,
-    needs_shipping: Boolean(storeCart.needs_shipping ?? shipping_packages.length > 0),
+    needs_shipping: storeCart.needs_shipping !== undefined
+      ? Boolean(storeCart.needs_shipping)
+      : shipping_packages.length > 0,
     shipping_address: storeCart.shipping_address ?? {},
     billing_address: storeCart.billing_address ?? {},
     // WooCommerce decides per customer (e.g. Net 30/cod only for flagged accounts).
@@ -295,6 +303,14 @@ export async function buildCheckoutCartStateResponse(
     // Force a 503 so response.ok is false on the client — avoids silent failures.
     const status = !raw ? 503 : wpResponse.status || 500;
 
+    // Diagnostic trail for "Checkout unavailable" reports — shows the real
+    // upstream status/code in the server terminal (never sent to the shopper).
+    console.error(
+      `[checkout-state] WP cart fetch failed: status=${wpResponse.status}`,
+      raw && "code" in raw ? `code=${raw.code}` : "(unparseable body)",
+      message
+    );
+
     return NextResponse.json(
       { message, code: raw && "code" in raw ? raw.code : undefined },
       { status }
@@ -309,6 +325,15 @@ export async function buildCheckoutCartStateResponse(
     { status: wpResponse.status }
   );
   response.headers.set("Cache-Control", "no-store, private");
+
+  // Forward any WP Set-Cookie headers (e.g. refreshed WP login session) before
+  // the dedicated nonce/cart-token cookies so they are not clobbered.
+  wpResponse.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") {
+      response.headers.append("set-cookie", value);
+    }
+  });
+
   persistStoreSessionCookies(wpResponse, response);
 
   return response;
@@ -335,12 +360,14 @@ export function buildWcStoreHeaders(
   request: NextRequest,
   includeJson = false,
   bootstrapResponse?: Response,
-  options: { skipSessionCookies?: boolean; preferBootstrap?: boolean } = {}
+  options: { skipSessionCookies?: boolean; preferBootstrap?: boolean; skipWpCookie?: boolean } = {}
 ): HeadersInit {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    ...(buildWpCookieHeader(request.headers.get("cookie")) as Record<string, string>),
-  };
+  const headers: Record<string, string> = options.skipWpCookie
+    ? { Accept: "application/json" }
+    : {
+        Accept: "application/json",
+        ...(buildWpCookieHeader(request.headers.get("cookie")) as Record<string, string>),
+      };
 
   if (!options.skipSessionCookies) {
     const cookieNonce = request.cookies.get(WC_STORE_NONCE_COOKIE)?.value || null;
@@ -380,20 +407,27 @@ export function buildWcStoreHeaders(
  * bootstrap a fresh session via GET /cart, then retry once with the fresh
  * nonce/cart-token taking precedence over the stale request cookies.
  */
+// Mutations (checkout POST, address update) can also sit behind live shipping
+// or payment-gateway calls — bounded so a stuck upstream fails visibly instead
+// of hanging the route until the platform kills it.
+const WC_MUTATION_TIMEOUT_MS = 60_000;
+
 export async function wcStoreMutation(
   request: NextRequest,
   path: string,
-  payload: unknown
+  payload: unknown,
+  method = "POST"
 ): Promise<Response> {
   const url = `${ENV.WP_SITE_URL}/wp-json/wc/store/v1/${path}`;
   const body = JSON.stringify(payload);
 
   if (request.cookies.get(WC_STORE_NONCE_COOKIE)?.value) {
     const direct = await fetch(url, {
-      method: "POST",
+      method,
       headers: buildWcStoreHeaders(request, true),
       body,
       cache: "no-store",
+      signal: AbortSignal.timeout(WC_MUTATION_TIMEOUT_MS),
     });
 
     if (direct.status !== 401 && direct.status !== 403) {
@@ -404,10 +438,11 @@ export async function wcStoreMutation(
   const bootstrapResponse = await fetchStoreCart(request);
 
   return fetch(url, {
-    method: "POST",
+    method,
     headers: buildWcStoreHeaders(request, true, bootstrapResponse, { preferBootstrap: true }),
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(WC_MUTATION_TIMEOUT_MS),
   });
 }
 
@@ -492,6 +527,13 @@ export async function buildStoreCartMutationResponse(
   );
   response.headers.set("Cache-Control", "no-store, private");
 
+  // Forward any Set-Cookie headers WP sends (e.g. session refresh on add-to-cart).
+  wpResponse.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie") {
+      response.headers.append("set-cookie", value);
+    }
+  });
+
   persistStoreSessionCookies(wpResponse, response);
 
   return response;
@@ -517,9 +559,14 @@ export async function resolveProductIdBySku(sku: string): Promise<number | null>
   }
 }
 
+// Cart GET can trigger a full shipping recalculation in WC (Shippo live-rate
+// API calls for carts with items + a saved address) — allow a generous window,
+// but never hang the proxy indefinitely on a stuck carrier API.
+const WC_CART_FETCH_TIMEOUT_MS = 30_000;
+
 export async function fetchStoreCart(
   request: NextRequest,
-  options: { skipSessionCookies?: boolean } = {}
+  options: { skipSessionCookies?: boolean; skipWpCookie?: boolean } = {}
 ): Promise<Response> {
   // ?_nc busts Pantheon's Varnish cache: the cart endpoint is served with
   // Cache-Control: public, max-age=604800 and Vary doesn't include Cart-Token,
@@ -532,11 +579,24 @@ export async function fetchStoreCart(
     method: "GET",
     headers: buildWcStoreHeaders(request, false, undefined, options),
     cache: "no-store",
+    signal: AbortSignal.timeout(WC_CART_FETCH_TIMEOUT_MS),
   });
 }
 
 /**
  * Fetch cart and recover from stale WooCommerce session cookies.
+ *
+ * Two-stage recovery for logged-in users with an expired WC Store API nonce:
+ *
+ *   Stage 1 — drop stale Nonce + Cart-Token, keep WP login cookie.
+ *   The WP auth filter (mmf_headless_cookie_auth) restores the user from the
+ *   cookie without requiring X-WP-Nonce, so WC loads the logged-in user's cart
+ *   and issues a fresh nonce + cart-token in the response headers.
+ *
+ *   Stage 2 — if Stage 1 still 401s (e.g. the PHP fix isn't deployed yet or the
+ *   WP session itself is also expired), drop ALL cookies for a completely fresh
+ *   guest request. WC returns a 200 with a new nonce — the checkout page can at
+ *   least render (showing an empty cart) instead of "Checkout unavailable".
  */
 export async function fetchStoreCartWithRecovery(
   request: NextRequest
@@ -558,7 +618,16 @@ export async function fetchStoreCartWithRecovery(
       response.status === 401 ||
       response.status === 403)
   ) {
-    return fetchStoreCart(request, { skipSessionCookies: true });
+    // Stage 1: drop WC session tokens, keep WP login cookie.
+    const stage1 = await fetchStoreCart(request, { skipSessionCookies: true });
+    if (stage1.ok) return stage1;
+
+    // Stage 2: drop everything — at minimum a guest cart loads the page.
+    if (stage1.status === 401 || stage1.status === 403) {
+      return fetchStoreCart(request, { skipSessionCookies: true, skipWpCookie: true });
+    }
+
+    return stage1;
   }
 
   return response;

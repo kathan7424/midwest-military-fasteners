@@ -14,12 +14,27 @@ import {
   fetch_sidebar_categories,
   fetch_spec_parts_product_by_slug,
   fetch_spec_parts_product_by_sku,
+  fetch_spec_parts_products,
 } from "@/services/spec-parts.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
 import { isUserLoggedIn } from "@/services/auth.service";
 import { build_product_path } from "@/utils/catalog-url.utils";
 import { get_catalog_listing_path } from "@/utils/catalog-path.utils";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
+
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    const response = await fetch_spec_parts_products({ per_page: 50, page: 1 });
+    return response.products
+      .filter((p) => p.slug)
+      .map((p) => ({ segments: [p.slug] }));
+  } catch {
+    return [];
+  }
+}
 
 type Props = {
   params: Promise<{

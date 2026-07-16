@@ -12,24 +12,49 @@ import { FaCircleCheck } from "react-icons/fa6";
 export const metadata: Metadata = {
   title: "Order Received | Midwest Military Fasteners",
   description: "Your Midwest Military Fasteners order has been received.",
+  // Prevent search engines from indexing or following links on this page —
+  // it contains order details that belong only to the customer who placed it.
+  robots: "noindex, nofollow",
 };
 
 type Props = {
   searchParams: Promise<{
     order_id?: string;
     total?: string;
-    email?: string;
     method?: string;
+    card_brand?: string;
+    card_last4?: string;
   }>;
+};
+
+/** "visa" → "Visa", "amex" → "American Express" — Stripe brand slugs. */
+const CARD_BRAND_LABELS: Record<string, string> = {
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  discover: "Discover",
+  diners: "Diners Club",
+  jcb: "JCB",
+  unionpay: "UnionPay",
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: Props) {
   const params = await searchParams;
   const order_id = params.order_id?.replace(/\D/g, "") ?? "";
   const total = params.total?.trim() ?? "";
-  const email = params.email?.trim() ?? "";
+
+  // WC standard: show the card used ("Visa ending in 4242"), not the gateway.
+  // Params are sanitized — brand must be a known slug, last4 exactly 4 digits.
+  const brand_slug = (params.card_brand ?? "").toLowerCase();
+  const brand_label = CARD_BRAND_LABELS[brand_slug] ?? "";
+  const last4 = /^\d{4}$/.test(params.card_last4 ?? "") ? params.card_last4 : "";
+
   const payment_label =
-    params.method === "net30" ? "Net 30 — Purchase Order" : "Credit Card (Stripe)";
+    params.method === "net30"
+      ? "Net 30 — Purchase Order"
+      : brand_label && last4
+        ? `${brand_label} ending in ${last4}`
+        : brand_label || "Credit Card";
   const order_date = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -49,7 +74,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
         </h1>
 
         <p className="mx-auto mb-10 max-w-xl text-body text-dark-gray">
-          A confirmation email {email ? `has been sent to ${email}` : "is on its way"}.
+          A confirmation email is on its way to your inbox.
           Spec sheets and certificates for purchased products are available in your account.
         </p>
       </div>

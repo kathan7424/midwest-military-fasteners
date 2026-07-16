@@ -9,6 +9,7 @@ export interface OrderDocumentLineItem {
   product_id: number;
   sku: string;
   name: string;
+  description: string;
   quantity: number;
   spec_file_url: string;
   certificate_file_url: string;

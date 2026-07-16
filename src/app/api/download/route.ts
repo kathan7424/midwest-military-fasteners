@@ -10,6 +10,7 @@
  * Created Date: 2026-07-09
  */
 
+import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
 import { ENV } from "@/config/env";
@@ -22,6 +23,18 @@ export const dynamic = "force-dynamic";
 const ALLOWED_EXTENSIONS = /\.(pdf|png|jpe?g|webp|gif|svg|zip|doc|docx|xls|xlsx|csv|txt)$/i;
 
 export async function GET(request: NextRequest) {
+  // ?secure=1 — caller asserts this is a post-purchase document that requires
+  // an authenticated session. Public spec sheets omit this param.
+  if (request.nextUrl.searchParams.get("secure") === "1") {
+    const cookie_store = await cookies();
+    const isLoggedIn = cookie_store
+      .getAll()
+      .some((c) => c.name.startsWith("wordpress_logged_in_"));
+    if (!isLoggedIn) {
+      return Response.json({ message: "Authentication required." }, { status: 401 });
+    }
+  }
+
   const rawUrl = request.nextUrl.searchParams.get("url") ?? "";
 
   let target: URL;

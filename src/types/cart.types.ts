@@ -34,6 +34,8 @@ export interface CartItem {
   backorders_allowed?: boolean;
   sold_individually?: boolean;
   is_in_stock?: boolean;
+  /** True when a certificate file is available for this product. */
+  has_certificate?: boolean;
 }
 
 export interface CartCoupon {

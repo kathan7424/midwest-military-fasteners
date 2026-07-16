@@ -8,7 +8,7 @@
  * Last Modified: 2026-07-07
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiMenu, HiX } from "react-icons/hi";
@@ -21,6 +21,9 @@ import {
 
 import { MenuItem } from "@/types/menu.types";
 import { normalizeTel, normalizeWpUrl } from "@/utils/url.utils";
+
+// Stable no-op store subscription for the hydration-detection snapshot.
+const subscribeNoop = () => () => {};
 
 interface NavLinkProps {
   href: string;
@@ -52,8 +55,22 @@ export default function MobileMenu({
   showMobileCartLink = true,
 }: MobileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  // Hydration-safe "mounted" without setState-in-effect: server snapshot is
+  // false, client snapshot is true — flips exactly once after hydration.
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
   const pathname = usePathname();
+
+  // Close the drawer on route change — state adjustment during render
+  // (React-recommended) instead of a cascading setState-in-effect.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setOpen(false);
+  }
 
   const closeMenu = () => setOpen(false);
   const hasAboutLink = items.some((item) => {
@@ -72,14 +89,6 @@ export default function MobileMenu({
     : [...items, { id: 999999, title: "ABOUT", slug: "about", url: "/about", type: "custom", parent: 0 }];
   const hasContact = Boolean(phone || email);
   const hasAuthButtons = showRegister || showLogin;
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const handlePageShow = () => {

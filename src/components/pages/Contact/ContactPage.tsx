@@ -14,7 +14,6 @@ export default function ContactPage({ pageData }: Props) {
   const bannerAlt = pageData?.banner_image?.alt || "";
 
   return (
-    <main>
       <section className="relative overflow-hidden bg-slate-950">
         <div className="px-5 flex items-center flex-col relative w-full py-[50px] md:py-[80px] lg:py-[130px]">
           {bannerUrl ? (
@@ -25,7 +24,9 @@ export default function ContactPage({ pageData }: Props) {
               className="absolute inset-0 object-cover"
               priority
             />
-          ) : null}
+          ) : (
+            <div className="absolute inset-0 bg-gray-700" />
+          )}
           <div className="absolute inset-0 bg-black/45" />
           <div className="mx-auto relative z-10 flex h-full items-center justify-center">
             <div className="text-center">
@@ -60,6 +61,5 @@ export default function ContactPage({ pageData }: Props) {
           </div>
         </div>
       </section>
-    </main>
   );
 }

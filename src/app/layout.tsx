@@ -60,7 +60,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://use.typekit.net/bzs4pmx.css" />
       </head>
-      <body className={`antialiased`}>
+      <body className={`antialiased flex min-h-screen flex-col`}>
         {children}
       </body>
     </html>

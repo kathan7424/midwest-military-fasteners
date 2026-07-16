@@ -11,6 +11,7 @@ export const PUBLIC_ROUTES = {
   home: "/",
   login: "/login",
   forgotPassword: "/forgot-password",
+  resetPassword: "/reset-password",
   register: "/register",
   cart: "/cart",
   myAccount: "/my-account",
@@ -65,6 +66,7 @@ export const API_ROUTES = {
     register: "/api/auth/register",
     me: "/api/auth/me",
     forgotPassword: "/api/auth/forgot-password",
+    resetPassword: "/api/auth/reset-password",
   },
   menu: "/api/menu",
   search: "/api/search",
@@ -76,8 +78,24 @@ export const API_ROUTES = {
   cartCoupon: "/api/cart/coupon",
   checkout: "/api/checkout",
   checkoutLocations: "/api/checkout/locations",
+  checkoutVerifyIntent: "/api/checkout/verify-intent",
   catalogProducts: "/api/catalog/products",
   catalogCategories: "/api/catalog/categories",
+  account: {
+    details: "/api/account/details",
+    addresses: "/api/account/addresses",
+    password: "/api/account/password",
+    paymentMethods: "/api/account/payment-methods",
+    paymentMethod: (pm_id: string) => `/api/account/payment-methods/${encodeURIComponent(pm_id)}`,
+    paymentMethodDefault: (token_id: string) =>
+      `/api/account/payment-methods/${encodeURIComponent(token_id)}/default`,
+  },
+  orders: "/api/orders",
+  order: (id: number) => `/api/orders/${id}`,
+  orderDocuments: "/api/orders/documents",
+  taxExemption: "/api/tax-exemption",
+  download: "/api/download",
+  contact: "/api/contact",
 } as const;
 
 /** WordPress custom REST endpoints */
@@ -87,6 +105,7 @@ export const WP_ROUTES = {
   register: "/wp-json/custom/v1/auth/register",
   me: "/wp-json/custom/v1/auth/me",
   forgotPassword: "/wp-json/custom/v1/auth/forgot-password",
+  resetPassword: "/wp-json/custom/v1/auth/reset-password",
   cart: "/wp-json/custom/v1/cart",
   cartRemove: "/wp-json/custom/v1/cart/remove",
   homePage: "/wp-json/custom/v1/home-page",

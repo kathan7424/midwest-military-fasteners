@@ -74,7 +74,7 @@ export default function SalesTaxExemptionUpload({
       </label> */}
 
       <div
-        className={`flex items-center h-12 overflow-hidden bg-white ${
+        className={`flex items-center h-10 overflow-hidden bg-white ${
           error ? "border border-red-300" : "rounded-none border border-[#666666] bg-white ring-0 focus-within:ring-1 focus-within:ring-brand focus-within:outline-none shadow-none"
         }`}
       >

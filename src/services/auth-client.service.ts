@@ -3,8 +3,11 @@
  * Description: Client-side auth API service wrappers.
  * Developer: KP-184
  * Created Date: 2026-07-07
+ * Last Modified: 2026-07-15
  */
 
+import { apiGet, apiPost } from "@/utils/api-client";
+import type { ApiResult } from "@/utils/api-client";
 import { API_ROUTES } from "@/config/routes";
 import {
   AuthErrorResponse,
@@ -15,95 +18,84 @@ import {
   RegisterMetaResponse,
   RegisterPayload,
   RegisterResponse,
+  ResetPasswordPayload,
+  ResetPasswordResponse,
 } from "@/types/auth.types";
 
-export interface ClientApiResponse<T> {
-  ok: boolean;
-  status: number;
-  data: T;
-}
-
-async function parse_api_response<T>(response: Response): Promise<ClientApiResponse<T>> {
-  return {
-    ok: response.ok,
-    status: response.status,
-    data: (await response.json()) as T,
-  };
-}
+export type { ApiResult as ClientApiResponse };
 
 export async function login_user(
   payload: LoginPayload
-): Promise<ClientApiResponse<LoginResponse & AuthErrorResponse>> {
-  const response = await fetch(API_ROUTES.auth.login, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parse_api_response<LoginResponse & AuthErrorResponse>(response);
+): Promise<ApiResult<LoginResponse & AuthErrorResponse>> {
+  // retries: 0 — never retry auth; a second attempt would re-lock accounts on bad credentials
+  return apiPost<LoginResponse & AuthErrorResponse>(
+    API_ROUTES.auth.login,
+    payload,
+    { retries: 0 }
+  );
 }
 
 export async function register_user(
   payload: RegisterPayload
-): Promise<ClientApiResponse<RegisterResponse & AuthErrorResponse>> {
+): Promise<ApiResult<RegisterResponse & AuthErrorResponse>> {
+  // Multipart (certificate upload) — cannot use apiPost.
   const form_data = new FormData();
   form_data.append("first_name", payload.first_name);
   form_data.append("last_name", payload.last_name);
   form_data.append("email", payload.email);
-
   form_data.append("password", payload.password);
   form_data.append("confirm_password", payload.confirm_password);
 
   if (payload.company) {
     form_data.append("company", payload.company);
   }
-
   if (payload.expiry_date) {
     form_data.append("expiry_date", payload.expiry_date);
   }
-
   if (payload.certificate) {
     form_data.append("certificate", payload.certificate);
   }
 
-  const response = await fetch(API_ROUTES.auth.register, {
-    method: "POST",
-    body: form_data,
-  });
-
-  return parse_api_response<RegisterResponse & AuthErrorResponse>(response);
+  try {
+    const response = await fetch(API_ROUTES.auth.register, {
+      method: "POST",
+      body: form_data,
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, status: response.status, data: data as RegisterResponse & AuthErrorResponse };
+  } catch {
+    return { ok: false, status: 0, data: { message: "Network error." } as RegisterResponse & AuthErrorResponse };
+  }
 }
 
-export async function logout_user(): Promise<Response> {
-  return fetch(API_ROUTES.auth.logout, {
-    method: "POST",
-  });
+export async function logout_user(): Promise<{ ok: boolean }> {
+  return apiPost<unknown>(API_ROUTES.auth.logout, {}, { retries: 0 });
 }
 
 export async function forgot_password_request(
   payload: ForgotPasswordPayload
-): Promise<ClientApiResponse<ForgotPasswordResponse & AuthErrorResponse>> {
-  const response = await fetch(API_ROUTES.auth.forgotPassword, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+): Promise<ApiResult<ForgotPasswordResponse & AuthErrorResponse>> {
+  return apiPost<ForgotPasswordResponse & AuthErrorResponse>(
+    API_ROUTES.auth.forgotPassword,
+    payload,
+    { retries: 0 }
+  );
+}
 
-  return parse_api_response<ForgotPasswordResponse & AuthErrorResponse>(response);
+export async function reset_password_request(
+  payload: ResetPasswordPayload
+): Promise<ApiResult<ResetPasswordResponse & AuthErrorResponse>> {
+  return apiPost<ResetPasswordResponse & AuthErrorResponse>(
+    API_ROUTES.auth.resetPassword,
+    payload,
+    { retries: 0 }
+  );
 }
 
 export async function fetch_register_meta(): Promise<RegisterMetaResponse> {
-  const response = await fetch(API_ROUTES.auth.register, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  return (await response.json()) as RegisterMetaResponse;
+  const { ok, data } = await apiGet<RegisterMetaResponse>(
+    API_ROUTES.auth.register,
+    { retries: 2, headers: { Accept: "application/json" } }
+  );
+  return ok ? data : ({} as RegisterMetaResponse);
 }

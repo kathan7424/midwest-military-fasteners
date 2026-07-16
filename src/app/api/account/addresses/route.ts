@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { ENV } from "@/config/env";
 import { buildWpCookieHeader } from "@/utils/auth-proxy.utils";
 
+export const dynamic = "force-dynamic";
+
 function buildCookieHeader(cookie_store: Awaited<ReturnType<typeof cookies>>): string {
   return cookie_store
     .getAll()
@@ -32,7 +34,9 @@ export async function GET() {
   );
 
   const data = await response.json();
-  return NextResponse.json(data, { status: response.status });
+  const res = NextResponse.json(data, { status: response.status });
+  res.headers.set("Cache-Control", "private, no-store");
+  return res;
 }
 
 export async function POST(request: NextRequest) {
@@ -55,7 +59,9 @@ export async function POST(request: NextRequest) {
     );
 
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const res = NextResponse.json(data, { status: response.status });
+    res.headers.set("Cache-Control", "private, no-store");
+    return res;
   } catch (error) {
     console.error("Address update proxy error:", error);
     return NextResponse.json(

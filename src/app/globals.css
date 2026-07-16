@@ -27,6 +27,7 @@
   --color-off-white:   #FAFAFA;   /* Page background */
   --color-white:       #FFFFFF;
   --color-black:       #000000;
+  --color-gray:        #CCCCCC;
 
   /* --- Font Family --- */
   --font-sans:          "open-sans", sans-serif;
@@ -139,6 +140,9 @@
     line-height: var(--leading-section);
     margin: 0px 0px 16px;
   }
+  p:last-child {
+    margin-bottom: 0;
+  }
 
   /* --- Heading Styles — from Figma Brand Guide --- */
   h1, .h1,
@@ -148,7 +152,7 @@
   h5, .h5 {
     font-family: var(--font-sans);
     color: var(--color-near-black);
-    font-weight: var(--font-weight-black);
+    font-weight: var(--font-weight-bold);
     margin: 0;
   }
 
@@ -160,19 +164,19 @@
 
   h2, .h2 {
     font-size: var(--text-h2);
-    line-height: 1;
+    line-height: 1.1;
     color: var(--color-amber);        /* #CC9900 — Figma H2 */
   }
 
   h3, .h3 {
     font-size: var(--text-h3);
-    line-height: 1.16;
+    line-height: 1.1;
     color: var(--color-near-black);   /* #14151C — Figma H3 */
   }
 
   h4, .h4 {
     font-size: var(--text-h4);
-    line-height: 1;
+    line-height: 1.1;
     color: var(--color-near-black);   /* #14151C — Figma H4 */
   }
 
@@ -199,6 +203,59 @@
   .font-semicondensed {
     font-family: var(--font-semicondensed);
   }
+  .section-content h1, .section-content h2, .section-content h3, .section-content h4, .section-content h5, .section-content h6 {
+    margin-bottom: 16px;
+  }
+  .section-content ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+  }
+  .section-content ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+  }
+  .section-content ul li + li, .section-content ol li + li {
+    margin-top: 10px;
+  }
+  .section-content p + h2, .section-content p + h3, .section-content p + h4, .section-content p + h5, .section-content p + h6 {
+    margin-top: 32px;
+  }
+  .section-content h2:not(:first-child), .section-content h3:not(:first-child), .section-content h4:not(:first-child), .section-content h5:not(:first-child), .section-content h6:not(:first-child) {
+    margin-top: 32px;
+  }
+  .section-content img {
+    margin-top: 32px;
+    margin-bottom: 32px;
+  }
+
+/* Laptop */
+@media (max-width: 1279px) {
+  h1, .h1 { font-size: 52px; }
+  h2, .h2 { font-size: 36px; }
+  h3, .h3 { font-size: 30px; }
+  h4, .h4 { font-size: 22px; }
+}
+/* Tablet */
+  @media (max-width: 1023px) {
+  h1, .h1 { font-size: 44px; }  
+  h2, .h2 { font-size: 32px; } 
+  h3, .h3 { font-size: 28px; }  
+  h4, .h4 { font-size: 22px; }
+}
+/* Mobile */
+@media (max-width: 767px) {
+  h1, .h1 { font-size: 36px; }  
+  h2, .h2 { font-size: 30px; }  
+  h3, .h3 { font-size: 26px; }  
+  h4, .h4 { font-size: 22px; }
+}
+/* Small Mobile */
+@media (max-width: 639px) {
+  h1, .h1 { font-size: 30px; }  
+  h2, .h2 { font-size: 28px; }  
+  h3, .h3 { font-size: 26px; }  
+  h4, .h4 { font-size: 22px; }
+}
  
 } 
 

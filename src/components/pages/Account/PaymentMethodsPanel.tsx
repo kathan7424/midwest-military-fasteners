@@ -18,23 +18,27 @@ import {
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
+import type { StripeCardExpiryElement, StripeCardCvcElement } from "@stripe/stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { Trash2, Plus, X } from "lucide-react";
+import { Trash2, Plus, Star, X } from "lucide-react";
 
 import { CardBrandIcon } from "@/components/shared_Ui/CardBrandIcon";
 import { LABEL_CLASS } from "@/components/shared_Ui/form-styles";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
+import { notifyError, notifySuccess } from "@/utils/notifications";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                                */
 /* ------------------------------------------------------------------ */
 
 interface SavedCard {
-  id: string;
+  id: string;           // WC payment token integer ID — used for checkout + default
+  stripe_pm_id: string; // Stripe PM ID — used only for the delete URL
   brand: string;
   last4: string;
   exp_month: number;
   exp_year: number;
+  is_default?: boolean; // WC-standard default token — preselected at checkout
 }
 
 /* ------------------------------------------------------------------ */
@@ -108,39 +112,78 @@ function AddCardForm({
   onCancel,
 }: {
   clientSecret: string;
-  onSuccess: () => void;
+  /** Receives the confirmed Stripe PM id so the panel can register the WC token. */
+  onSuccess: (pmId: string) => void;
   onCancel: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
+
+  const [numberError, setNumberError] = useState("");
+  const [expiryError, setExpiryError] = useState("");
+  const [cvcError, setCvcError] = useState("");
+  const [numberComplete, setNumberComplete] = useState(false);
+  const [expiryComplete, setExpiryComplete] = useState(false);
+  const [cvcComplete, setCvcComplete] = useState(false);
+  const [numberFocused, setNumberFocused] = useState(false);
+  const [expiryFocused, setExpiryFocused] = useState(false);
+  const [cvcFocused, setCvcFocused] = useState(false);
+  const expiryRef = useRef<StripeCardExpiryElement | null>(null);
+  const cvcRef = useRef<StripeCardCvcElement | null>(null);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!stripe || !elements) return;
 
+    let valid = true;
+    if (!numberComplete) { setNumberError("Enter your card number."); valid = false; }
+    if (!expiryComplete) { setExpiryError("Enter the expiration date."); valid = false; }
+    if (!cvcComplete) { setCvcError("Enter the security code."); valid = false; }
+    if (!valid) return;
+
     setIsSubmitting(true);
-    setFormError("");
 
     const cardNumber = elements.getElement(CardNumberElement);
     if (!cardNumber) {
-      setFormError("Card form not ready. Please try again.");
+      setNumberError("Card form not ready. Please try again.");
       setIsSubmitting(false);
       return;
     }
 
-    const { error } = await stripe.confirmCardSetup(clientSecret, {
+    // confirmCardSetup attaches the card to the Stripe customer.
+    // return_url is required for redirect-based 3DS authentication flows.
+    const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
       payment_method: { card: cardNumber },
+      return_url: window.location.href,
     });
 
     if (error) {
-      setFormError(error.message ?? "Failed to save card. Please try again.");
+      const param = error.param ?? "";
+      if (param.includes("exp_month") || param.includes("exp_year") || error.code?.startsWith("invalid_expiry")) {
+        setExpiryError(error.message ?? "Invalid expiry date.");
+      } else if (param.includes("cvc") || error.code?.startsWith("invalid_cvc")) {
+        setCvcError(error.message ?? "Invalid security code.");
+      } else {
+        setNumberError(error.message ?? "Failed to save card. Please try again.");
+      }
       setIsSubmitting(false);
       return;
     }
 
-    onSuccess();
+    // setupIntent.payment_method is the attached PM id (string in card flows).
+    const pmId =
+      typeof setupIntent?.payment_method === "string"
+        ? setupIntent.payment_method
+        : setupIntent?.payment_method?.id ?? "";
+
+    if (!pmId) {
+      setNumberError("Card was saved at Stripe but could not be registered — please refresh.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    onSuccess(pmId);
   };
 
   return (
@@ -161,36 +204,79 @@ function AddCardForm({
 
       <form onSubmit={(e) => void handleSubmit(e)} noValidate className="max-w-md space-y-4">
         <div>
-          <label className={LABEL_CLASS}>
-            Card Number
-          </label>
-          <div className="flex h-10 items-center border border-light-gray bg-white px-3 focus-within:border-blue">
-            <CardNumberElement options={{ ...ELEMENT_STYLE, showIcon: true }} className="w-full" />
+          <label className={LABEL_CLASS}>Card Number</label>
+          <div
+            className={`flex h-10 items-center border bg-white px-3 transition-colors ${
+              numberError ? "border-red-400" : numberFocused ? "border-blue" : "border-light-gray"
+            }`}
+          >
+            <CardNumberElement
+              options={{ ...ELEMENT_STYLE, showIcon: true }}
+              className="w-full"
+              onFocus={() => setNumberFocused(true)}
+              onBlur={() => setNumberFocused(false)}
+              onChange={(e) => {
+                setNumberComplete(e.complete);
+                if (e.error) setNumberError(e.error.message);
+                else {
+                  setNumberError("");
+                  if (e.complete) expiryRef.current?.focus();
+                }
+              }}
+            />
           </div>
+          {numberError ? <p className="mt-1 text-xs text-red-600">{numberError}</p> : null}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={LABEL_CLASS}>
-              Expiry Date
-            </label>
-            <div className="flex h-10 items-center border border-light-gray bg-white px-3 focus-within:border-blue">
-              <CardExpiryElement options={ELEMENT_STYLE} className="w-full" />
+            <label className={LABEL_CLASS}>Expiry Date</label>
+            <div
+              className={`flex h-10 items-center border bg-white px-3 transition-colors ${
+                expiryError ? "border-red-400" : expiryFocused ? "border-blue" : "border-light-gray"
+              }`}
+            >
+              <CardExpiryElement
+                options={ELEMENT_STYLE}
+                className="w-full"
+                onReady={(el) => { expiryRef.current = el; }}
+                onFocus={() => setExpiryFocused(true)}
+                onBlur={() => setExpiryFocused(false)}
+                onChange={(e) => {
+                  setExpiryComplete(e.complete);
+                  if (e.error) setExpiryError(e.error.message);
+                  else {
+                    setExpiryError("");
+                    if (e.complete) cvcRef.current?.focus();
+                  }
+                }}
+              />
             </div>
+            {expiryError ? <p className="mt-1 text-xs text-red-600">{expiryError}</p> : null}
           </div>
           <div>
-            <label className={LABEL_CLASS}>
-              Security Code
-            </label>
-            <div className="flex h-10 items-center border border-light-gray bg-white px-3 focus-within:border-blue">
-              <CardCvcElement options={ELEMENT_STYLE} className="w-full" />
+            <label className={LABEL_CLASS}>Security Code</label>
+            <div
+              className={`flex h-10 items-center border bg-white px-3 transition-colors ${
+                cvcError ? "border-red-400" : cvcFocused ? "border-blue" : "border-light-gray"
+              }`}
+            >
+              <CardCvcElement
+                options={ELEMENT_STYLE}
+                className="w-full"
+                onReady={(el) => { cvcRef.current = el; }}
+                onFocus={() => setCvcFocused(true)}
+                onBlur={() => setCvcFocused(false)}
+                onChange={(e) => {
+                  setCvcComplete(e.complete);
+                  if (e.error) setCvcError(e.error.message);
+                  else setCvcError("");
+                }}
+              />
             </div>
+            {cvcError ? <p className="mt-1 text-xs text-red-600">{cvcError}</p> : null}
           </div>
         </div>
-
-        {formError ? (
-          <p className="text-sm text-red-600">{formError}</p>
-        ) : null}
 
         <div className="flex gap-3">
           <button
@@ -219,17 +305,29 @@ function AddCardForm({
 
 function CardRow({
   card,
+  showMakeDefault,
   onDelete,
+  onMakeDefault,
 }: {
   card: SavedCard;
+  /** Hidden with a single card — one saved card is inherently the default (WC standard). */
+  showMakeDefault: boolean;
   onDelete: (id: string) => Promise<void>;
+  onMakeDefault: (tokenId: string) => Promise<void>;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingDefault, setIsSettingDefault] = useState(false);
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    await onDelete(card.id);
+    await onDelete(card.stripe_pm_id);
     setIsDeleting(false);
+  };
+
+  const handleMakeDefault = async () => {
+    setIsSettingDefault(true);
+    await onMakeDefault(card.id);
+    setIsSettingDefault(false);
   };
 
   return (
@@ -238,17 +336,35 @@ function CardRow({
         <CardBrandIcon brand={card.brand} size="md" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-near-black">
+        <p className="flex items-center gap-2 text-sm font-semibold text-near-black">
           {brand_label(card.brand)} ending in {card.last4}
+          {card.is_default ? (
+            <span className="inline-flex items-center gap-1 bg-navy px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              <Star className="size-2.5 fill-current" aria-hidden="true" />
+              Default
+            </span>
+          ) : null}
         </p>
         <p className="text-xs text-dark-gray">
           Expires {exp_label(card.exp_month, card.exp_year)}
         </p>
       </div>
+      {showMakeDefault && !card.is_default ? (
+        <button
+          type="button"
+          onClick={() => void handleMakeDefault()}
+          disabled={isSettingDefault || isDeleting}
+          className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-xs font-semibold uppercase text-dark-gray transition-colors hover:border-blue hover:text-blue disabled:opacity-50"
+          aria-label={`Make ${brand_label(card.brand)} ending in ${card.last4} the default`}
+        >
+          <Star className="size-3.5" aria-hidden="true" />
+          {isSettingDefault ? "Saving…" : "Make Default"}
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={() => void handleDelete()}
-        disabled={isDeleting}
+        disabled={isDeleting || isSettingDefault}
         className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-xs font-semibold uppercase text-dark-gray transition-colors hover:border-red-300 hover:text-red-600 disabled:opacity-50"
         aria-label={`Delete ${brand_label(card.brand)} ending in ${card.last4}`}
       >
@@ -307,19 +423,50 @@ function PaymentMethodsPanelInner() {
     }
   };
 
-  const handleCardAdded = async () => {
+  const handleCardAdded = async (pmId: string) => {
     setShowAddForm(false);
     setClientSecret("");
     setIsLoading(true);
+
+    // Register the confirmed Stripe PM as a WC payment token — the list (and
+    // checkout) read WC tokens, so without this the new card never appears.
+    const finalize = await fetch("/api/account/payment-methods/finalize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pm_id: pmId }),
+    }).catch(() => null);
+
+    if (!finalize?.ok) {
+      const data = await finalize?.json().catch(() => ({})) as { message?: string } | undefined;
+      notifyError(data?.message || "Card was saved at Stripe but could not be registered — please try again.");
+    } else {
+      notifySuccess("Card saved successfully.");
+    }
+
     await loadCards();
   };
 
-  const handleDelete = async (pmId: string) => {
-    try {
-      await fetch(`/api/account/payment-methods/${pmId}`, { method: "DELETE" });
-      setCards((prev) => prev.filter((c) => c.id !== pmId));
-    } catch {
-      // silent — card stays in list, user can retry
+  const handleDelete = async (stripePmId: string) => {
+    const res = await fetch(`/api/account/payment-methods/${stripePmId}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) {
+      setCards((prev) => prev.filter((c) => c.stripe_pm_id !== stripePmId));
+      notifySuccess("Card removed.");
+    } else {
+      const data = await res?.json().catch(() => ({})) as { message?: string } | undefined;
+      notifyError(data?.message || "Could not remove card — please try again.");
+    }
+  };
+
+  const handleMakeDefault = async (tokenId: string) => {
+    const res = await fetch(`/api/account/payment-methods/${tokenId}/default`, {
+      method: "POST",
+    }).catch(() => null);
+    if (res?.ok) {
+      setCards((prev) => prev.map((c) => ({ ...c, is_default: c.id === tokenId })));
+      notifySuccess("Default payment method updated.");
+    } else {
+      const data = await res?.json().catch(() => ({})) as { message?: string } | undefined;
+      notifyError(data?.message || "Could not update default card — please try again.");
     }
   };
 
@@ -339,7 +486,13 @@ function PaymentMethodsPanelInner() {
       {cards.length > 0 ? (
         <div className="mb-6 space-y-3">
           {cards.map((card) => (
-            <CardRow key={card.id} card={card} onDelete={handleDelete} />
+            <CardRow
+              key={card.id}
+              card={card}
+              showMakeDefault={cards.length > 1}
+              onDelete={handleDelete}
+              onMakeDefault={handleMakeDefault}
+            />
           ))}
         </div>
       ) : (
@@ -363,11 +516,14 @@ function PaymentMethodsPanelInner() {
         </button>
       ) : null}
 
+      {/* Do NOT pass clientSecret to Elements — legacy card elements pass
+          it directly to confirmCardSetup(). Setting it here activates
+          Stripe.js "deferred intent" mode which conflicts with CardNumberElement. */}
       {showAddForm && clientSecret ? (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements stripe={stripePromise}>
           <AddCardForm
             clientSecret={clientSecret}
-            onSuccess={() => void handleCardAdded()}
+            onSuccess={(pmId) => void handleCardAdded(pmId)}
             onCancel={() => {
               setShowAddForm(false);
               setClientSecret("");

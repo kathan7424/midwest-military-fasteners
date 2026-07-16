@@ -3,21 +3,19 @@
  * Description: Client API for user sales tax exemption certificate.
  * Developer: KP-184
  * Created Date: 2026-07-07
+ * Last Modified: 2026-07-15
  */
 
+import { apiGet } from "@/utils/api-client";
+import { API_ROUTES } from "@/config/routes";
 import type { TaxExemptionStatus } from "@/types/tax-exemption.types";
 
 export async function fetch_tax_exemption_status(): Promise<TaxExemptionStatus> {
-  const response = await fetch("/api/tax-exemption", {
-    method: "GET",
-    cache: "no-store",
+  const { ok, data } = await apiGet<TaxExemptionStatus>(API_ROUTES.taxExemption, {
+    retries: 2,
   });
-
-  if (!response.ok) {
-    throw new Error("Unable to load tax exemption status.");
-  }
-
-  return (await response.json()) as TaxExemptionStatus;
+  if (!ok) throw new Error("Unable to load tax exemption status.");
+  return data;
 }
 
 export async function upload_tax_exemption_document(
@@ -28,15 +26,18 @@ export async function upload_tax_exemption_document(
   form_data.append("certificate", certificate);
   form_data.append("expiry_date", expiry_date);
 
-  const response = await fetch("/api/tax-exemption", {
+  // Multipart upload — cannot use apiPost (sets Content-Type: application/json).
+  const response = await fetch(API_ROUTES.taxExemption, {
     method: "POST",
     body: form_data,
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data?.message || "Upload failed.");
+    throw new Error(
+      (data as { message?: string })?.message || "Upload failed."
+    );
   }
 
   return data as TaxExemptionStatus & { success?: boolean; message?: string };

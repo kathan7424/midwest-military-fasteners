@@ -8,9 +8,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { FaXmark } from "react-icons/fa6";
 
-import CartQuantityControl from "@/components/shared_Ui/CartQuantityControl";
 import CartStockNotice from "@/components/shared_Ui/CartStockNotice";
 import type { CartItem } from "@/types/cart.types";
 import { getCartItemQuantityControlProps } from "@/utils/cart-stock.utils";
@@ -27,6 +27,65 @@ interface CartLineItemProps {
   onQuantityChange: (key: string, quantity: number) => void | Promise<void>;
   quantitySize?: "sm" | "lg";
   className?: string;
+}
+
+interface CartQtyInputProps {
+  quantity: number;
+  minQuantity: number;
+  maxQuantity?: number;
+  disabled?: boolean;
+  isUpdating?: boolean;
+  onChange: (val: number) => void;
+}
+
+function CartQtyInput({
+  quantity,
+  minQuantity,
+  maxQuantity,
+  disabled,
+  isUpdating,
+  onChange,
+}: CartQtyInputProps) {
+  const [local, setLocal] = useState(String(quantity));
+
+  // Sync the input when the server-confirmed quantity changes — state
+  // adjustment during render (React-recommended) instead of an effect.
+  const [prevQuantity, setPrevQuantity] = useState(quantity);
+  if (prevQuantity !== quantity) {
+    setPrevQuantity(quantity);
+    setLocal(String(quantity));
+  }
+
+  const commit = (raw: string) => {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < minQuantity) {
+      setLocal(String(quantity));
+      return;
+    }
+    const clamped = maxQuantity ? Math.min(parsed, maxQuantity) : parsed;
+    const snapped = Math.max(minQuantity, Math.trunc(clamped));
+    setLocal(String(snapped));
+    if (snapped !== quantity) onChange(snapped);
+  };
+
+  return (
+    <input
+      type="number"
+      min={minQuantity}
+      max={maxQuantity}
+      value={local}
+      disabled={disabled || isUpdating}
+      placeholder="QTY"
+      aria-label="Quantity"
+      className="w-16 border border-light-gray px-2 py-1.5 text-sm text-near-black placeholder:text-mid-gray disabled:opacity-50"
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={(e) => commit(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter")
+          commit((e.target as HTMLInputElement).value);
+      }}
+    />
+  );
 }
 
 export default function CartLineItem({
@@ -57,21 +116,25 @@ export default function CartLineItem({
           {item.sku || item.name}
         </Link>
 
-        <CartQuantityControl
-          quantity={item.quantity}
-          minQuantity={quantityProps.minQuantity}
-          maxQuantity={quantityProps.maxQuantity}
-          editable={quantityProps.editable}
-          disabled={quantityProps.disabled}
-          isUpdating={isUpdating}
-          size={quantitySize}
-          onChange={(nextQuantity) => onQuantityChange(item.key, nextQuantity)}
-        />
+        {item.sold_individually ? (
+          <span className="w-16 px-2 py-1.5 text-center text-sm text-near-black">
+            {item.quantity}
+          </span>
+        ) : (
+          <CartQtyInput
+            quantity={item.quantity}
+            minQuantity={quantityProps.minQuantity}
+            maxQuantity={quantityProps.maxQuantity}
+            disabled={quantityProps.disabled || isMutating}
+            isUpdating={isUpdating}
+            onChange={(nextQty) => void onQuantityChange(item.key, nextQty)}
+          />
+        )}
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <span className="hidden text-mid-gray sm:inline">Price</span>
+        <span className="hidden text-gray sm:inline">Price</span>
           <span
-            className="whitespace-nowrap text-near-black"
+            className="whitespace-nowrap text-dark-gray"
             dangerouslySetInnerHTML={{ __html: item.price_html }}
           />
           <button
@@ -79,14 +142,14 @@ export default function CartLineItem({
             disabled={isMutating}
             aria-label={`Remove ${item.sku || item.name}`}
             onClick={() => void onRemove(item.key)}
-            className="text-red-500 transition-colors hover:text-red-600 disabled:opacity-50"
+            className="ml-2.5 text-[#E12222] transition-colors hover:text-red-600 disabled:opacity-50"
           >
             <FaXmark size={18} />
           </button>
         </div>
       </div>
 
-      <CartStockNotice item={item} className="mt-1.5 normal-case" />
+      <CartStockNotice item={item} className="mt-1.5 mb-0 normal-case" />
     </div>
   );
 }
