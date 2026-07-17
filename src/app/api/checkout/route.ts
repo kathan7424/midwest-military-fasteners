@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   buildCheckoutCartStateResponse,
   fetchStoreCartWithRecovery,
+  persistStoreSessionCookies,
+  sanitizeCertOptInMap,
   wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 import { formatNoticeMessage } from "@/utils/text.utils";
@@ -80,25 +82,51 @@ export async function POST(request: NextRequest) {
       false
     );
 
-    const wpResponse = await wcStoreMutation(request, "checkout", {
+    const checkoutPayload = {
       billing_address: billingForWc,
       shipping_address: shippingForWc,
       payment_method: body.payment_method,
       payment_data: body.payment_data ?? [],
       customer_note: (body.customer_note ?? "").slice(0, 1000),
       create_account: body.create_account === true,
-      // Pass cert opt-in selections as Store API extension data so the
-      // mmf_cert update_callback can save them to WC session before order
-      // line items are created.
-      ...(body.cert_opted_in && Object.keys(body.cert_opted_in).length > 0
-        ? { extensions: { mmf_cert: { cert_opted_in: body.cert_opted_in } } }
+    };
+
+    const certOptIn = sanitizeCertOptInMap(body.cert_opted_in);
+
+    // Pass cert opt-in selections as Store API extension data so the
+    // mmf_cert update_callback can save them to WC session before order
+    // line items are created.
+    let wpResponse = await wcStoreMutation(request, "checkout", {
+      ...checkoutPayload,
+      ...(certOptIn
+        ? { extensions: { mmf_cert: { cert_opted_in: certOptIn } } }
         : {}),
     });
 
-    const raw = (await wpResponse.json().catch(() => null)) as Record<
+    let raw = (await wpResponse.json().catch(() => null)) as Record<
       string,
       unknown
     > | null;
+
+    // If WP rejects the extensions parameter (mmf_cert namespace not yet
+    // registered server-side), retry once WITHOUT extensions. Safe: a 400
+    // param-validation rejection happens before any order is created, so no
+    // duplicate-order risk — the order just goes through without the opt-in.
+    if (
+      certOptIn &&
+      wpResponse.status === 400 &&
+      typeof raw?.message === "string" &&
+      /extensions/i.test(raw.message)
+    ) {
+      console.warn(
+        "[checkout] WP rejected extensions.mmf_cert (extension not deployed?) — retrying without cert opt-in"
+      );
+      wpResponse = await wcStoreMutation(request, "checkout", checkoutPayload);
+      raw = (await wpResponse.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null;
+    }
 
     if (!wpResponse.ok || !raw) {
       const message = formatNoticeMessage(
@@ -113,13 +141,21 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json(raw, { status: wpResponse.status });
     response.headers.set("Cache-Control", "no-store, private");
-    // Forward any WC session cookies rotated after order placement
-    // (e.g. WC clears the cart session and issues a fresh nonce).
-    wpResponse.headers.forEach((value, key) => {
-      if (key.toLowerCase() === "set-cookie") {
-        response.headers.append("set-cookie", value);
-      }
-    });
+    // Forward WC session cookies rotated after order placement. Use
+    // getSetCookie() so multiple Set-Cookie headers aren't merged.
+    const h = wpResponse.headers as Headers & { getSetCookie?: () => string[] };
+    const setCookies =
+      typeof h.getSetCookie === "function"
+        ? h.getSetCookie()
+        : (wpResponse.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
+    for (const c of setCookies) {
+      if (c.trim()) response.headers.append("set-cookie", c.trim());
+    }
+    // Checkout also rotates the Store API Nonce/Cart-Token response headers
+    // to the new (now-empty) cart — without persisting these, the browser
+    // keeps sending the pre-order cart-token on the next cart fetch and the
+    // just-purchased item appears to still be "in the cart" after checkout.
+    persistStoreSessionCookies(wpResponse, response);
     return response;
   } catch (error) {
     console.error("Checkout POST proxy error:", error);

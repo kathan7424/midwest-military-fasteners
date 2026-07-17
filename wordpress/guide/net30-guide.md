@@ -81,10 +81,22 @@ Before any of this works, the COD gateway must be correctly configured:
 
 ## 4. Enabling / Disabling a Customer for Net 30
 
-There are **two ways** to manage eligibility — both update the same user meta
+There are **three ways** to manage eligibility — all update the same user meta
 key (`mmf_net30_eligible`).
 
-### Method A — Users List (fastest, no page reload)
+### Method A — Auto-enabled on Tax Exemption Approval (no manual step)
+
+When an admin **approves** a customer's tax exemption certificate (via any
+admin path — email link, Tax Certificates dashboard quick-approve button,
+full-edit form, PATCH REST, or Users → Edit), Net 30 is automatically
+enabled at the same time. No separate step is needed.
+
+The customer receives their tax exemption approval email **and** their next
+checkout will already show the Net 30 payment option.
+
+Rejection does **not** disable an existing Net 30 eligibility flag.
+
+### Method B — Users List (fastest, no page reload)
 
 1. **WP Admin → Users**
 2. Find the customer in the table

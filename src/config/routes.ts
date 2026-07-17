@@ -32,7 +32,7 @@ export const PUBLIC_ROUTES = {
 /** Guest-only pages — logged-in users are redirected away */
 export const GUEST_ONLY_ROUTES = ["/login", "/register", "/forgot-password"] as const;
 
-/** Protected pages — login required (enforced by middleware). */
+/** Protected pages — login required (enforced by src/proxy.ts). */
 export const PROTECTED_ROUTES = ["/my-account"] as const;
 // /cart is guest-accessible in WooCommerce (guests always see their cart).
 // /checkout guest access is driven by WC "Allow customers to place orders
@@ -76,6 +76,7 @@ export const API_ROUTES = {
   cartCustomer: "/api/cart/customer",
   cartSelectShipping: "/api/cart/select-shipping",
   cartCoupon: "/api/cart/coupon",
+  cartCertOptIn: "/api/cart/cert-optin",
   checkout: "/api/checkout",
   checkoutLocations: "/api/checkout/locations",
   checkoutVerifyIntent: "/api/checkout/verify-intent",

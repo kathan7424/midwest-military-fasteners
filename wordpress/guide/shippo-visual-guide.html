@@ -1,0 +1,428 @@
+<title>Shippo Setup — Visual Guide</title>
+<style>
+  :root {
+    --bg: #F2EFE8;
+    --bg-card: #FFFFFF;
+    --ink: #1C1F1A;
+    --ink-soft: #5B5F57;
+    --line: #D8D3C6;
+    --accent: #C8551A;
+    --accent-ink: #FFFFFF;
+    --accent-2: #2E5339;
+    --accent-2-soft: #E4EBE2;
+    --warn-bg: #FBEDE3;
+    --warn-line: #E0A87A;
+    --ok-bg: #EAF1E7;
+    --ok-line: #9FBE97;
+    --code-bg: #21251E;
+    --code-ink: #E9E6DA;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151813;
+      --bg-card: #1D2117;
+      --ink: #ECE9DF;
+      --ink-soft: #A6A99C;
+      --line: #33382C;
+      --accent: #E06A2C;
+      --accent-ink: #17140F;
+      --accent-2: #7FAE79;
+      --accent-2-soft: #22301F;
+      --warn-bg: #2C2013;
+      --warn-line: #6B4322;
+      --ok-bg: #1D2A1B;
+      --ok-line: #3E5A38;
+      --code-bg: #0F120D;
+      --code-ink: #D7D4C6;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151813; --bg-card: #1D2117; --ink: #ECE9DF; --ink-soft: #A6A99C;
+    --line: #33382C; --accent: #E06A2C; --accent-ink: #17140F; --accent-2: #7FAE79;
+    --accent-2-soft: #22301F; --warn-bg: #2C2013; --warn-line: #6B4322;
+    --ok-bg: #1D2A1B; --ok-line: #3E5A38; --code-bg: #0F120D; --code-ink: #D7D4C6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #F2EFE8; --bg-card: #FFFFFF; --ink: #1C1F1A; --ink-soft: #5B5F57;
+    --line: #D8D3C6; --accent: #C8551A; --accent-ink: #FFFFFF; --accent-2: #2E5339;
+    --accent-2-soft: #E4EBE2; --warn-bg: #FBEDE3; --warn-line: #E0A87A;
+    --ok-bg: #EAF1E7; --ok-line: #9FBE97; --code-bg: #21251E; --code-ink: #E9E6DA;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
+  }
+
+  header.top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1 {
+    font-size: 30px;
+    margin: 6px 0 8px;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .lede { color: var(--ink-soft); font-size: 15px; max-width: 46ch; }
+  .status-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    color: var(--ink);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-pill .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #C8551A;
+    box-shadow: 0 0 0 3px var(--warn-line);
+  }
+
+  /* architecture diagram */
+  .diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 40px;
+  }
+  .diagram-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.06em;}
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .flow-node {
+    background: var(--accent-2-soft);
+    border: 1px solid var(--ok-line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--ink);
+  }
+  .flow-node.dim { background: transparent; border: 1px dashed var(--line); color: var(--ink-soft); font-weight: 500; }
+  .flow-arrow { color: var(--ink-soft); font-size: 18px; padding: 0 10px; }
+  .flow-branch { display: flex; flex-direction: column; gap: 6px; }
+
+  /* step track */
+  .steps { position: relative; }
+  .step {
+    position: relative;
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 20px;
+    padding-bottom: 36px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step-rail {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .step-num {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 15px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow);
+  }
+  .step-num.done { background: var(--accent-2); }
+  .step-line {
+    flex: 1;
+    width: 2px;
+    background: var(--line);
+    margin-top: 4px;
+  }
+  .step:last-child .step-line { display: none; }
+  .step-body { padding-top: 4px; }
+  .step-body h2 {
+    font-size: 18px;
+    margin: 0 0 4px;
+  }
+  .step-tag {
+    display: inline-block;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .step-card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .step-card p { margin: 0 0 10px; font-size: 14.5px; }
+  .step-card p:last-child { margin-bottom: 0; }
+  .step-card ul { margin: 8px 0 0; padding-left: 20px; font-size: 14.5px; }
+  .step-card li { margin-bottom: 6px; }
+  .step-card li:last-child { margin-bottom: 0; }
+
+  .icon-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .icon-chip svg { width: 22px; height: 22px; display: block; }
+  .icon-chip {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: var(--accent-2-soft);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-2);
+  }
+
+  code, .kbd {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 13px;
+  }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--warn-bg);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    font-size: 13.5px;
+    margin-top: 12px;
+  }
+  .callout.security {
+    border-left-color: #A33;
+    background: var(--warn-bg);
+  }
+  .callout strong { display: block; margin-bottom: 2px; }
+
+  table.checklist { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+  table.checklist th, table.checklist td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  table.checklist th { color: var(--ink-soft); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.checklist tr:last-child td { border-bottom: none; }
+  .check-yes { color: var(--accent-2); font-weight: 700; }
+
+  footer.foot {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+
+  @media (max-width: 560px) {
+    header.top { flex-direction: column; }
+    .flow { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); padding: 6px 0; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="eyebrow">Module 10 · Shipping &amp; Fulfillment</div>
+      <h1>Shippo Setup Guide</h1>
+      <p class="lede">One-time setup, step by step, for when the client's Shippo credentials arrive. No frontend code changes required at any step.</p>
+    </div>
+    <span class="status-pill"><span class="dot"></span>Waiting on client credentials</span>
+  </header>
+
+  <div class="diagram">
+    <p class="diagram-title">How a rate reaches checkout</p>
+    <div class="flow">
+      <div class="flow-node">Customer's address</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node dim">Next.js proxy</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node dim">WooCommerce Store API</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-branch">
+        <div class="flow-node">Shippo live rates</div>
+        <div class="flow-node dim" style="font-size:12px;padding:6px 12px;">+ Flat Rate / Free Shipping</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">FR-SHIP-04 · CLIENT ACTION</span>
+        <h2>Connect carriers in the Shippo dashboard</h2>
+        <div class="step-card">
+          <p>In the client's own Shippo account, connect the UPS and FedEx carrier accounts that will actually ship the orders.</p>
+          <ul>
+            <li>Carrier and service costs bill to the client's account — that's their responsibility, not something this build handles.</li>
+            <li>This step happens entirely inside Shippo's dashboard. No code, no plugin yet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">2</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">WP ADMIN</span>
+        <h2>Install the Shippo for WooCommerce plugin</h2>
+        <div class="step-card">
+          <p>Install and activate the plugin on WordPress, then paste in the client's Shippo API token.</p>
+          <div class="callout security">
+            <strong>Token handling rule</strong>
+            The API token goes in the plugin's own WooCommerce settings row only — never in code, never committed to git, never pasted into a guide or a chat log.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">3</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">WP ADMIN</span>
+        <h2>Set the ship-from address</h2>
+        <div class="step-card">
+          <p>Enter MMF's warehouse address in the plugin (or WooCommerce → Settings → General → Store Address, which the plugin reads from). Every rate quote and every pre-filled Shippo Shipment uses this as the origin.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">4</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">WOOCOMMERCE → SETTINGS → SHIPPING</span>
+        <h2>Turn on Shippo rates for the US zone</h2>
+        <div class="step-card">
+          <p>Add the plugin's live-rate method to the US shipping zone. The checkout page needs zero changes — it already renders whatever <code>shipping_rates[]</code> the Store API returns.</p>
+          <p>Decide whether to keep the interim methods:</p>
+          <ul>
+            <li><strong>Free Shipping</strong> (Michigan zone) and <strong>Flat Rate</strong> (US) can stay active alongside Shippo — WooCommerce just lists every method as its own radio option.</li>
+            <li>Or remove them once live rates are confirmed working, if only carrier rates should show. Business call, not a technical one.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">5</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">ALREADY BUILT — VERIFY ONLY</span>
+        <h2>Confirm every product has weight + dimensions</h2>
+        <div class="step-card">
+          <p>Shippo cannot quote a rate — or auto-fill a shipment's Package section — without both. The CSV import already writes these to WooCommerce's native product fields and warns on anything missing.</p>
+          <div class="callout" style="border-left-color: var(--accent-2); background: var(--ok-bg);">
+            <strong>Bonus automation already live</strong>
+            The moment an order reaches "Processing," <code>shippo-sync.php</code> pre-creates the Shippo Shipment with parcel weight/dimensions pulled from the order — so the admin never sees "Package info required" in the Shippo dashboard.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">6</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">WOOCOMMERCE → SETTINGS → INTEGRATION</span>
+        <h2>Wire up the delivery webhook</h2>
+        <div class="step-card">
+          <p>This closes the loop: Shippo reports a package delivered → the WooCommerce order auto-completes → certificate emails and My Account document unlocks fire automatically.</p>
+          <ul>
+            <li>Open <strong>WooCommerce → Settings → Integration → Shippo Webhook</strong> and copy the endpoint URL (<code>/wp-json/custom/v1/shippo/webhook</code>).</li>
+            <li>In the <a href="https://app.goshippo.com/settings/api/">Shippo dashboard</a>: Settings → API → Webhooks → Add Webhook → event <code>track_updated</code> → paste the URL.</li>
+            <li>Copy Shippo's signing secret back into the WooCommerce settings panel. Every incoming call is HMAC-verified — never leave this blank in production.</li>
+            <li>Leave <strong>Auto-Complete on Delivery</strong> on (default).</li>
+          </ul>
+          <p style="margin-top:10px;">Turn on <strong>Debug log</strong> on the same settings page while testing — every webhook call (received / skipped / rejected / completed) lands in <strong>WooCommerce → Status → Logs</strong> under source <code>mmf-shippo-webhook</code>. Switch it off once verified.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail">
+        <div class="step-num">7</div>
+      </div>
+      <div class="step-body">
+        <span class="step-tag">STAGING, BEFORE GOING LIVE</span>
+        <h2>Run the full loop once, end to end</h2>
+        <div class="step-card">
+          <table class="checklist">
+            <tr><th>Step</th><th>Expected result</th></tr>
+            <tr><td>Checkout with a Michigan address</td><td>Live UPS/FedEx rates listed (+ Free Shipping if kept); prices look sane</td></tr>
+            <tr><td>Checkout with a non-MI US address</td><td>Live rates listed; picking one updates the total instantly</td></tr>
+            <tr><td>Change the address mid-checkout</td><td>Rates refresh automatically — no reload</td></tr>
+            <tr><td>Place the order</td><td>Carrier + cost recorded on the order and the confirmation</td></tr>
+            <tr><td>Open the order in Shippo</td><td>Package section already filled in — no "info required" warning</td></tr>
+            <tr><td>Buy a label in Shippo</td><td>Label PDF produced; tracking number written back to the WC order</td></tr>
+            <tr><td>Mark delivered in Shippo (or wait for real delivery)</td><td>WC order auto-completes; certificate email fires if applicable</td></tr>
+            <tr><td>My Account → order detail</td><td>"Shipment Tracking" section shows carrier + clickable number</td></tr>
+            <tr><td>Product missing weight/dims</td><td>No live rate — fix the product data, not the checkout code</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="foot">
+    Full reference: <span class="mono">wordpress/guide/shippo-guide.md</span> ·
+    Operational runbooks: <span class="mono">wordpress/guide/shippo/</span> ·
+    Test cases: <span class="mono">wordpress/guide/test-cases.md</span> (TC-SHIP)
+  </footer>
+
+</div>

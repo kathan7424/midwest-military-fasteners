@@ -96,7 +96,6 @@ export default function CartLineItem({
   onClose,
   onRemove,
   onQuantityChange,
-  quantitySize = "sm",
   className,
 }: CartLineItemProps) {
   const quantityProps = getCartItemQuantityControlProps(item);

@@ -63,15 +63,21 @@ class MMF_Shippo_Integration extends WC_Integration {
 		$this->form_fields = array(
 
 			'webhook_url_info' => array(
-				'title' => __( 'Webhook URL', 'midwest-military' ),
+				'title' => __( 'Webhook Setup', 'midwest-military' ),
 				'type'  => 'info',
 				'desc'  => wp_kses(
 					sprintf(
 						/* translators: %s: webhook endpoint URL */
 						__(
-							'In your <a href="https://app.goshippo.com/settings/api/" target="_blank" rel="noopener noreferrer">Shippo dashboard</a>, '
-							. 'go to <strong>Settings → Webhooks</strong> and add a webhook for the <code>track_updated</code> event pointing to:<br>'
-							. '<code style="word-break:break-all;">%s</code>',
+							'<strong>Step 1</strong> — Copy this endpoint URL:<br>'
+							. '<code style="word-break:break-all;">%s</code><br><br>'
+							. '<strong>Step 2</strong> — In the <a href="https://app.goshippo.com/settings/api/" target="_blank" rel="noopener noreferrer">Shippo dashboard</a> '
+							. 'go to <strong>Settings &rarr; API &rarr; Webhooks &rarr; Add Webhook</strong>: '
+							. 'select event <code>track_updated</code>, paste the URL above, and save.<br><br>'
+							. '<strong>Step 3</strong> — Copy the <em>signing secret</em> Shippo shows after saving into the '
+							. '<strong>Webhook Signing Secret</strong> field below, then click <em>Save changes</em>.<br><br>'
+							. '<strong>Step 4 (verify)</strong> — Enable <strong>Debug log</strong> below; every call Shippo makes '
+							. 'is then recorded in WooCommerce &rarr; Status &rarr; Logs (source <code>mmf-shippo-webhook</code>).',
 							'midwest-military'
 						),
 						esc_url( $webhook_url )
@@ -79,6 +85,7 @@ class MMF_Shippo_Integration extends WC_Integration {
 					array(
 						'a'      => array( 'href' => true, 'target' => true, 'rel' => true ),
 						'strong' => array(),
+						'em'     => array(),
 						'br'     => array(),
 						'code'   => array( 'style' => true ),
 					)
@@ -110,6 +117,26 @@ class MMF_Shippo_Integration extends WC_Integration {
 				'default'     => 'yes',
 				'desc_tip'    => false,
 			),
+
+			'enable_logging' => array(
+				'title'       => __( 'Debug log', 'midwest-military' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable logging', 'midwest-military' ),
+				// Same pattern as WooCommerce core gateways (Stripe, PayPal):
+				// checkbox + link into the standard WC log viewer.
+				'description' => sprintf(
+					/* translators: %s: URL of the WooCommerce log viewer filtered to this source */
+					__(
+						'Log every incoming Shippo webhook call — received, skipped, rejected, or completed — inside '
+						. '<a href="%s">WooCommerce &rarr; Status &rarr; Logs</a> (source <code>mmf-shippo-webhook</code>). '
+						. 'Useful during development to confirm the integration works; disable in production once verified.',
+						'midwest-military'
+					),
+					esc_url( admin_url( 'admin.php?page=wc-status&tab=logs&source=mmf-shippo-webhook' ) )
+				),
+				'default'     => 'no',
+				'desc_tip'    => false,
+			),
 		);
 	}
 
@@ -133,6 +160,29 @@ class MMF_Shippo_Integration extends WC_Integration {
 		</tr>
 		<?php
 		return (string) ob_get_clean();
+	}
+
+}
+
+/**
+ * Record a webhook event when logging is enabled.
+ *
+ * WooCommerce-standard logging: wc_get_logger() with a dedicated source, so
+ * entries appear in WooCommerce → Status → Logs with WC's own retention,
+ * rotation, and viewer. No-ops entirely when the setting is off. Never log
+ * secrets or signatures here.
+ *
+ * @param string $message Log line.
+ */
+function mmf_shippo_log( string $message ): void {
+	$settings = (array) get_option( 'woocommerce_mmf_shippo_webhook_settings', array() );
+
+	if ( ( $settings['enable_logging'] ?? 'no' ) !== 'yes' ) {
+		return;
+	}
+
+	if ( function_exists( 'wc_get_logger' ) ) {
+		wc_get_logger()->info( $message, array( 'source' => 'mmf-shippo-webhook' ) );
 	}
 }
 
@@ -180,6 +230,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 
 		if ( ! hash_equals( $expected, $sig ) ) {
 			error_log( '[MMF Shippo] Webhook rejected: invalid signature.' );
+			mmf_shippo_log( 'REJECTED — invalid signature (check the signing secret matches Shippo).' );
 			return new WP_REST_Response( array( 'error' => 'Invalid signature.' ), 401 );
 		}
 	}
@@ -194,6 +245,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 	$event = sanitize_text_field( (string) ( $payload['event'] ?? '' ) );
 
 	if ( $event !== 'track_updated' ) {
+		mmf_shippo_log( sprintf( 'Received event "%s" — skipped (only track_updated is processed).', $event ?: 'unknown' ) );
 		return new WP_REST_Response(
 			array( 'ok' => true, 'skipped' => 'Not a track_updated event.' ),
 			200
@@ -205,6 +257,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 	$status          = strtoupper( sanitize_text_field( (string) ( $tracking_status['status'] ?? '' ) ) );
 
 	if ( $status !== 'DELIVERED' ) {
+		mmf_shippo_log( sprintf( 'track_updated received — tracking status %s, waiting for DELIVERED.', $status ?: 'unknown' ) );
 		return new WP_REST_Response(
 			array( 'ok' => true, 'skipped' => 'Status is not DELIVERED (' . $status . ').' ),
 			200
@@ -212,6 +265,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 	}
 
 	if ( $auto_complete !== 'yes' ) {
+		mmf_shippo_log( 'DELIVERED received but Auto-Complete is disabled in settings — no status change made.' );
 		return new WP_REST_Response(
 			array( 'ok' => true, 'skipped' => 'Auto-complete is disabled in settings.' ),
 			200
@@ -232,6 +286,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 			$tracking_number,
 			$metadata
 		) );
+		mmf_shippo_log( sprintf( 'DELIVERED received but NO matching WC order (tracking %s) — set the order ID as label metadata in Shippo, or save the tracking number on the order.', $tracking_number ?: 'unknown' ) );
 		// Return 200 so Shippo does not retry — this is a data mismatch, not a server error.
 		return new WP_REST_Response(
 			array( 'ok' => true, 'skipped' => 'WC order not found.' ),
@@ -256,6 +311,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 	// ---- Idempotency guard ----
 	if ( $order->has_status( 'completed' ) ) {
 		error_log( sprintf( '[MMF Shippo] Order #%d already completed — skipping.', $order_id ) );
+		mmf_shippo_log( sprintf( 'Order #%d already Completed — duplicate DELIVERED event ignored.', $order_id ) );
 		return new WP_REST_Response(
 			array( 'ok' => true, 'skipped' => 'Order already completed.', 'order_id' => $order_id ),
 			200
@@ -288,6 +344,12 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 		$order_id,
 		$tracking_number,
 		$carrier
+	) );
+	mmf_shippo_log( sprintf(
+		'✓ Order #%d auto-completed (DELIVERED, tracking %s%s) — certificates email + My Account docs triggered.',
+		$order_id,
+		$tracking_number ?: 'n/a',
+		$carrier ? ', ' . $carrier : ''
 	) );
 
 	return new WP_REST_Response(
@@ -360,6 +422,9 @@ function mmf_find_order_for_shippo( string $tracking_number, string $metadata ):
 				'meta_compare' => '=',
 				'limit'        => 1,
 				'return'       => 'objects',
+				// Include custom statuses (wc-shipped) — the default status list
+				// would skip orders an admin already marked as Shipped.
+				'status'       => array_keys( wc_get_order_statuses() ),
 			) );
 
 			if ( ! empty( $orders ) && $orders[0] instanceof WC_Order ) {

@@ -112,6 +112,84 @@ function specparts_set_product_spec_download( $product_id, $url, $name = 'Spec S
 }
 
 // ============================================================
+// SETTINGS — Paid certificates (WooCommerce → Settings → Products)
+// ============================================================
+
+/**
+ * Is the paid-certificates mode enabled?
+ *
+ * OFF (default): certificates are a free opt-in add-on at checkout (SOW).
+ * ON: each product may carry a certificate price; opted-in certificates are
+ * charged as a fee line on the order.
+ */
+function mmf_paid_certs_enabled(): bool {
+    return 'yes' === get_option( 'mmf_paid_certificates_enabled', 'no' );
+}
+
+/**
+ * Certificate price for a product — 0 when free or when paid mode is off.
+ *
+ * @param int $product_id Product ID.
+ */
+function mmf_get_certificate_price( int $product_id ): float {
+    if ( ! mmf_paid_certs_enabled() ) {
+        return 0.0;
+    }
+    return (float) get_post_meta( $product_id, '_certificate_price', true );
+}
+
+add_filter(
+    'woocommerce_get_sections_products',
+    static function ( array $sections ): array {
+        $sections['mmf_certificates'] = __( 'Product Certifications', 'midwest-military' );
+        return $sections;
+    }
+);
+
+add_filter(
+    'woocommerce_get_settings_products',
+    static function ( array $settings, string $current_section ): array {
+        if ( 'mmf_certificates' !== $current_section ) {
+            return $settings;
+        }
+
+        return array(
+            array(
+                'title' => __( 'Product Certifications', 'midwest-military' ),
+                'type'  => 'title',
+                'desc'  => __(
+                    'Certifications (MFR C of C, material/process certs, test reports) are offered as an '
+                    . 'opt-in add-on at checkout for products that have a certificate file. '
+                    . 'By default they are FREE (per SOW). Enable the option below to charge for them.',
+                    'midwest-military'
+                ),
+                'id'    => 'mmf_certificates_options',
+            ),
+            array(
+                'title'    => __( 'Paid certificates', 'midwest-military' ),
+                'desc'     => __( 'Charge for product certifications at checkout', 'midwest-military' ),
+                'desc_tip' => __(
+                    'When enabled, a "Certificate price" field appears on the product edit screen. '
+                    . 'Opted-in certifications are added to the order total as a fee line '
+                    . '("Certification — SKU"). Products with a blank/zero price stay free. '
+                    . 'When disabled, every certification is free and no price fields apply.',
+                    'midwest-military'
+                ),
+                'id'       => 'mmf_paid_certificates_enabled',
+                'type'     => 'checkbox',
+                'default'  => 'no',
+            ),
+            array(
+                'type' => 'sectionend',
+                'id'   => 'mmf_certificates_options',
+            ),
+        );
+    },
+    10,
+    2
+);
+
+// ============================================================
 // ADMIN — Certificate field (General tab)
 // ============================================================
 
@@ -156,6 +234,29 @@ add_action(
                 <?php endif; ?>
                 <?php echo wc_help_tip( __( 'Product certificate download shown on the frontend. Accepts PDF, image, or document files.', 'midwest-military' ) ); ?>
             </p>
+
+            <?php if ( mmf_paid_certs_enabled() ) : ?>
+                <?php
+                // Visible only while "Paid certificates" is enabled in
+                // WooCommerce → Settings → Products → Product Certifications.
+                woocommerce_wp_text_input(
+                    array(
+                        'id'          => '_certificate_price',
+                        'label'       => sprintf(
+                            /* translators: %s: currency symbol */
+                            __( 'Certificate price (%s)', 'midwest-military' ),
+                            get_woocommerce_currency_symbol()
+                        ),
+                        'data_type'   => 'price',
+                        'desc_tip'    => true,
+                        'description' => __(
+                            'Charged at checkout when the customer opts in to the certification. Leave blank or 0 to keep this certificate free.',
+                            'midwest-military'
+                        ),
+                    )
+                );
+                ?>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -172,6 +273,17 @@ add_action(
             update_post_meta( $product_id, '_certificate_file_url', $url );
         } else {
             delete_post_meta( $product_id, '_certificate_file_url' );
+        }
+
+        // Certificate price — only posted while paid mode is enabled (the
+        // field is hidden otherwise), so an absent key means "leave as-is".
+        if ( isset( $_POST['_certificate_price'] ) ) {
+            $price = wc_format_decimal( wp_unslash( $_POST['_certificate_price'] ) );
+            if ( '' !== $price && (float) $price > 0 ) {
+                update_post_meta( $product_id, '_certificate_price', $price );
+            } else {
+                delete_post_meta( $product_id, '_certificate_price' );
+            }
         }
     }
 );

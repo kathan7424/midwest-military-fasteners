@@ -534,6 +534,12 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 		return;
 	}
 
+	// Hard once-only guard: survives any status cycle (completed → processing →
+	// completed) and covers both the admin path and the Shippo webhook path.
+	if ( '1' === (string) $order->get_meta( '_mmf_cert_email_sent', true ) ) {
+		return;
+	}
+
 	// Only send if the customer OPTED IN at checkout (cert product in the
 	// order) and the opted-in item actually has a certificate file (SOW:
 	// no opt-in → no certificate delivery, ever). Collect the files so the
@@ -642,12 +648,19 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 	<?php
 	$html = ob_get_clean();
 
-	wp_mail(
+	$sent = wp_mail(
 		$to,
 		$subject,
 		$html,
 		array( 'Content-Type: text/html; charset=UTF-8' )
 	);
+
+	// Mark sent only on success so a mail-server hiccup still allows a retry
+	// on the next eligible status change.
+	if ( $sent ) {
+		$order->update_meta_data( '_mmf_cert_email_sent', '1' );
+		$order->save_meta_data();
+	}
 }
 
 /**

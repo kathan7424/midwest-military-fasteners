@@ -14,6 +14,7 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
 import { SEARCH_PLACEHOLDER } from "@/data/hero.data";
 import { useGlobalSearch } from "@/hooks/use-global-search";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { cn } from "@/lib/utils";
 
 interface HeaderSearchProps {
@@ -22,6 +23,9 @@ interface HeaderSearchProps {
 
 export default function HeaderSearch({ className }: HeaderSearchProps) {
   const router = useRouter();
+  // The catalog listing lives at the WC Shop page path (site config), and the
+  // listing filters by the `search` query param — never a hardcoded route.
+  const { catalogListingPath } = useSiteConfig();
 
   const {
     query,
@@ -37,13 +41,13 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
   function handleSearch() {
     const trimmed = query.trim();
     if (!trimmed) return;
-    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+    router.push(`${catalogListingPath}?search=${encodeURIComponent(trimmed)}`);
   }
 
   return (
     <form
       ref={wrapperRef}
-      action="/catalog"
+      action={catalogListingPath}
       method="GET"
       className={cn(
         "relative hidden w-full max-w-[690px] flex-1 items-center lg:flex",
@@ -57,7 +61,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
       <div className="flex w-full">
         <input
           type="search"
-          name="q"
+          name="search"
           value={query}
           placeholder={SEARCH_PLACEHOLDER}
           onFocus={() => {

@@ -36,6 +36,8 @@ export interface CartItem {
   is_in_stock?: boolean;
   /** True when a certificate file is available for this product. */
   has_certificate?: boolean;
+  /** Certificate price when paid certificates are enabled; 0 = free. */
+  certificate_price?: number;
 }
 
 export interface CartCoupon {

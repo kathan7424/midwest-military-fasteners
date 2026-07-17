@@ -572,6 +572,9 @@ function mmf_save_tax_exemption_user_fields( int $user_id ): void {
 	$notify_statuses = array( MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED );
 	if ( in_array( $new_status, $notify_statuses, true ) && $new_status !== $old_status ) {
 		mmf_send_tax_cert_customer_email( $user_id, $new_status );
+		if ( MMF_TAX_STATUS_APPROVED === $new_status ) {
+			update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+		}
 	}
 }
 
@@ -631,6 +634,22 @@ function mmf_send_tax_exemption_reminders(): void {
 				esc_html( $expiry )
 			);
 			$cta         = __( 'Upload New Certificate', 'midwest-military' );
+		} elseif ( $days_left <= 3 ) {
+			$flag        = 'mmf_tax_reminder_expiring_3day';
+			$subject     = sprintf(
+				/* translators: %d: days remaining */
+				__( 'URGENT: Your tax exemption expires in %d day(s) — Midwest Military Fasteners', 'midwest-military' ),
+				$days_left
+			);
+			$accent      = '#b81c23';
+			$heading     = __( 'Certificate Expiring in 3 Days', 'midwest-military' );
+			$msg         = sprintf(
+				/* translators: 1: days left, 2: expiry date */
+				__( 'Your sales tax exemption certificate expires in <strong>%1$d day(s)</strong> on %2$s. Upload a renewed certificate immediately to continue tax-free purchasing.', 'midwest-military' ),
+				$days_left,
+				esc_html( $expiry )
+			);
+			$cta         = __( 'Renew Certificate Now', 'midwest-military' );
 		} elseif ( $days_left <= 30 ) {
 			$flag        = 'mmf_tax_reminder_expiring';
 			$subject     = sprintf(
@@ -927,6 +946,9 @@ function mmf_handle_tax_cert_email_action(): void {
 		update_user_meta( $user_id, 'mmf_tax_exemption_status', $status );
 		mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
 		mmf_send_tax_cert_customer_email( $user_id, $status );
+		if ( MMF_TAX_STATUS_APPROVED === $status ) {
+			update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+		}
 	}
 
 	$user          = get_userdata( $user_id );

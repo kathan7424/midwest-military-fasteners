@@ -145,14 +145,90 @@ Frontend: `OrderTrackingEntry` in
 - **Label generation stays in wp-admin/Shippo** — never expose a label or
   fulfilment endpoint to the storefront.
 
-## 8. Boundaries (what we deliberately do NOT build)
+## 8. Delivery webhook (auto-complete + certificates trigger)
 
-- No custom Shippo API client — the plugin owns the Shippo connection.
+`inc/shippo-webhook.php` — Shippo reports DELIVERED → WC order auto-completes →
+certificates email + My Account docs unlock. Admin can always change status
+manually too; the `woocommerce_order_status_changed` hook is the single trigger
+point, so both paths behave identically.
+
+**Setup (one time):**
+
+1. WP admin → **WooCommerce → Settings → Integration → Shippo Webhook** —
+   copy the endpoint URL shown there (`/wp-json/custom/v1/shippo/webhook`).
+2. [Shippo dashboard](https://app.goshippo.com/settings/api/) → **Settings →
+   API → Webhooks → Add Webhook** → event `track_updated` → paste the URL.
+3. Copy Shippo's signing secret into **Webhook Signing Secret** in the WC
+   panel and save. (HMAC-SHA256 verified on every call — never leave blank
+   in production.)
+4. **Auto-Complete on Delivery** stays ON (default).
+
+**Debug log (development aid — WooCommerce-standard):**
+
+- Toggle **Debug log → Enable logging** on the same settings page (same
+  pattern as Stripe/PayPal gateways). Every webhook call — received /
+  skipped / rejected / order-completed — is recorded with its reason
+  (e.g. "no matching WC order — set order ID as label metadata").
+- View: **WooCommerce → Status → Logs**, source `mmf-shippo-webhook` (the
+  settings page links straight to it). WC's own retention/rotation applies.
+- Logging is opt-in and silent when off — turn it off in production once the
+  integration is verified.
+
+**Order matching** (how a DELIVERED event finds its WC order): label metadata
+as bare order ID → `order_id:NNN` / `#NNN` patterns → tracking-number meta
+search (covers all statuses incl. custom `wc-shipped`). Best practice: set the
+WC order ID as the label's metadata when purchasing the label in Shippo.
+
+## 9. Shipment pre-creation (Package fields auto-fill)
+
+`inc/shippo-sync.php` hooks `woocommerce_order_status_processing` (priority 99)
+and calls `POST https://api.goshippo.com/shipments/` so the Package section
+is pre-filled when the admin opens the order in the Shippo dashboard.
+
+**What it sends**
+
+| Field | Source |
+|---|---|
+| `address_from` | WC → General → Store Address settings |
+| `address_to` | WC order shipping address (falls back to billing) |
+| `parcels[0].length/width/height` | Max across all order-item product dimensions (WC native fields) |
+| `parcels[0].weight` | Sum of (product weight × qty) for all items |
+| `parcels[0].distance_unit` | `woocommerce_dimension_unit` setting (e.g. `in`) |
+| `parcels[0].mass_unit` | `woocommerce_weight_unit` setting (`lbs` → `lb` for Shippo) |
+| `metadata` | WC order ID — webhook uses this to auto-match the WC order on delivery |
+| Token | Read from plugin's WC settings row (`woocommerce_wc-shippo-shipping_settings`), never hardcoded |
+
+**Idempotent** — skips if `_mmf_shippo_shipment_id` is already set on the order.
+
+**Graceful degradation** — if a product is missing dimensions, a placeholder
+`1×1×1` is used so Shippo still accepts the Shipment; admin adjusts in the
+dashboard. If weight is missing, creation is skipped and a warning is logged.
+All warnings → **WooCommerce → Status → Logs**, source `mmf-shippo-sync`.
+
+**Why products must have weight + dims** — the CSV import ([import.php](../inc/import.php))
+writes WC native weight and dimension fields; it warns on import if any product
+is missing them. Fix product data at the source — don't hack the checkout.
+
+## 10. Boundaries (what we deliberately do NOT build)
+
 - No custom label UI in wp-admin — Shippo's own dashboard is the tool the
   client chose for day-to-day fulfilment.
 - No frontend shipping math — prices, taxes on shipping, totals: all WC.
 - No international shipping — US-only per the SOW; enforced by WC selling/
   shipping country settings, not code.
+
+---
+
+## 11. Operations folder
+
+[`shippo/`](shippo/) contains day-to-day operations docs:
+
+| File | Purpose |
+|---|---|
+| [`shippo/README.md`](shippo/README.md) | Root cause of "Package required" + all fix options |
+| [`shippo/end-to-end-test.md`](shippo/end-to-end-test.md) | Step-by-step test: import → checkout rates → order → label → tracking → My Account |
+| [`shippo/test-products.csv`](shippo/test-products.csv) | 5 test products (MMF import format) with weight + dims filled — import via MMF Product Import |
+| [`shippo/existing-weight-fix.csv`](shippo/existing-weight-fix.csv) | WC-native CSV to bulk-add weight + dims to already-imported products — import via WP Products → Import |
 
 ---
 

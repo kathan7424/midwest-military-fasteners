@@ -1,9 +1,10 @@
 /**
- * File Name: middleware.ts
+ * File Name: proxy.ts
  * Description: Auth guard — protects routes and redirects guest/auth users.
+ *   Next.js 16 proxy convention (renamed from middleware.ts).
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-17
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -23,7 +24,7 @@ function isLoggedIn(request: NextRequest): boolean {
     .some((cookie) => cookie.name.startsWith(WP_LOGGED_IN_COOKIE_PREFIX));
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const loggedIn = isLoggedIn(request);
   const isGuestRoute = matchesRoutePrefix(pathname, GUEST_ONLY_ROUTES);
@@ -51,6 +52,6 @@ export const config = {
     // /cart is intentionally NOT protected here — WooCommerce always allows
     // guests to view their cart. Checkout guest access is controlled by the
     // WC "Allow customers to place orders without an account" setting and
-    // enforced in checkout/page.tsx, not in middleware.
+    // enforced in checkout/page.tsx, not in the proxy.
   ],
 };

@@ -294,6 +294,95 @@ function mmf_cert_checkout_update_callback( array $data ): void {
 }
 
 /**
+ * Fallback capture of the cert opt-in map straight off the checkout REST
+ * request, independent of woocommerce_store_api_register_update_callback().
+ *
+ * That Store API helper was only added in newer WooCommerce Blocks releases —
+ * on an older/mismatched version function_exists() silently skips registering
+ * it above with no error anywhere, so the opt-in checkbox is checked, the
+ * order still places fine, but nothing is ever stamped on the line item.
+ * This filter reads extensions.mmf_cert.cert_opted_in directly from the
+ * request body before Store API processes it, so opt-in capture works
+ * whether or not the newer registration API is available.
+ *
+ * @param mixed           $response WP REST short-circuit value (untouched).
+ * @param mixed           $handler  Matched route handler (unused).
+ * @param WP_REST_Request $request  Incoming REST request.
+ * @return mixed
+ */
+function mmf_cert_capture_checkout_extensions_fallback( $response, $handler, $request ) {
+	if ( ! $request instanceof WP_REST_Request || false === strpos( $request->get_route(), '/wc/store/v1/checkout' ) ) {
+		return $response;
+	}
+
+	$extensions = $request->get_param( 'extensions' );
+	$cert_data  = ( is_array( $extensions ) && isset( $extensions['mmf_cert']['cert_opted_in'] ) && is_array( $extensions['mmf_cert']['cert_opted_in'] ) )
+		? $extensions['mmf_cert']['cert_opted_in']
+		: array();
+
+	if ( ! empty( $cert_data ) ) {
+		mmf_cert_checkout_update_callback( array( 'cert_opted_in' => $cert_data ) );
+	}
+
+	return $response;
+}
+add_filter( 'rest_request_before_callbacks', 'mmf_cert_capture_checkout_extensions_fallback', 5, 3 );
+
+/**
+ * Add certification fees to the cart when paid mode is on.
+ *
+ * Runs on every totals calculation (cart GET, cart/extensions sync, and the
+ * checkout POST itself), so the charged total always matches the current
+ * opt-in selection in the session. Free mode (default): no-op — certificates
+ * never touch the totals.
+ *
+ * @param WC_Cart $cart Cart instance.
+ */
+function mmf_add_certificate_fees( WC_Cart $cart ): void {
+	if ( ! function_exists( 'mmf_paid_certs_enabled' ) || ! mmf_paid_certs_enabled() ) {
+		return;
+	}
+
+	global $mmf_cert_opted_in_request_map;
+	$opted_in = ! empty( $mmf_cert_opted_in_request_map )
+		? $mmf_cert_opted_in_request_map
+		: ( WC()->session ? (array) WC()->session->get( 'mmf_cert_opted_in', array() ) : array() );
+
+	if ( empty( $opted_in ) ) {
+		return;
+	}
+
+	foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+		if ( empty( $opted_in[ $cart_item_key ] ) ) {
+			continue;
+		}
+
+		$product_id = (int) ( $cart_item['product_id'] ?? 0 );
+		if ( $product_id <= 0 || empty( get_post_meta( $product_id, '_certificate_file_url', true ) ) ) {
+			continue;
+		}
+
+		$price = mmf_get_certificate_price( $product_id );
+		if ( $price <= 0 ) {
+			continue;
+		}
+
+		$product = $cart_item['data'] ?? null;
+		$sku     = ( $product instanceof WC_Product && $product->get_sku() ) ? $product->get_sku() : (string) $product_id;
+
+		$cart->add_fee(
+			sprintf(
+				/* translators: %s: product SKU */
+				__( 'Certification — %s', 'midwest-military' ),
+				$sku
+			),
+			$price
+		);
+	}
+}
+add_action( 'woocommerce_cart_calculate_fees', 'mmf_add_certificate_fees' );
+
+/**
  * Data injected into each Store API cart item under extensions.mmf_cert.
  *
  * @param array $cart_item Raw WC cart item array.
@@ -304,7 +393,12 @@ function mmf_cert_store_api_data( array $cart_item ): array {
 	$has_certificate = ! empty( get_post_meta( $product_id, '_certificate_file_url', true ) );
 
 	return array(
-		'has_certificate' => $has_certificate,
+		'has_certificate'   => $has_certificate,
+		// 0 = free (default / paid mode off). > 0 only when the admin enabled
+		// paid certificates AND set a price on this product.
+		'certificate_price' => function_exists( 'mmf_get_certificate_price' )
+			? mmf_get_certificate_price( $product_id )
+			: 0.0,
 	);
 }
 
@@ -315,9 +409,15 @@ function mmf_cert_store_api_data( array $cart_item ): array {
  */
 function mmf_cert_store_api_schema(): array {
 	return array(
-		'has_certificate' => array(
+		'has_certificate'   => array(
 			'description' => 'True when a certificate file is available for this product.',
 			'type'        => 'boolean',
+			'context'     => array( 'view', 'edit' ),
+			'readonly'    => true,
+		),
+		'certificate_price' => array(
+			'description' => 'Certificate price when paid certificates are enabled; 0 means free.',
+			'type'        => 'number',
 			'context'     => array( 'view', 'edit' ),
 			'readonly'    => true,
 		),

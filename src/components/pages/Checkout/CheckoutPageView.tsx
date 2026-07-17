@@ -35,6 +35,7 @@ import {
   place_order,
   remove_coupon,
   select_shipping_rate,
+  sync_cert_opt_in,
   update_checkout_address,
   verify_payment_intent,
   type CheckoutStateResponse,
@@ -48,6 +49,7 @@ import type {
   WcCheckoutSettings,
 } from "@/types/checkout.types";
 import { CardBrandIcon, CardBrandRow } from "@/components/shared_Ui/CardBrandIcon";
+import { format_store_price } from "@/utils/currency.utils";
 import { notifyError, notifySuccess } from "@/utils/notifications";
 import { decodeHtmlEntities } from "@/utils/text.utils";
 
@@ -217,7 +219,6 @@ function OrderSummary({
   cart,
   checkout,
   onRemoveCoupon,
-  onCertToggle,
   certOptedIn,
   isBusy,
   isUpdating,
@@ -225,13 +226,10 @@ function OrderSummary({
   cart: CartData;
   checkout: CheckoutCartState;
   onRemoveCoupon: (code: string) => void;
-  onCertToggle: (cartItemKey: string) => void;
   certOptedIn: Set<string>;
   isBusy: boolean;
   isUpdating: boolean;
 }) {
-  const regularItems = cart.items;
-
   return (
     <aside className="h-fit border border-light-gray bg-off-white p-6">
       <h2 className="mb-5 text-h5 font-bold uppercase text-near-black">
@@ -239,45 +237,33 @@ function OrderSummary({
       </h2>
 
       <ul className="mb-5 space-y-3 border-b border-light-gray pb-5">
-        {regularItems.map((item) => {
-          const hasCert = Boolean(item.has_certificate);
-          const certChecked = certOptedIn.has(item.key);
-
-          return (
-            <li key={item.key} className="flex flex-col gap-1.5 text-link">
-              <div className="flex items-start justify-between gap-4">
-                <span className="min-w-0">
-                  <span className="block font-semibold text-near-black">
-                    {item.sku || item.name}
-                  </span>
-                  <span className="text-dark-gray">Qty: {item.quantity}</span>
+        {cart.items.map((item) => (
+          <li key={item.key} className="flex flex-col gap-1.5 text-link">
+            <div className="flex items-start justify-between gap-4">
+              <span className="min-w-0">
+                <span className="block font-semibold text-near-black">
+                  {item.sku || item.name}
                 </span>
-                <span className="whitespace-nowrap text-near-black">
-                  {item.price_html}
-                </span>
-              </div>
+                <span className="text-dark-gray">Qty: {item.quantity}</span>
+              </span>
+              <span className="whitespace-nowrap text-near-black">
+                {item.price_html}
+              </span>
+            </div>
 
-              {hasCert ? (
-                <div className="flex items-center justify-between gap-2 rounded border border-light-gray bg-white px-3 py-2 text-sm">
-                  <label className="flex cursor-pointer items-center gap-2 text-dark-gray">
-                    <input
-                      type="checkbox"
-                      checked={certChecked}
-                      disabled={isBusy}
-                      onChange={() => onCertToggle(item.key)}
-                      className="size-3.5 shrink-0 accent-amber"
-                    />
-                    <ShieldCheck className="size-3.5 shrink-0 text-amber" aria-hidden="true" />
-                    Add certification
-                  </label>
-                  <span className={certChecked ? "font-semibold text-near-black" : "text-dark-gray"}>
-                    {certChecked ? "FREE" : "Free"}
-                  </span>
-                </div>
-              ) : null}
-            </li>
-          );
-        })}
+            {certOptedIn.has(item.key) ? (
+              <p className="flex items-center gap-1.5 text-sm text-dark-gray">
+                <ShieldCheck className="size-3.5 shrink-0 text-amber" aria-hidden="true" />
+                Certification included —{" "}
+                <span className="font-semibold">
+                  {(item.certificate_price ?? 0) > 0
+                    ? format_store_price(item.certificate_price!)
+                    : "Free"}
+                </span>
+              </p>
+            ) : null}
+          </li>
+        ))}
       </ul>
 
       {isUpdating ? (
@@ -348,6 +334,7 @@ function CheckoutForm({
   const elements = useElements();
   const cart = useCartStore((state) => state.cart);
   const setCart = useCartStore((state) => state.setCart);
+  const clearCart = useCartStore((state) => state.clearCart);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -372,8 +359,10 @@ function CheckoutForm({
   const [showAllRates, setShowAllRates] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   // Cart item keys the customer opted into receiving certification for.
-  // Pure local state — sent as extensions.mmf_cert.cert_opted_in on place_order.
+  // Sent as extensions.mmf_cert.cert_opted_in on place_order; in paid mode
+  // each toggle also syncs to the WC session so fees hit the totals live.
   const [certOptedIn, setCertOptedIn] = useState<Set<string>>(new Set());
+  const [isSyncingCert, setIsSyncingCert] = useState(false);
   const [cardBrand, setCardBrand] = useState("unknown");
   const [cardNumberComplete, setCardNumberComplete] = useState(false);
   const [cardExpiryComplete, setCardExpiryComplete] = useState(false);
@@ -718,16 +707,47 @@ function CheckoutForm({
     return true;
   };
 
+  // Paid-certificates mode (WC → Settings → Products → Product Certifications):
+  // any cert item carrying a price means toggles must sync to the WC session
+  // so certificate fees land in the totals. Free mode (default): pure UI state.
+  const paidCertMode = Boolean(
+    cart?.items.some(
+      (item) => item.has_certificate && (item.certificate_price ?? 0) > 0
+    )
+  );
+
   const handleCertToggle = (cartItemKey: string) => {
-    setCertOptedIn((prev) => {
-      const next = new Set(prev);
-      if (next.has(cartItemKey)) {
-        next.delete(cartItemKey);
-      } else {
-        next.add(cartItemKey);
-      }
-      return next;
-    });
+    const previous = certOptedIn;
+    const next = new Set(previous);
+    if (next.has(cartItemKey)) {
+      next.delete(cartItemKey);
+    } else {
+      next.add(cartItemKey);
+    }
+    setCertOptedIn(next);
+
+    if (!paidCertMode) return;
+
+    // Paid mode: push selection to WC so the fee shows in the totals.
+    // Revert the checkbox if the sync fails — UI must never show a total
+    // that disagrees with what WC will charge.
+    setIsSyncingCert(true);
+    void sync_cert_opt_in({
+      cert_opted_in: Object.fromEntries([...next].map((key) => [key, true])),
+    })
+      .then(({ ok, data }) => {
+        if (ok && "cart" in data) {
+          setCart(data.cart);
+          setCheckout(data.checkout);
+        } else {
+          setCertOptedIn(previous);
+          notifyError(
+            ("message" in data && data.message) ||
+              "Could not update certification selection."
+          );
+        }
+      })
+      .finally(() => setIsSyncingCert(false));
   };
 
   const handlePlaceOrder = async (event: React.FormEvent) => {
@@ -917,7 +937,9 @@ function CheckoutForm({
       });
 
       router.push(`/checkout/success?${successParams.toString()}`);
-      setCart(null);
+      // WC-standard cart fragment refresh: instantly show empty cart then
+      // confirm with wc/store/v1/cart (server cleared the session on checkout).
+      clearCart();
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1478,6 +1500,50 @@ function CheckoutForm({
               </div>
             )}
 
+            {/* SOW: Product Certifications — free digital add-on, opt-in at
+                purchase only. One checkbox per certificate-eligible item. */}
+            {cart.items.some((item) => item.has_certificate) ? (
+              <div className="mt-5 border-t border-light-gray pt-5">
+                <h3 className="mb-1 text-link font-bold uppercase text-near-black">
+                  Product Certifications
+                </h3>
+                <p className="mb-3 text-sm text-dark-gray">
+                  Add certifications (MFR C of C, material, process, and test
+                  reports){paidCertMode ? "" : " free of charge"}. Available at
+                  the time of purchase only.
+                </p>
+                <div className="space-y-2">
+                  {cart.items
+                    .filter((item) => item.has_certificate)
+                    .map((item) => (
+                      <label
+                        key={item.key}
+                        className="flex cursor-pointer items-center justify-between gap-3 border border-light-gray bg-off-white px-4 py-3 text-link text-near-black"
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={certOptedIn.has(item.key)}
+                            disabled={isPlacingOrder || isSyncingCert}
+                            onChange={() => handleCertToggle(item.key)}
+                            className="h-4 w-4 shrink-0 accent-amber"
+                          />
+                          <ShieldCheck className="size-4 shrink-0 text-amber" aria-hidden="true" />
+                          <span className="truncate">
+                            Add certification — {item.sku || item.name}
+                          </span>
+                        </span>
+                        <span className={certOptedIn.has(item.key) ? "font-semibold" : "text-dark-gray"}>
+                          {(item.certificate_price ?? 0) > 0
+                            ? format_store_price(item.certificate_price!)
+                            : "Free"}
+                        </span>
+                      </label>
+                    ))}
+                </div>
+              </div>
+            ) : null}
+
             {settings.order_notes_enabled !== false ? (
               <div className="mt-5 border-t border-light-gray pt-5">
                 <label className="flex cursor-pointer items-center gap-3 text-link text-near-black">
@@ -1516,7 +1582,7 @@ function CheckoutForm({
             <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               <button
                 type="submit"
-                disabled={isPlacingOrder || isUpdatingRates}
+                disabled={isPlacingOrder || isUpdatingRates || isSyncingCert}
                 className="inline-flex w-full items-center justify-center bg-amber px-8 py-4 text-body font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50 sm:w-auto"
               >
                 {isPlacingOrder ? "Placing Order..." : `Place Order — ${checkout.totals.total}`}
@@ -1536,7 +1602,6 @@ function CheckoutForm({
           cart={cart}
           checkout={checkout}
           onRemoveCoupon={(code) => void handleRemoveCoupon(code)}
-          onCertToggle={handleCertToggle}
           certOptedIn={certOptedIn}
           isBusy={isApplyingCoupon || isPlacingOrder}
           isUpdating={isUpdatingRates}

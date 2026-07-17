@@ -888,14 +888,7 @@ function mmf_auth_register( WP_REST_Request $request ) {
 		$files['input_6'] = $_FILES['certificate'];
 	}
 
-	// Suppress GF notification emails during the headless API call.
-	// Emails would block the HTTP response while waiting for SMTP — skip them.
-	$disable_notifications = static function (): bool { return true; };
-	add_filter( 'gform_disable_notification', $disable_notifications );
-
 	$result = GFAPI::submit_form( MMF_REGISTRATION_FORM_ID, $field_values, null, $files );
-
-	remove_filter( 'gform_disable_notification', $disable_notifications );
 
 	if ( is_wp_error( $result ) ) {
 		return new WP_Error(
@@ -1031,7 +1024,10 @@ function mmf_create_customer_from_gravity_entry( array $entry, array $form ): vo
 		$password = wp_generate_password( 20, true, true );
 	}
 
+	// GF notification handles the welcome email — suppress WC's duplicate.
+	add_filter( 'woocommerce_email_enabled_customer_new_account', '__return_false' );
 	$user_id = wc_create_new_customer( $email, '', $password );
+	remove_filter( 'woocommerce_email_enabled_customer_new_account', '__return_false' );
 
 	if ( is_wp_error( $user_id ) ) {
 		return;
@@ -1070,8 +1066,9 @@ function mmf_create_customer_from_gravity_entry( array $entry, array $form ): vo
 			)
 		);
 	}
-
-	do_action( 'woocommerce_created_customer', $user_id, array(), true );
+	// wc_create_new_customer() already fires woocommerce_created_customer
+	// internally (which sends the WC "new account" email). Do NOT fire it
+	// again here — doing so sends a second identical email.
 }
 
 /**
@@ -1303,7 +1300,24 @@ function mmf_get_or_create_stripe_customer( int $user_id ) {
 	// create_customer() builds the payload from the WP user (email, name,
 	// metadata) and persists the ID in WC Stripe's own user option, so the
 	// checkout gateway and this account flow share ONE Stripe customer.
-	$created = $customer->create_customer();
+	//
+	// WC Stripe throws WC_Stripe_Exception on validation failures — e.g.
+	// Stripe accounts in some regions (India among them) REQUIRE a full
+	// billing address (address->line1) to create a customer. A brand-new
+	// user has no address yet; surface an actionable message instead of
+	// letting the exception fatal the whole REST request.
+	try {
+		$created = $customer->create_customer();
+	} catch ( Exception $e ) {
+		if ( false !== strpos( $e->getMessage(), 'missing_required_customer_field' ) ) {
+			return new WP_Error(
+				'billing_address_required',
+				'Please add your billing address first (My Account → Addresses), then try saving the card again.',
+				array( 'status' => 400 )
+			);
+		}
+		return new WP_Error( 'stripe_api_error', 'Failed to create Stripe customer.', array( 'status' => 502 ) );
+	}
 
 	if ( is_wp_error( $created ) ) {
 		return new WP_Error( 'stripe_api_error', 'Failed to create Stripe customer.', array( 'status' => 502 ) );
@@ -1437,12 +1451,20 @@ function mmf_finalize_payment_method( WP_REST_Request $request ) {
 	$secret  = mmf_stripe_secret_key();
 
 	if ( ! $secret ) {
-		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured.', array( 'status' => 500 ) );
+		return new WP_Error( 'stripe_not_configured', 'Stripe is not configured — check WooCommerce → Stripe settings.', array( 'status' => 500 ) );
 	}
 
 	// WC Stripe's customer identity — the SAME one the checkout gateway and
 	// token sync use. Any other lookup here re-creates the split-customer bug.
 	$customer_id = mmf_stripe_customer_id( $user_id );
+
+	if ( '' === $customer_id ) {
+		return new WP_Error(
+			'no_stripe_customer',
+			'No Stripe customer record for this account. Add an address or place an order first.',
+			array( 'status' => 500 )
+		);
+	}
 
 	$pm_response = wp_remote_get(
 		'https://api.stripe.com/v1/payment_methods/' . rawurlencode( $pm_id ),
@@ -1452,17 +1474,30 @@ function mmf_finalize_payment_method( WP_REST_Request $request ) {
 	);
 
 	if ( is_wp_error( $pm_response ) ) {
-		return new WP_Error( 'stripe_api_error', 'Failed to verify payment method.', array( 'status' => 502 ) );
+		return new WP_Error( 'stripe_api_error', 'Could not reach Stripe API. Please try again.', array( 'status' => 502 ) );
 	}
 
-	$pm_data = json_decode( wp_remote_retrieve_body( $pm_response ), true );
+	$http_code = (int) wp_remote_retrieve_response_code( $pm_response );
+	$pm_data   = json_decode( wp_remote_retrieve_body( $pm_response ), true );
 
-	if ( '' === $customer_id || ( $pm_data['customer'] ?? '' ) !== $customer_id || empty( $pm_data['card'] ) ) {
+	// Stripe returned an error — most common cause: publishable key (Next.js
+	// .env) and secret key (WC Stripe settings) are from different accounts.
+	if ( 200 !== $http_code || isset( $pm_data['error'] ) ) {
+		$stripe_msg = $pm_data['error']['message'] ?? 'Stripe could not find the payment method.';
+		return new WP_Error( 'stripe_pm_error', $stripe_msg, array( 'status' => 502 ) );
+	}
+
+	// PM belongs to a different Stripe customer — key mismatch or wrong account.
+	if ( ( $pm_data['customer'] ?? '' ) !== $customer_id ) {
 		return new WP_Error(
-			'unauthorized',
-			'Payment method does not belong to this account.',
+			'customer_mismatch',
+			'Card ownership check failed. Verify that the Stripe publishable key (Next.js .env) and secret key (WooCommerce settings) are from the same Stripe account and mode (test/live).',
 			array( 'status' => 403 )
 		);
+	}
+
+	if ( empty( $pm_data['card'] ) ) {
+		return new WP_Error( 'not_a_card', 'Payment method is not a card.', array( 'status' => 400 ) );
 	}
 
 	// Idempotent: already registered as a WC token → success.
@@ -1484,7 +1519,15 @@ function mmf_finalize_payment_method( WP_REST_Request $request ) {
 	$token->set_expiry_year( (string) absint( $card['exp_year'] ?? 0 ) );
 
 	if ( ! $token->save() ) {
-		return new WP_Error( 'token_save_failed', 'Card could not be saved.', array( 'status' => 500 ) );
+		return new WP_Error( 'token_save_failed', 'Card details could not be saved. Please try again.', array( 'status' => 500 ) );
+	}
+
+	// Bust the WC payment-token object cache (Redis/Memcached) so the
+	// immediate GET /payment-methods request returns fresh data. Without this
+	// a persistent cache returns the pre-save token list and the new card
+	// appears to be missing even though it was saved successfully.
+	if ( class_exists( 'WC_Cache_Helper' ) ) {
+		WC_Cache_Helper::invalidate_cache_group( 'payment_tokens' );
 	}
 
 	return rest_ensure_response( array( 'success' => true, 'token_id' => $token->get_id() ) );
