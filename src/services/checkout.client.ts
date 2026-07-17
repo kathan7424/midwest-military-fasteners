@@ -68,6 +68,21 @@ export async function select_shipping_rate(payload: {
   );
 }
 
+/**
+ * Paid-certificates mode only: push the current opt-in selection into the WC
+ * session so certificate fees land in the totals. Free mode never calls this.
+ */
+export async function sync_cert_opt_in(payload: {
+  cert_opted_in: Record<string, boolean>;
+}): Promise<CheckoutResult<CheckoutStateResponse & CheckoutErrorResponse>> {
+  // retries: 0 — state-mutating; the checkbox reverts on failure instead
+  return apiPost<CheckoutStateResponse & CheckoutErrorResponse>(
+    API_ROUTES.cartCertOptIn,
+    payload,
+    { retries: 0 }
+  );
+}
+
 export async function apply_coupon(
   code: string
 ): Promise<CheckoutResult<CheckoutStateResponse & CheckoutErrorResponse>> {

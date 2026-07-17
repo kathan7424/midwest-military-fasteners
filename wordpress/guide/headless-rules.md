@@ -21,9 +21,10 @@ WooCommerce setting, hook, or API response:
   Don't reimplement cart logic on the client.
 - **Gateways come from the cart response**: WooCommerce filters payment methods
   per customer (Net 30 for flagged accounts). Render what the API returns.
-- **Auth follows WP**: `wordpress_logged_in_*` cookie is the session; middleware
-  guards only truly protected pages (`/my-account`). Cart is ALWAYS
-  guest-accessible; checkout access follows the WC guest-checkout setting.
+- **Auth follows WP**: `wordpress_logged_in_*` cookie is the session; the proxy
+  (`src/proxy.ts`, Next.js 16 convention) guards only truly protected pages
+  (`/my-account`). Cart is ALWAYS guest-accessible; checkout access follows
+  the WC guest-checkout setting.
 
 ## Rule 2 — Fast by architecture, not by accident
 

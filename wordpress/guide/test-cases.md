@@ -154,7 +154,27 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | CERT-07 | Same order in My Account | Certifications tab lists the cert; order detail line item shows the cert download; order history exposes it — all only AFTER shipped/completed |
 | CERT-08 | Place order WITHOUT opt-in (product has a cert file) | NO cert email, NO cert in Certifications tab / order detail / history — opt-in at purchase is the only delivery path (SOW) |
 | CERT-09 | Order with opt-in on product A but not product B (both certifiable) | Only product A's certificate is delivered/downloadable |
-| CERT-10 | Cert-eligible order re-marked completed→processing→completed | "Certificates ready" email sent ONCE (no re-send spam) |
+| CERT-10 | Cert-eligible order re-marked completed→processing→completed | "Certificates ready" email sent ONCE — `_mmf_cert_email_sent` order meta guards every path (admin + webhook) |
+| CERT-11 | Shippo webhook `track_updated` DELIVERED for an order already marked Shipped by admin | Order found (custom-status lookup), auto-completed, NO duplicate email (shipped→completed transition + sent-flag both guard) |
+| CERT-12 | Shippo webhook fails/never fires; admin manually sets Completed or Shipped | Same email + My Account cert flow triggers — status-change hook is the single trigger point, source doesn't matter |
+| CERT-13 | Place order WITH opt-in, then check the order line item immediately (before any status change) | `_mmf_cert_opted_in = 1` already stamped — captured via `rest_request_before_callbacks` fallback even if `woocommerce_store_api_register_update_callback` isn't available on the installed WC version |
+| CERT-14 | WooCommerce → Product Certifications (admin dashboard) after CERT-05 | Row appears with state "Awaiting fulfillment" |
+| CERT-15 | Same order after CERT-06 (email sent) | Row updates to state "Sent" |
+| CERT-16 | Order marked Completed, but the product's `_certificate_file_url` was deleted before completion | Row shows "Missing certificate file"; no email sent (matches CERT-08 behavior) |
+| CERT-17 | Order Completed, opted in, cert file present, but wp_mail() fails (bad SMTP config) | Row shows "Not sent — needs a look"; `_mmf_cert_email_sent` stays unset so the next status change retries the send |
+
+## TC-CERT-PAID — Paid Certificates mode (future option, default OFF)
+
+Setting: WooCommerce → Settings → Products → **Product Certifications** → "Paid certificates" checkbox (default off).
+
+| ID | Steps | Expected |
+|---|---|---|
+| CPAID-01 | Setting OFF (default) | Checkout cert checkboxes show "Free"; no price field on product edit screen; totals never change on toggle — exact SOW behavior |
+| CPAID-02 | Enable setting → product edit screen | "Certificate price ($)" field appears under the Certificate URL field; blank/0 = free |
+| CPAID-03 | Set price $5 on a cert product → checkout → tick opt-in | Label shows $5.00 (not Free); totals update live with fee line "Certification — {SKU}"; Place Order disabled while totals sync |
+| CPAID-04 | Untick the opt-in | Fee removed, totals revert; on sync failure the checkbox reverts and an error toast shows (UI never disagrees with what WC will charge) |
+| CPAID-05 | Place order with paid cert | Order contains fee line "Certification — {SKU}" at the set price; `_mmf_cert_opted_in` stamped; email/My Account delivery identical to free flow |
+| CPAID-06 | Disable setting again | Prices ignored everywhere (extension emits 0, fee hook no-ops); flow returns to free opt-in — no data lost, `_certificate_price` meta stays for re-enable |
 
 ## TC-COUPON — Coupons
 
@@ -178,11 +198,16 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | TAX-05 | Admin clicks APPROVE in email **while NOT logged in to WP** | Status approved; customer receives branded approval email; branded result page shown (no WP login prompt) |
 | TAX-05b | Admin clicks APPROVE in email while logged in to WP | Same as TAX-05 + link to Tax Certificates dashboard shown on result page |
 | TAX-05c | Admin clicks APPROVE button **twice** (idempotent) | Second click shows "status was already set — no change made"; no duplicate email sent |
-| TAX-06 | Admin changes status via Users → Edit → dropdown → Update | Customer email sent (approved/rejected) — only when status actually changed |
+| TAX-06 | Admin changes status via Users → Edit → dropdown → Update | Customer email sent (approved/rejected) — only when status actually changed; Net 30 auto-enabled on approval |
+| TAX-06b | Admin approves via Tax Certificates dashboard quick-approve button (GET link) | Customer email sent; Net 30 auto-enabled; settings notice reads "Customer notified and Net 30 enabled" |
+| TAX-06c | Admin approves via full-edit form (Tax Certs → Edit → Status → Save) | Customer email sent only if status changed from previous; Net 30 auto-enabled |
+| TAX-06d | Admin approves via PATCH REST (inline table save) | Customer email sent; Net 30 auto-enabled |
+| TAX-06e | Admin rejects via any admin path | Customer rejection email sent; Net 30 NOT disabled (existing eligibility preserved) |
 | TAX-07 | Approved + valid expiry → place order | Tax = $0 at checkout (WC/TaxJar exempt) |
 | TAX-07b | Approved cert whose expiry date has PASSED (or set expiry to yesterday via admin) → checkout with taxable address (e.g. MI) | Tax IS charged — exempt flag re-syncs live on every totals calculation, even mid-session without re-login |
 | TAX-07c | Cert expires while user stays logged in; admin then re-approves with future expiry | Next cart/checkout recalculation returns to $0 tax — no logout/login needed |
-| TAX-08 | Expiry within 30 days (set via admin) | Daily cron sends "expires soon" email once; banner shows "about to expire" |
+| TAX-08 | Expiry within 30 days but more than 3 days (set via admin) | Daily cron sends "expires soon" email once (yellow heading); separate 3-day email not yet sent; banner shows "about to expire" |
+| TAX-08b | Expiry within 3 days (set via admin) | Daily cron sends URGENT "Expiring in 3 Days" email (red heading, "Renew Certificate Now" CTA); flag `mmf_tax_reminder_expiring_3day` prevents re-send; 30-day email (different flag) may also have fired earlier |
 | TAX-09 | Certificate URL from another user's account (logged in as user B) | 403 — download is owner-or-admin only |
 | TAX-10 | Certificate attachment via /wp-json/wp/v2/media (logged out) | Not listed (private post status) |
 | TAX-11 | Approve link from email older than 14 days | "Invalid or expired action link. Please ask the customer to re-submit..." — 403 response |
@@ -190,8 +215,9 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | TAX-13 | Reject URL used to approve (swap `do=reject` → `do=approve`) | 403 — action is part of the HMAC; tampered token fails |
 | TAX-14 | Cert uploaded at registration → admin email received | Admin email arrives within ~30s with Approve/Reject buttons and cert download link |
 | TAX-15 | Cert uploaded from Documents tab → admin email received | Same as TAX-14 |
-| TAX-16 | Expiry reminder email (≤30 days) | HTML email with yellow heading, "Renew Certificate" CTA button, only sent once per expiry date |
-| TAX-17 | Expired reminder email (<0 days) | HTML email with red heading, "Upload New Certificate" CTA, only sent once per expiry date |
+| TAX-16 | Expiry reminder email (4–30 days out) | HTML email with yellow heading, "Renew Certificate" CTA; flag `mmf_tax_reminder_expiring` prevents duplicate for same expiry date |
+| TAX-16b | Expiry reminder email (≤3 days out) | URGENT red-heading email ("Certificate Expiring in 3 Days"); flag `mmf_tax_reminder_expiring_3day` separate from 30-day flag — both emails fire for the same cert at different thresholds |
+| TAX-17 | Expired reminder email (<0 days) | HTML email with red heading, "Upload New Certificate" CTA; flag `mmf_tax_reminder_expired` prevents duplicate |
 | TAX-18 | GF admin notification with `{mmf_approve_url}`/`{mmf_reject_url}` | Tags replaced with working HMAC-signed URLs (contain `admin-post.php?action=mmf_tax_cert_action&token=`) |
 | TAX-19 | GF notification when WP user not yet created (pending activation) | Tags fall back to Tax Certificates dashboard URL — no broken/empty link |
 | TAX-20 | All code-sent tax emails (approve/reject/reminders) | Use shared template: logo header, white card on #F9F9F9, #CC9900 footer with current year — matches GF notification design |
@@ -207,6 +233,12 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | N30-04 | Place Net 30 order | No Stripe call; success page shows "Net 30 — Purchase Order Terms"; WC order Processing with COD method |
 | N30-05 | Toggle off → customer's next checkout | Net 30 gone immediately |
 | N30-06 | Non-admin hits the toggle AJAX endpoint directly | 403 (capability + nonce) |
+| N30-07 | Admin approves tax cert via Approve/Reject button in email | `mmf_net30_eligible = yes` automatically set; customer's next checkout shows Net 30 option |
+| N30-08 | Admin approves via Tax Certificates dashboard quick-approve button | Same: Net 30 enabled without needing the manual toggle |
+| N30-09 | Admin approves via full-edit form (Tax Certificates → Edit) | Same: Net 30 enabled |
+| N30-10 | Admin approves via PATCH REST (JS inline save in the table) | Same: Net 30 enabled |
+| N30-11 | Admin approves via Users → Edit → Status dropdown → Update | Same: Net 30 enabled |
+| N30-12 | Admin rejects a certificate | Net 30 NOT enabled; existing Net 30 eligibility unchanged |
 
 ## TC-DOC — Tax Exemption Date Picker
 
@@ -304,6 +336,12 @@ address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
 | SHIP-08 | Order detail API as a DIFFERENT logged-in user | 403 — tracking numbers never leak across accounts |
 | SHIP-09 | Product missing weight or dimensions | No live rate for it — fix product data (import warns); checkout code is not the bug |
 | SHIP-10 | Order without tracking yet (processing) | No "Shipment Tracking" section — appears only once tracking exists |
+| SHIP-11 | Place order → check Shippo dashboard within ~10 s | The order appears in Shippo with Package fields pre-filled (dims + weight); no "Package info required" error |
+| SHIP-12 | Place order → wp-admin WC order meta | `_mmf_shippo_shipment_id` set on the order (visible under Custom Fields or via WC order meta) |
+| SHIP-13 | Place order a second time with same order (re-trigger hook manually) | `_mmf_shippo_shipment_id` already exists → skip logged; no duplicate Shipment created |
+| SHIP-14 | Place order where a product has no weight | Shipment creation skipped; warning in WC → Status → Logs (source: mmf-shippo-sync) |
+| SHIP-15 | Place order where a product has weight but no dims | Shipment created with `1×1×1 in` placeholder; warning in logs; admin sees package weight in Shippo |
+| SHIP-16 | WC store address incomplete (no city or zip) | Shipment creation skipped with warning; existing checkout flow unaffected |
 
 ## TC-SET — WooCommerce Settings Reactivity
 

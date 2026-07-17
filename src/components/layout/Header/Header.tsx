@@ -8,11 +8,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import {
-  FaPhone,
-  FaUser,
-  FaArrowRightToBracket,
-} from "react-icons/fa6";
+import { FaPhone } from "react-icons/fa6";
 
 import Navbar from "../Navbar/Navbar";
 import HeaderCartDropdown from "../HeaderCartDropdown/HeaderCartDropdown";

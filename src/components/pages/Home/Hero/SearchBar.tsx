@@ -14,12 +14,16 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
 import { SEARCH_PLACEHOLDER } from "@/data/hero.data";
 import { useGlobalSearch } from "@/hooks/use-global-search";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { SearchBarProps } from "@/types/hero.types";
 
 export default function SearchBar({
   placeholder = SEARCH_PLACEHOLDER,
 }: SearchBarProps) {
   const router = useRouter();
+  // The catalog listing lives at the WC Shop page path (site config), and the
+  // listing filters by the `search` query param — never a hardcoded route.
+  const { catalogListingPath } = useSiteConfig();
 
   // Home hero search: products, product categories, and part series only.
   // The header search stays global (pages + products + everything).
@@ -36,7 +40,7 @@ export default function SearchBar({
   function handleSearch() {
     const trimmed = query.trim();
     if (!trimmed) return;
-    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+    router.push(`${catalogListingPath}?search=${encodeURIComponent(trimmed)}`);
   }
 
   return (

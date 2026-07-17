@@ -12,12 +12,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HiMenu, HiX } from "react-icons/hi";
-import {
-  FaPhone,
-  FaUser,
-  FaArrowRightToBracket,
-  FaCartShopping,
-} from "react-icons/fa6";
+import { FaPhone, FaCartShopping } from "react-icons/fa6";
 
 import { MenuItem } from "@/types/menu.types";
 import { normalizeTel, normalizeWpUrl } from "@/utils/url.utils";

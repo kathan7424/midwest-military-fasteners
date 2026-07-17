@@ -52,6 +52,7 @@ export default function IsoSection({
             width={164}
             height={144}
             className="h-auto w-[164px]"
+            style={{ height: "auto" }}
           />
         </Link>
       ) : null}

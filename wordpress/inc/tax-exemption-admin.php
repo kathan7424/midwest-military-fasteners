@@ -343,7 +343,8 @@ function mmf_tax_certificate_admin_update( WP_REST_Request $request ) {
 		return new WP_Error( 'user_not_found', 'User not found.', array( 'status' => 404 ) );
 	}
 
-	$status = sanitize_key( (string) $request->get_param( 'status' ) );
+	$old_status = get_user_meta( $user_id, 'mmf_tax_exemption_status', true );
+	$status     = sanitize_key( (string) $request->get_param( 'status' ) );
 	if ( in_array( $status, array( MMF_TAX_STATUS_PENDING, MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true ) ) {
 		update_user_meta( $user_id, 'mmf_tax_exemption_status', $status );
 	}
@@ -354,6 +355,14 @@ function mmf_tax_certificate_admin_update( WP_REST_Request $request ) {
 	}
 
 	mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
+
+	if ( $status !== $old_status && in_array( $status, array( MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true )
+		&& function_exists( 'mmf_send_tax_cert_customer_email' ) ) {
+		mmf_send_tax_cert_customer_email( $user_id, $status );
+	}
+	if ( MMF_TAX_STATUS_APPROVED === $status ) {
+		update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+	}
 
 	$user = get_user_by( 'id', $user_id );
 
@@ -385,15 +394,24 @@ function mmf_handle_tax_certificate_admin_actions(): void {
 		}
 
 		if ( 'approve' === $action ) {
+			$old_status = get_user_meta( $user_id, 'mmf_tax_exemption_status', true );
 			update_user_meta( $user_id, 'mmf_tax_exemption_status', MMF_TAX_STATUS_APPROVED );
 			mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
-			add_settings_error( 'mmf_tax_certificates', 'approved', __( 'Certificate approved.', 'midwest-military' ), 'updated' );
+			if ( $old_status !== MMF_TAX_STATUS_APPROVED && function_exists( 'mmf_send_tax_cert_customer_email' ) ) {
+				mmf_send_tax_cert_customer_email( $user_id, MMF_TAX_STATUS_APPROVED );
+			}
+			update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+			add_settings_error( 'mmf_tax_certificates', 'approved', __( 'Certificate approved. Customer notified and Net 30 enabled.', 'midwest-military' ), 'updated' );
 		}
 
 		if ( 'reject' === $action ) {
+			$old_status = get_user_meta( $user_id, 'mmf_tax_exemption_status', true );
 			update_user_meta( $user_id, 'mmf_tax_exemption_status', MMF_TAX_STATUS_REJECTED );
 			mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
-			add_settings_error( 'mmf_tax_certificates', 'rejected', __( 'Certificate rejected.', 'midwest-military' ), 'updated' );
+			if ( $old_status !== MMF_TAX_STATUS_REJECTED && function_exists( 'mmf_send_tax_cert_customer_email' ) ) {
+				mmf_send_tax_cert_customer_email( $user_id, MMF_TAX_STATUS_REJECTED );
+			}
+			add_settings_error( 'mmf_tax_certificates', 'rejected', __( 'Certificate rejected. Customer notified.', 'midwest-military' ), 'updated' );
 		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=mmf-tax-certificates' ) );
@@ -411,7 +429,8 @@ function mmf_handle_tax_certificate_admin_actions(): void {
 			wp_die( esc_html__( 'Security check failed.', 'midwest-military' ) );
 		}
 
-		$status = sanitize_key( (string) ( $_POST['mmf_tax_exemption_status'] ?? '' ) );
+		$old_status = get_user_meta( $user_id, 'mmf_tax_exemption_status', true );
+		$status     = sanitize_key( (string) ( $_POST['mmf_tax_exemption_status'] ?? '' ) );
 		if ( in_array( $status, array( '', MMF_TAX_STATUS_PENDING, MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true ) ) {
 			if ( $status === '' ) {
 				delete_user_meta( $user_id, 'mmf_tax_exemption_status' );
@@ -426,6 +445,15 @@ function mmf_handle_tax_certificate_admin_actions(): void {
 		}
 
 		mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
+
+		if ( $status !== $old_status && in_array( $status, array( MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true )
+			&& function_exists( 'mmf_send_tax_cert_customer_email' ) ) {
+			mmf_send_tax_cert_customer_email( $user_id, $status );
+		}
+		if ( MMF_TAX_STATUS_APPROVED === $status ) {
+			update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+		}
+
 		add_settings_error( 'mmf_tax_certificates', 'saved', __( 'Certificate updated.', 'midwest-military' ), 'updated' );
 
 		wp_safe_redirect( admin_url( 'admin.php?page=mmf-tax-certificates&updated=1' ) );
@@ -439,7 +467,8 @@ function mmf_handle_tax_certificate_admin_actions(): void {
 		$user_id = (int) $_POST['mmf_tax_cert_save_row'];
 
 		if ( $user_id > 0 && get_user_by( 'id', $user_id ) ) {
-			$status = sanitize_key( (string) ( $_POST['mmf_qe_status'][ $user_id ] ?? '' ) );
+			$old_status = get_user_meta( $user_id, 'mmf_tax_exemption_status', true );
+			$status     = sanitize_key( (string) ( $_POST['mmf_qe_status'][ $user_id ] ?? '' ) );
 			if ( in_array( $status, array( '', MMF_TAX_STATUS_PENDING, MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true ) ) {
 				if ( $status === '' ) {
 					delete_user_meta( $user_id, 'mmf_tax_exemption_status' );
@@ -454,6 +483,15 @@ function mmf_handle_tax_certificate_admin_actions(): void {
 			}
 
 			mmf_sync_customer_tax_exempt_flag_on_id( $user_id );
+
+			if ( $status !== $old_status && in_array( $status, array( MMF_TAX_STATUS_APPROVED, MMF_TAX_STATUS_REJECTED ), true )
+				&& function_exists( 'mmf_send_tax_cert_customer_email' ) ) {
+				mmf_send_tax_cert_customer_email( $user_id, $status );
+			}
+			if ( MMF_TAX_STATUS_APPROVED === $status ) {
+				update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+			}
+
 			add_settings_error( 'mmf_tax_certificates', 'saved', __( 'Certificate updated.', 'midwest-military' ), 'updated' );
 		}
 	}

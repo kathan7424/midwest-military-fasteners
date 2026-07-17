@@ -75,18 +75,14 @@ export default function ProductSpecTable({
           </tr>
         ) : null}
 
+        {/* SOW: certificates are NOT public downloads — they are a free
+            opt-in add-on at checkout, delivered post-purchase via email and
+            My Account. Only the certificate's availability is shown here. */}
         {has_product_document(product.certHref) ? (
           <tr>
             <th className={thClass}>Certificate</th>
-            <td className="px-2 sm:px-4 py-3 align-top">
-              <a
-                href={product.certHref}
-                download
-                className="inline-flex items-center gap-1.5 font-condensed uppercase text-amber hover:underline"
-              >
-                <Download className="size-4" />
-                Download Certificate
-              </a>
+            <td className="px-2 sm:px-4 py-3 align-top text-near-black">
+              Available free at checkout — select &ldquo;Add certification&rdquo; when ordering.
             </td>
           </tr>
         ) : null}

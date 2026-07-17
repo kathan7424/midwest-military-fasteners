@@ -133,6 +133,14 @@ merge tags from the GF merge tag picker.
 <td style="padding: 8px; font-size: 16px; color: #000000; font-family: sans-serif; border: 1px solid #a4a4a4; width: 35%; vertical-align: top;"><strong>Email:</strong></td>
 <td style="padding: 8px 8px 8px 10px; font-size: 16px; color: #555555; font-family: sans-serif; border: 1px solid #a4a4a4; vertical-align: top;">{Email:5}</td>
 </tr>
+<tr>
+<td style="padding: 8px; font-size: 16px; color: #000000; font-family: sans-serif; border: 1px solid #a4a4a4; width: 35%; vertical-align: top;"><strong>Certificate Uploaded:</strong></td>
+<td style="padding: 8px 8px 8px 10px; font-size: 16px; color: #555555; font-family: sans-serif; border: 1px solid #a4a4a4; vertical-align: top;">{Certificate:6}</td>
+</tr>
+<tr>
+<td style="padding: 8px; font-size: 16px; color: #000000; font-family: sans-serif; border: 1px solid #a4a4a4; width: 35%; vertical-align: top;"><strong>Certificate Expiry:</strong></td>
+<td style="padding: 8px 8px 8px 10px; font-size: 16px; color: #555555; font-family: sans-serif; border: 1px solid #a4a4a4; vertical-align: top;">{Expiry Date:7}</td>
+</tr>
 </tbody>
 </table>
 <div style="padding-top: 20px;"><a style="display: inline-block; background: #CC9900; font-size: 16px; font-family: sans-serif; color: #fff; text-decoration: none; font-weight: bold; padding: 12px 28px;" href="{mmf_site_url}my-account">GO TO MY ACCOUNT</a></div>

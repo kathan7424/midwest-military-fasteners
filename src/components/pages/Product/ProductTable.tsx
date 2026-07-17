@@ -11,7 +11,7 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Download, Info } from "lucide-react";
+import { ArrowUpDown, Info } from "lucide-react";
 import Link from "next/link";
 
 import { DataTable } from "@/components/ui/data-table";

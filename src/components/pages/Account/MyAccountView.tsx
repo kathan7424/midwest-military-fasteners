@@ -8,7 +8,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { fetch_order_documents } from "@/services/order-documents.client";
 
 import AccountDetailsPanel from "@/components/pages/Account/AccountDetailsPanel";
 import AddressesPanel from "@/components/pages/Account/AddressesPanel";
@@ -59,6 +61,24 @@ const NAV_GROUPS: SectionKey[][] = [
 export default function MyAccountView({ user }: { user: AccountUser | null }) {
   const [section, setSection] = useState<SectionKey>("dashboard");
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
+  // Certifications tab is data-driven: hidden until at least one product
+  // certificate is actually available (opted-in + order shipped/completed).
+  // A brand-new customer with no orders never sees an empty tab; the
+  // "certificates ready" email brings them here once one exists.
+  const [hasCertificates, setHasCertificates] = useState(false);
+
+  useEffect(() => {
+    fetch_order_documents()
+      .then((response) => {
+        const orders = Array.isArray(response?.orders) ? response.orders : [];
+        setHasCertificates(
+          orders.some((order) =>
+            (order.items ?? []).some((item) => Boolean(item.certificate_file_url))
+          )
+        );
+      })
+      .catch(() => setHasCertificates(false));
+  }, []);
 
   const navigateTo = (target: string) => {
     if (target.startsWith("order:")) {
@@ -97,7 +117,10 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
           <nav aria-label="Account sections">
             <ul className="flex flex-col gap-4">
               {/* Group 1 */}
-              {(NAV_GROUPS[0] ?? []).filter((k) => k !== "dashboard").map((key) => (
+              {(NAV_GROUPS[0] ?? [])
+                .filter((k) => k !== "dashboard")
+                .filter((k) => k !== "certifications" || hasCertificates)
+                .map((key) => (
                 <li key={key}>
                   <button
                     type="button"

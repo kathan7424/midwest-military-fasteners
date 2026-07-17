@@ -120,6 +120,9 @@ function AddCardForm({
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [cardName, setCardName] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [nameFocused, setNameFocused] = useState(false);
   const [numberError, setNumberError] = useState("");
   const [expiryError, setExpiryError] = useState("");
   const [cvcError, setCvcError] = useState("");
@@ -129,6 +132,7 @@ function AddCardForm({
   const [numberFocused, setNumberFocused] = useState(false);
   const [expiryFocused, setExpiryFocused] = useState(false);
   const [cvcFocused, setCvcFocused] = useState(false);
+  const nameRef = useRef<HTMLInputElement | null>(null);
   const expiryRef = useRef<StripeCardExpiryElement | null>(null);
   const cvcRef = useRef<StripeCardCvcElement | null>(null);
 
@@ -137,6 +141,7 @@ function AddCardForm({
     if (!stripe || !elements) return;
 
     let valid = true;
+    if (!cardName.trim()) { setNameError("Enter the name on your card."); valid = false; }
     if (!numberComplete) { setNumberError("Enter your card number."); valid = false; }
     if (!expiryComplete) { setExpiryError("Enter the expiration date."); valid = false; }
     if (!cvcComplete) { setCvcError("Enter the security code."); valid = false; }
@@ -151,10 +156,14 @@ function AddCardForm({
       return;
     }
 
-    // confirmCardSetup attaches the card to the Stripe customer.
-    // return_url is required for redirect-based 3DS authentication flows.
+    // billing_details.name is required by many card networks and is standard
+    // in all WC Stripe "Add Payment Method" flows. Without it Stripe stores
+    // the card with no name, which causes AVS failures with some US issuers.
     const { setupIntent, error } = await stripe.confirmCardSetup(clientSecret, {
-      payment_method: { card: cardNumber },
+      payment_method: {
+        card: cardNumber,
+        billing_details: { name: cardName.trim() },
+      },
       return_url: window.location.href,
     });
 
@@ -203,6 +212,28 @@ function AddCardForm({
       </div>
 
       <form onSubmit={(e) => void handleSubmit(e)} noValidate className="max-w-md space-y-4">
+        <div>
+          <label className={LABEL_CLASS} htmlFor="card-name">Name on Card</label>
+          <input
+            id="card-name"
+            ref={nameRef}
+            type="text"
+            autoComplete="cc-name"
+            value={cardName}
+            placeholder="As it appears on your card"
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
+            onChange={(e) => {
+              setCardName(e.target.value);
+              if (e.target.value.trim()) setNameError("");
+            }}
+            className={`h-10 w-full border bg-white px-3 text-sm text-near-black placeholder-dark-gray outline-none transition-colors ${
+              nameError ? "border-red-400" : nameFocused ? "border-blue" : "border-light-gray"
+            }`}
+          />
+          {nameError ? <p className="mt-1 text-xs text-red-600">{nameError}</p> : null}
+        </div>
+
         <div>
           <label className={LABEL_CLASS}>Card Number</label>
           <div
@@ -386,6 +417,7 @@ function PaymentMethodsPanelInner() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [clientSecret, setClientSecret] = useState("");
   const [setupError, setSetupError] = useState("");
+  const [finalizeError, setFinalizeError] = useState("");
   const didFetch = useRef(false);
 
   const loadCards = useCallback(async () => {
@@ -409,17 +441,28 @@ function PaymentMethodsPanelInner() {
 
   const handleAddClick = async () => {
     setSetupError("");
+    setFinalizeError("");
     try {
       const res = await fetch("/api/account/payment-methods", {
         method: "POST",
         cache: "no-store",
       });
-      if (!res.ok) throw new Error("Setup intent failed");
+      if (!res.ok) {
+        // Surface the upstream reason — a bare generic message hides whether
+        // WP rejected the session, Stripe keys are missing, or the customer
+        // record could not be created.
+        const data = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(data?.message || `Card setup failed (error ${res.status}).`);
+      }
       const data = (await res.json()) as { client_secret: string };
       setClientSecret(data.client_secret);
       setShowAddForm(true);
-    } catch {
-      setSetupError("Could not initialise card form. Please try again.");
+    } catch (error) {
+      setSetupError(
+        error instanceof Error && error.message
+          ? `Could not initialise card form: ${error.message}`
+          : "Could not initialise card form. Please try again."
+      );
     }
   };
 
@@ -438,8 +481,11 @@ function PaymentMethodsPanelInner() {
 
     if (!finalize?.ok) {
       const data = await finalize?.json().catch(() => ({})) as { message?: string } | undefined;
-      notifyError(data?.message || "Card was saved at Stripe but could not be registered — please try again.");
+      const msg = data?.message || "Card was saved at Stripe but could not be registered — please try again.";
+      notifyError(msg);
+      setFinalizeError(msg);
     } else {
+      setFinalizeError("");
       notifySuccess("Card saved successfully.");
     }
 
@@ -505,6 +551,12 @@ function PaymentMethodsPanelInner() {
         <p className="mb-4 text-sm text-red-600">{setupError}</p>
       ) : null}
 
+      {finalizeError ? (
+        <div className="mb-4 border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <strong className="font-semibold">Card not saved: </strong>{finalizeError}
+        </div>
+      ) : null}
+
       {!showAddForm ? (
         <button
           type="button"
@@ -516,11 +568,15 @@ function PaymentMethodsPanelInner() {
         </button>
       ) : null}
 
-      {/* Do NOT pass clientSecret to Elements — legacy card elements pass
+      {/* key={clientSecret} guarantees a fresh Elements + iframe mount for
+          every new SetupIntent. Without it React may reuse the previous
+          Stripe iframe, leaving numberComplete/expiryComplete/cvcComplete
+          as false (their initial state) and silently blocking submission.
+          Do NOT pass clientSecret TO Elements — legacy card elements pass
           it directly to confirmCardSetup(). Setting it here activates
           Stripe.js "deferred intent" mode which conflicts with CardNumberElement. */}
       {showAddForm && clientSecret ? (
-        <Elements stripe={stripePromise}>
+        <Elements key={clientSecret} stripe={stripePromise}>
           <AddCardForm
             clientSecret={clientSecret}
             onSuccess={(pmId) => void handleCardAdded(pmId)}
