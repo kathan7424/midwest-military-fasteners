@@ -69,7 +69,8 @@ function display_price(value: string): string {
 
 const thClass = "font-condensed font-bold uppercase";
 
-export const productColumns: ColumnDef<Product>[] = [
+function getProductColumns(isLoggedIn: boolean): ColumnDef<Product>[] {
+  return [
   {
     accessorKey: "partNumber",
     header: ({ column }) => (
@@ -115,7 +116,11 @@ export const productColumns: ColumnDef<Product>[] = [
         Pkg Qty
         <Tooltip
           title="Package Quantity"
-          description="Number of units per package. All prices are per package — not per individual unit. e.g. Pkg Qty 100 + order 1 PKG = 100 units received."
+          description={
+            isLoggedIn
+              ? "Package Qty is the number of units in one package — not the quantity in stock. Prices shown are per package (1, 3, 5 or 10 packages), and the price updates based on how many packages you order."
+              : "Log in to see package pricing and place an order."
+          }
           placement="bottom"
           arrow
           delay={100}
@@ -211,16 +216,17 @@ export const productColumns: ColumnDef<Product>[] = [
       />
     ),
   },
-];
+  ];
+}
 
-/** Volume tier columns — hidden for guests (login unlocks 3/5/10 pkg pricing). */
-const TIER_PRICE_COLUMN_KEYS = ["price3", "price5", "price10"];
+/** All package-price columns — hidden entirely for guests (login required to see pricing). */
+const PRICE_COLUMN_KEYS = ["price1", "price3", "price5", "price10"];
 
 interface ProductTableProps {
   data: Product[];
   isLoading?: boolean;
   loadingMessage?: string;
-  /** false = guest view: only the 1 Pkg price column is shown. */
+  /** false = guest view: no package price columns are shown. */
   showTierPricing?: boolean;
 }
 
@@ -230,11 +236,12 @@ export default function ProductTable({
   loadingMessage = "Searching products...",
   showTierPricing = true,
 }: ProductTableProps) {
+  const allColumns = getProductColumns(showTierPricing);
   const columns = showTierPricing
-    ? productColumns
-    : productColumns.filter((column) => {
+    ? allColumns
+    : allColumns.filter((column) => {
         const key = (column as { accessorKey?: string }).accessorKey ?? "";
-        return !TIER_PRICE_COLUMN_KEYS.includes(key);
+        return !PRICE_COLUMN_KEYS.includes(key);
       });
 
   return (

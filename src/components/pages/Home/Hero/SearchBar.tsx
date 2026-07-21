@@ -39,8 +39,14 @@ export default function SearchBar({
 
   function handleSearch() {
     const trimmed = query.trim();
-    if (!trimmed) return;
-    router.push(`${catalogListingPath}?search=${encodeURIComponent(trimmed)}`);
+    // WordPress standard: an empty search term is simply no filter at all —
+    // WP_Query skips the search clause entirely when `s` is empty, showing
+    // everything rather than an error. Match that here.
+    router.push(
+      trimmed
+        ? `${catalogListingPath}?search=${encodeURIComponent(trimmed)}`
+        : catalogListingPath
+    );
   }
 
   return (
