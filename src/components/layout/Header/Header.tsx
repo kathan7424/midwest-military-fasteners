@@ -3,7 +3,7 @@
  * Description: Site header with dynamic settings, auth, and global search.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
  */
 
 import Link from "next/link";
@@ -49,17 +49,17 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
       <div className="hidden lg:block bg-off-white">
         <div
           className={`mx-auto flex items-center justify-end ${
-            is_logged_in ? "gap-14" : "gap-6"
+            is_logged_in ? "gap-10" : "gap-6"
           }`}
         >
           {is_logged_in && (
             <nav aria-label="Top navigation">
-              <ul className="flex items-center gap-6">
+              <ul className="flex items-center gap-10 xl:gap-[60px]">
                 {menu.map((item) => (
                   <li key={item.id}>
                     <Link
                       href={normalizeWpUrl(item.url)}
-                     className="block border-b border-light-gray py-3 text-near-black font-normal text-link uppercase hover:text-blue transition-colors"
+                     className="block border-b border-light-gray py-3 text-near-black font-normal text-link leading-none uppercase hover:text-blue transition-colors"
                     >
                       {item.title}
                     </Link>
@@ -73,9 +73,9 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
             {phone ? (
               <a
                 href={`tel:${normalizeTel(phone)}`}
-                className="flex items-center gap-2 text-link text-blue hover:text-navy transition-colors"
+                className="group flex items-center gap-2.5 text-link text-blue hover:text-amber group-hover:[&_svg]:fill-amber transition-colors"
               >
-                <FaPhone size={13} />
+                <svg className="transition-colors" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M0 2L4 0L7.03125 4L4.5 6.5C5.53125 8.6875 7.3125 10.4688 9.5 11.5L12 8.96875L16 12L14 16H13.5C6.03125 16 0 9.96875 0 2.5V2Z" fill="currentColor"/></svg>
                 {phone}
               </a>
             ) : null}
@@ -83,7 +83,7 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
             {email ? (
               <a
                 href={`mailto:${email}`}
-                className="text-link text-blue uppercase hover:text-navy transition-colors"
+                className="text-link text-blue uppercase hover:text-amber transition-colors"
               >
                 {email}
               </a>
@@ -92,7 +92,7 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
             {is_logged_in ? (
               <Link
                 href="/my-account"
-                className="flex items-center gap-[10px] px-5 xl:px-12 py-4 bg-blue text-white text-link hover:bg-navy transition-colors"
+                className="flex items-center gap-[10px] px-12 py-4 bg-blue text-white text-link leading-none hover:bg-navy transition-colors"
               >
                 <svg width="14" height="16" viewBox="0 0 14 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M4.5 4C4.5 5.375 5.625 6.5 7 6.5C8.375 6.5 9.5 5.375 9.5 4C9.5 2.625 8.375 1.5 7 1.5C5.625 1.5 4.5 2.625 4.5 4ZM1.5625 16H0L2 9.5H12L14 16H12.4375L10.9062 11H3.09375L1.5625 16ZM7 8C4.78125 8 3 6.21875 3 4C3 1.78125 4.78125 0 7 0C9.21875 0 11 1.78125 11 4C11 6.21875 9.21875 8 7 8Z" fill="currentColor"/></svg>
                 ACCOUNT
@@ -102,7 +102,7 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
                 <Link
                   href={register_link.href}
                   target={register_link.target}
-                   className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white uppercase text-link hover:bg-navy transition-colors"
+                  className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white uppercase text-link leading-none hover:bg-navy transition-colors"
                 >
                   <svg width="13" height="16" viewBox="0 0 13 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M6.5 7.5C4.4375 7.5 2.75 5.8125 2.75 3.75C2.75 1.6875 4.4375 0 6.5 0C8.5625 0 10.25 1.6875 10.25 3.75C10.25 5.8125 8.5625 7.5 6.5 7.5ZM13 15.75H0L2 9.25H11L13 15.75Z" fill="white"/> </svg> 
                   {register_link.title ?? "REGISTER"}
@@ -110,7 +110,7 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
                 <Link
                   href={login_link.href}
                   target={login_link.target}
-                   className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white uppercase text-link hover:bg-navy transition-colors border-l border-white/20"
+                  className="flex items-center gap-[10px] px-5 py-4 bg-blue text-white uppercase text-link leading-none hover:bg-navy transition-colors border-l border-white/20"
                 >
                    <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M11 2H10V0H16V14H10V12H14V2H11ZM10.7188 7.71875L6 12.4062L4.59375 11C4.78125 10.8125 5.78125 9.8125 7.59375 8H0V6H7.59375L4.59375 3L6 1.59375L6.71875 2.28125L10.7188 6.28125L11.4062 7L10.7188 7.71875Z" fill="white"/> </svg> 
                   {login_link.title ?? "LOGIN"}
@@ -147,7 +147,7 @@ export default function Header({ menu, settings, isLoggedIn }: HeaderProps) {
             {is_logged_in ? (
               <>
                 <HeaderCart />
-                <HeaderCartDropdown variant="compact" className="lg:hidden" />
+                <HeaderCartDropdown variant="compact" className="flex lg:hidden" />
               </>
             ) : null}
             <Navbar

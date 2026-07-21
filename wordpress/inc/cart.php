@@ -272,6 +272,25 @@ add_action(
 $mmf_cert_opted_in_request_map = array();
 
 /**
+ * Diagnostic trail for the cert opt-in capture chain — this flow has no UI
+ * error path (a silent drop just looks like "the checkbox did nothing"), so
+ * logging every step is the only way to see WHERE it breaks when reported.
+ * Always on (unlike mmf_shippo_log, no settings toggle) — this is low-volume,
+ * checkout-only, and worth having by default until the flow is proven solid.
+ *
+ * @param string $message Log message.
+ * @param array  $context Extra structured context (e.g. the opt-in map).
+ */
+function mmf_cert_log( string $message, array $context = array() ): void {
+	if ( function_exists( 'wc_get_logger' ) ) {
+		wc_get_logger()->info(
+			$message . ( $context ? ' ' . wp_json_encode( $context ) : '' ),
+			array( 'source' => 'mmf-cert-optin' )
+		);
+	}
+}
+
+/**
  * Capture cert opt-in selections from the checkout POST.
  *
  * Stores in both a PHP global (same-request access) and the WC session
@@ -285,6 +304,8 @@ function mmf_cert_checkout_update_callback( array $data ): void {
 	$opted_in = ( isset( $data['cert_opted_in'] ) && is_array( $data['cert_opted_in'] ) )
 		? $data['cert_opted_in']
 		: array();
+
+	mmf_cert_log( 'update_callback received', array( 'raw_data' => $data, 'resolved_opted_in' => $opted_in ) );
 
 	$mmf_cert_opted_in_request_map = $opted_in;
 
@@ -319,6 +340,16 @@ function mmf_cert_capture_checkout_extensions_fallback( $response, $handler, $re
 	$cert_data  = ( is_array( $extensions ) && isset( $extensions['mmf_cert']['cert_opted_in'] ) && is_array( $extensions['mmf_cert']['cert_opted_in'] ) )
 		? $extensions['mmf_cert']['cert_opted_in']
 		: array();
+
+	mmf_cert_log(
+		'checkout request received',
+		array(
+			'route'              => $request->get_route(),
+			'has_extensions'     => null !== $extensions,
+			'extensions_raw'     => $extensions,
+			'cert_data_resolved' => $cert_data,
+		)
+	);
 
 	if ( ! empty( $cert_data ) ) {
 		mmf_cert_checkout_update_callback( array( 'cert_opted_in' => $cert_data ) );
@@ -381,6 +412,43 @@ function mmf_add_certificate_fees( WC_Cart $cart ): void {
 	}
 }
 add_action( 'woocommerce_cart_calculate_fees', 'mmf_add_certificate_fees' );
+
+/**
+ * Force-empty the cart the instant payment actually completes.
+ *
+ * Observed live: a logged-in customer's session cart survived a fully paid
+ * Store API checkout (order reached "processing", same line item still
+ * showed in GET /wc/store/v1/cart right after). WooCommerce's own
+ * WC_Cart::empty_cart() is supposed to clear this, but for a logged-in
+ * customer WooCommerce also keeps a "persistent cart" backup in user meta
+ * (`_woocommerce_persistent_cart_{blog_id}`, the "we restored your cart"
+ * feature) — if that backup isn't cleared in the same request, the very
+ * next cart read repopulates the session from it, undoing empty_cart().
+ *
+ * woocommerce_payment_complete is WC's own canonical "payment succeeded,
+ * order is now paid" signal — fires once per order, only on success (a
+ * declined/failed payment never reaches it, so the cart correctly survives
+ * a decline per WC standard). Runs in the SAME request that processed the
+ * checkout, so WC()->cart here is still the customer's active session cart.
+ *
+ * @param int $order_id Order that was just paid.
+ */
+function mmf_force_empty_cart_after_payment( int $order_id ): void {
+	$order = wc_get_order( $order_id );
+	if ( ! $order instanceof WC_Order ) {
+		return;
+	}
+
+	if ( function_exists( 'WC' ) && WC()->cart ) {
+		WC()->cart->empty_cart( true );
+	}
+
+	$customer_id = $order->get_customer_id();
+	if ( $customer_id > 0 ) {
+		delete_user_meta( $customer_id, '_woocommerce_persistent_cart_' . get_current_blog_id() );
+	}
+}
+add_action( 'woocommerce_payment_complete', 'mmf_force_empty_cart_after_payment' );
 
 /**
  * Data injected into each Store API cart item under extensions.mmf_cert.

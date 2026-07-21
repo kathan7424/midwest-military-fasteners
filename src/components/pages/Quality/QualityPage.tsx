@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import AboutAccordion from "@/components/pages/About/AboutAccordion";
+import PageBanner from "@/components/shared_Ui/PageBanner";
 import type { QualityPageData } from "@/types/quality-page.types";
 
 interface Props {
@@ -17,50 +18,12 @@ export default function QualityPage({ pageData }: Props) {
     faq_sec_heading, faq_description, faq_list,
   } = pageData;
 
-  const hasBannerContent = banner_heading || sub_heading || banner_image?.url;
   const hasContentSection = image?.url || section_heading || content || logo_image?.url || button?.url;
   const hasFaqSection = faq_list?.length > 0;
 
   return (
     <section className="bg-white">
-      {/* Hero Banner */}
-      {hasBannerContent ? (
-        <div className="relative flex min-h-[300px] w-full items-center py-[50px] md:py-[80px] lg:py-[130px]">
-          {banner_image?.url ? (
-            <Image
-              src={banner_image.url}
-              alt={banner_image.alt || ""}
-              fill
-              className="absolute inset-0 object-cover"
-              priority
-            />
-          ) : (
-            <div className="absolute inset-0 bg-gray-700" />
-          )}
-          <div className="absolute inset-0 bg-black/45" />
-          <div className="relative z-10 mx-auto flex h-full items-center justify-center">
-            <div className="px-5 text-center">
-              {sub_heading ? (
-                <p className="mb-5 text-h5 font-normal uppercase text-white lg:text-h4">
-                  {sub_heading}
-                </p>
-              ) : null}
-              {(sub_heading && banner_heading) ? (
-                <div className="mx-auto mb-5 h-1 w-[40px] md:w-[86px]">
-                  <svg width="86" height="5" viewBox="0 0 86 5" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto h-auto w-full">
-                    <line y1="2.5" x2="86" y2="2.5" stroke="#CC9900" strokeWidth={5} />
-                  </svg>
-                </div>
-              ) : null}
-              {banner_heading ? (
-                <h1 className="mx-auto text-[30px] font-bold leading-[1.1] text-white sm:text-[36px] md:max-w-4xl md:text-[44px] lg:text-[52px] xl:text-[60px]">
-                  {banner_heading}
-                </h1>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <PageBanner heading={banner_heading} subHeading={sub_heading} bannerImage={banner_image} />
 
       {/* Image & Content */}
       {hasContentSection ? (
@@ -111,7 +74,7 @@ export default function QualityPage({ pageData }: Props) {
                         href={button.url}
                         target={button.target || undefined}
                         rel={button.target === "_blank" ? "noopener noreferrer" : undefined}
-                        className="rounded-none bg-amber px-5 py-3 text-body font-bold uppercase text-white hover:bg-[#b38600] md:px-6 md:py-5 md:text-h5"
+                        className="rounded-none bg-amber px-5 py-3 text-center text-body leading-6 font-bold uppercase text-white hover:bg-[#b38600] md:px-5 md:py-5 md:text-h5"
                       >
                         {button.title || "Learn More"}
                       </Link>

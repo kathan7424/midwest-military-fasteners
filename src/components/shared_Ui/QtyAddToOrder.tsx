@@ -3,7 +3,7 @@
  * Description: QTY input + Add to Order with WooCommerce cart integration.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-07
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -156,8 +156,8 @@ export default function QtyAddToOrder({
           className={cn(
             "inline-flex items-center justify-center bg-off-white font-bold uppercase text-mid-gray",
             isLg
-              ? "h-[47px] px-6 font-condensed text-[20px]"
-              : "px-3 py-2 text-xs"
+              ? "h-[47px] px-6 font-condensed text-link bg-[#fce8e8] text-[#b32d2e]"
+              : "px-3 py-2 font-condensed text-link bg-[#fce8e8] text-[#b32d2e]"
           )}
         >
           Out of Stock
@@ -167,7 +167,7 @@ export default function QtyAddToOrder({
   }
 
   return (
-    <div className={cn("flex items-center gap-1.5", className)}>
+    <div className={cn("flex items-center gap-2.5", className)}>
       <input
         type="number"
         min={1}
@@ -179,8 +179,8 @@ export default function QtyAddToOrder({
         className={cn(
           "text-near-black placeholder:text-mid-gray",
           isLg
-            ? "h-[47px] w-[115px] border-2 border-[#4F5965] px-3 text-[20px]"
-            : "w-16 border border-light-gray px-2 py-1.5 text-sm"
+            ? "h-[46px] md:h-[48px] w-[115px] border-2 border-[#4F5965] px-3 text-[18px] md:text-[20px]"
+            : "w-16 border-1 border-[#4F5965] px-2 py-1.5 text-link"
         )}
       />
       <button
@@ -188,8 +188,8 @@ export default function QtyAddToOrder({
         disabled={isSubmitting}
         onClick={() => void handleAdd()}
         className={cn(
-          "bg-amber font-bold uppercase text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
-          isLg ? "h-[47px] px-6 font-condensed text-[20px]" : "px-3 py-2 text-xs"
+         "bg-amber font-bold font-condensed uppercase transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
+          isLg ? "px-5 lg:px-[30px] py-3.5 text-[18px] md:text-[20px] leading-none text-white" : "px-3 py-2 text-link text-white"
         )}
       >
         {isSubmitting ? "Adding..." : "Add to Order"}

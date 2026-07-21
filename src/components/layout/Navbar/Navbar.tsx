@@ -53,7 +53,7 @@ export default function Navbar({
     <>
       {!hideDesktopNav ? (
         <nav aria-label="Primary navigation" className="hidden lg:flex">
-          <ul className="flex items-center gap-8">
+          <ul className="flex items-center gap-10 xl:gap-[60px]">
             {items.map((item) => (
               <li key={item.id}>
                 <Link

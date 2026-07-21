@@ -574,6 +574,9 @@ function mmf_save_tax_exemption_user_fields( int $user_id ): void {
 		mmf_send_tax_cert_customer_email( $user_id, $new_status );
 		if ( MMF_TAX_STATUS_APPROVED === $new_status ) {
 			update_user_meta( $user_id, 'mmf_net30_eligible', 'yes' );
+			// Approval may set an expiry already inside the 3-day (or even
+			// expired) window — don't wait for tomorrow's cron to warn them.
+			mmf_maybe_send_tax_exemption_reminder_for_user( $user_id );
 		}
 	}
 }
@@ -595,12 +598,18 @@ function mmf_schedule_tax_exemption_reminders(): void {
  * Email approved customers whose certificate is expiring (≤30 days) or has
  * expired. Each reminder type is sent once per certificate — the flag stores
  * the expiry date it was sent for, so a renewed certificate re-arms it.
+ *
+ * Runs two ways: the daily cron loops every approved user through
+ * mmf_maybe_send_tax_exemption_reminder_for_user() below, AND every admin
+ * approval path calls that same per-user function immediately — a cert
+ * approved with an expiry already inside the 3-day (or even expired)
+ * window must not wait for tomorrow's cron tick to warn the customer.
  */
 function mmf_send_tax_exemption_reminders(): void {
 	$users = get_users(
 		array(
 			'number'     => 500,
-			'fields'     => array( 'ID', 'user_email', 'display_name' ),
+			'fields'     => array( 'ID' ),
 			'meta_query' => array(
 				array(
 					'key'   => 'mmf_tax_exemption_status',
@@ -611,19 +620,40 @@ function mmf_send_tax_exemption_reminders(): void {
 	);
 
 	foreach ( $users as $user ) {
-		$user_id = (int) $user->ID;
-		$expiry  = mmf_normalize_tax_exemption_expiry( (string) get_user_meta( $user_id, 'mmf_tax_exemption_expiry', true ) );
+		mmf_maybe_send_tax_exemption_reminder_for_user( (int) $user->ID );
+	}
+}
 
-		if ( $expiry === '' ) {
-			continue;
-		}
+/**
+ * Check one approved user's certificate expiry and send the matching
+ * reminder email if it's due and hasn't already gone out for this expiry
+ * date. Safe to call at any time — no-ops if the user isn't approved, has
+ * no expiry set, or the applicable reminder was already sent.
+ *
+ * @param int $user_id User ID.
+ */
+function mmf_maybe_send_tax_exemption_reminder_for_user( int $user_id ): void {
+	if ( MMF_TAX_STATUS_APPROVED !== mmf_get_tax_exemption_status( $user_id ) ) {
+		return;
+	}
 
-		$days_left = (int) floor( ( strtotime( $expiry . ' 23:59:59' ) - time() ) / DAY_IN_SECONDS );
+	$user = get_userdata( $user_id );
+	if ( ! $user instanceof WP_User ) {
+		return;
+	}
 
-		$account_url = esc_url( home_url( '/my-account' ) );
-		$name        = esc_html( $user->display_name );
+	$expiry = mmf_normalize_tax_exemption_expiry( (string) get_user_meta( $user_id, 'mmf_tax_exemption_expiry', true ) );
 
-		if ( $days_left < 0 ) {
+	if ( $expiry === '' ) {
+		return;
+	}
+
+	$days_left = (int) floor( ( strtotime( $expiry . ' 23:59:59' ) - time() ) / DAY_IN_SECONDS );
+
+	$account_url = esc_url( home_url( '/my-account' ) );
+	$name        = esc_html( $user->display_name );
+
+	if ( $days_left < 0 ) {
 			$flag        = 'mmf_tax_reminder_expired';
 			$subject     = __( 'Your sales tax exemption certificate has expired — Midwest Military Fasteners', 'midwest-military' );
 			$accent      = '#b81c23';
@@ -667,27 +697,88 @@ function mmf_send_tax_exemption_reminders(): void {
 			);
 			$cta         = __( 'Renew Certificate', 'midwest-military' );
 		} else {
-			continue;
+			return;
 		}
 
-		// One email per reminder type per certificate expiry date.
-		if ( get_user_meta( $user_id, $flag, true ) === $expiry ) {
-			continue;
-		}
-
-		$inner =
-			'<h2 style="margin: 0 0 12px; font-size: 20px; font-family: sans-serif; color: ' . esc_attr( $accent ) . ';">' . esc_html( $heading ) . '</h2>' .
-			mmf_email_p( sprintf( /* translators: %s: customer name */ esc_html__( 'Dear %s,', 'midwest-military' ), $name ) ) .
-			mmf_email_p( wp_kses( $msg, array( 'strong' => array() ) ) ) .
-			'<div style="padding-top: 20px;">' . mmf_email_button( $account_url, $cta ) . '</div>' .
-			'<p style="font-size: 12px; color: #8c8f94; font-family: sans-serif; margin-top: 24px;">' . esc_html__( 'Questions? Reply to this email or contact us at', 'midwest-military' ) . ' <a href="mailto:' . esc_attr( get_option( 'admin_email' ) ) . '" style="color: #1a56db;">' . esc_html( get_option( 'admin_email' ) ) . '</a>.</p>';
-
-		$body = mmf_email_template( $inner );
-
-		if ( wp_mail( $user->user_email, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) ) ) {
-			update_user_meta( $user_id, $flag, $expiry );
-		}
+	// One email per reminder type per certificate expiry date.
+	if ( get_user_meta( $user_id, $flag, true ) === $expiry ) {
+		return;
 	}
+
+	$inner =
+		'<h2 style="margin: 0 0 12px; font-size: 20px; font-family: sans-serif; color: ' . esc_attr( $accent ) . ';">' . esc_html( $heading ) . '</h2>' .
+		mmf_email_p( sprintf( /* translators: %s: customer name */ esc_html__( 'Dear %s,', 'midwest-military' ), $name ) ) .
+		mmf_email_p( wp_kses( $msg, array( 'strong' => array() ) ) ) .
+		'<div style="padding-top: 20px;">' . mmf_email_button( $account_url, $cta ) . '</div>' .
+		'<p style="font-size: 12px; color: #8c8f94; font-family: sans-serif; margin-top: 24px;">' . esc_html__( 'Questions? Reply to this email or contact us at', 'midwest-military' ) . ' <a href="mailto:' . esc_attr( get_option( 'admin_email' ) ) . '" style="color: #1a56db;">' . esc_html( get_option( 'admin_email' ) ) . '</a>.</p>';
+
+	$body = mmf_email_template( $inner );
+
+	if ( wp_mail( $user->user_email, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) ) ) {
+		update_user_meta( $user_id, $flag, $expiry );
+		mmf_log_tax_exemption_email( $user_id, $user->user_email, $flag, $subject, $expiry, $days_left );
+	}
+}
+
+// ============================================================
+// EMAIL LOG — so the admin dashboard can show "did this actually
+// send" without digging through server mail logs.
+// ============================================================
+
+define( 'MMF_TAX_EMAIL_LOG_OPTION', 'mmf_tax_exemption_email_log' );
+define( 'MMF_TAX_EMAIL_LOG_MAX', 500 );
+
+/**
+ * Record a sent tax exemption reminder email. Capped ring buffer stored as
+ * a single option — 500 rows is comfortably small (well under the 1MB
+ * autoloaded-option threshold) and this table is written to once per
+ * customer per reminder type per certificate, not per request.
+ *
+ * @param int    $user_id   Recipient user ID.
+ * @param string $email     Recipient email (kept alongside the ID in case
+ *                          the account or its email changes later).
+ * @param string $flag      Reminder type meta key (mmf_tax_reminder_*).
+ * @param string $subject   Email subject actually sent.
+ * @param string $expiry    Certificate expiry date the reminder was for.
+ * @param int    $days_left Days left at the moment the email was sent.
+ */
+function mmf_log_tax_exemption_email( int $user_id, string $email, string $flag, string $subject, string $expiry, int $days_left ): void {
+	$log = get_option( MMF_TAX_EMAIL_LOG_OPTION, array() );
+	if ( ! is_array( $log ) ) {
+		$log = array();
+	}
+
+	$log[] = array(
+		'user_id'   => $user_id,
+		'email'     => $email,
+		'type'      => $flag,
+		'subject'   => $subject,
+		'expiry'    => $expiry,
+		'days_left' => $days_left,
+		'sent_at'   => current_time( 'mysql' ),
+	);
+
+	// Ring buffer: keep only the most recent MMF_TAX_EMAIL_LOG_MAX entries.
+	if ( count( $log ) > MMF_TAX_EMAIL_LOG_MAX ) {
+		$log = array_slice( $log, -MMF_TAX_EMAIL_LOG_MAX );
+	}
+
+	update_option( MMF_TAX_EMAIL_LOG_OPTION, $log, false );
+}
+
+/**
+ * Read the tax exemption email log, most recent first.
+ *
+ * @param int $limit Max rows to return.
+ * @return array<int, array<string, mixed>>
+ */
+function mmf_get_tax_exemption_email_log( int $limit = 200 ): array {
+	$log = get_option( MMF_TAX_EMAIL_LOG_OPTION, array() );
+	if ( ! is_array( $log ) ) {
+		return array();
+	}
+
+	return array_slice( array_reverse( $log ), 0, $limit );
 }
 
 // ============================================================

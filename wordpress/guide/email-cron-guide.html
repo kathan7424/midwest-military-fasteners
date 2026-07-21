@@ -1,0 +1,377 @@
+<title>Email & Cron — Visual Guide</title>
+<style>
+  :root {
+    --bg: #F2EFE8;
+    --bg-card: #FFFFFF;
+    --ink: #1C1F1A;
+    --ink-soft: #5B5F57;
+    --line: #D8D3C6;
+    --accent: #C8551A;
+    --accent-ink: #FFFFFF;
+    --accent-2: #2E5339;
+    --accent-2-soft: #E4EBE2;
+    --gf-accent: #7A4FB5;
+    --gf-soft: #EFE7F7;
+    --wc-accent: #96588A;
+    --wc-soft: #F5E9F3;
+    --warn-bg: #FBEDE3;
+    --warn-line: #E0A87A;
+    --ok-bg: #EAF1E7;
+    --ok-line: #9FBE97;
+    --code-bg: #21251E;
+    --code-ink: #E9E6DA;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151813; --bg-card: #1D2117; --ink: #ECE9DF; --ink-soft: #A6A99C;
+      --line: #33382C; --accent: #E06A2C; --accent-ink: #17140F; --accent-2: #7FAE79;
+      --accent-2-soft: #22301F; --gf-accent: #B79AE0; --gf-soft: #2A2036;
+      --wc-accent: #D9A0CC; --wc-soft: #33202F;
+      --warn-bg: #2C2013; --warn-line: #6B4322;
+      --ok-bg: #1D2A1B; --ok-line: #3E5A38; --code-bg: #0F120D; --code-ink: #D7D4C6;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151813; --bg-card: #1D2117; --ink: #ECE9DF; --ink-soft: #A6A99C;
+    --line: #33382C; --accent: #E06A2C; --accent-ink: #17140F; --accent-2: #7FAE79;
+    --accent-2-soft: #22301F; --gf-accent: #B79AE0; --gf-soft: #2A2036;
+    --wc-accent: #D9A0CC; --wc-soft: #33202F;
+    --warn-bg: #2C2013; --warn-line: #6B4322;
+    --ok-bg: #1D2A1B; --ok-line: #3E5A38; --code-bg: #0F120D; --code-ink: #D7D4C6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #F2EFE8; --bg-card: #FFFFFF; --ink: #1C1F1A; --ink-soft: #5B5F57;
+    --line: #D8D3C6; --accent: #C8551A; --accent-ink: #FFFFFF; --accent-2: #2E5339;
+    --accent-2-soft: #E4EBE2; --gf-accent: #7A4FB5; --gf-soft: #EFE7F7;
+    --wc-accent: #96588A; --wc-soft: #F5E9F3;
+    --warn-bg: #FBEDE3; --warn-line: #E0A87A;
+    --ok-bg: #EAF1E7; --ok-line: #9FBE97; --code-bg: #21251E; --code-ink: #E9E6DA;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; }
+
+  header.top {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600;
+  }
+  h1 { font-size: 30px; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--ink-soft); font-size: 15px; max-width: 50ch; }
+  .status-pill {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px;
+    background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--ink);
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--warn-line); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 32px; font-size: 12.5px; color: var(--ink-soft); align-items: center; }
+  .source-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 999px;
+  }
+  .source-custom { background: var(--accent-2-soft); color: var(--accent-2); }
+  .source-gf { background: var(--gf-soft); color: var(--gf-accent); }
+  .source-wc { background: var(--wc-soft); color: var(--wc-accent); }
+  .source-cron { background: var(--warn-bg); color: #a35a1f; }
+
+  h2.part-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft); margin: 56px 0 4px; padding-top: 36px; border-top: 1px solid var(--line);
+  }
+  h2.part-title:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+  h3.part-heading { font-size: 24px; margin: 4px 0 10px; }
+  p.part-sub { color: var(--ink-soft); font-size: 14.5px; max-width: 60ch; margin: 0 0 28px; }
+
+  .steps { position: relative; }
+  .step {
+    position: relative; display: grid; grid-template-columns: 44px 1fr; gap: 20px; padding-bottom: 30px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step-rail { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 15px;
+    flex-shrink: 0; box-shadow: var(--shadow);
+  }
+  .step-num.email { background: var(--accent-2); }
+  .step-num.cron { background: #a35a1f; }
+  .step-line { flex: 1; width: 2px; background: var(--line); margin-top: 4px; }
+  .step:last-child .step-line { display: none; }
+  .step-body { padding-top: 4px; }
+  .step-body h4 { font-size: 17px; margin: 0 0 4px; }
+  .step-tag {
+    display: inline-block; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11px; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 8px;
+  }
+  .step-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 15px 17px; box-shadow: var(--shadow);
+  }
+  .step-card p { margin: 0 0 8px; font-size: 14px; }
+  .step-card p:last-child { margin-bottom: 0; }
+
+  .example-box {
+    background: var(--bg-card); border: 1px solid var(--accent); border-radius: 10px;
+    padding: 18px 20px; box-shadow: var(--shadow); margin-top: 24px;
+  }
+  .example-box .example-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--accent); margin-bottom: 10px;
+  }
+  .example-box p { margin: 6px 0; font-size: 14px; }
+  .example-box p strong { color: var(--ink); }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-ink); padding: 2px 7px;
+    border-radius: 5px; font-size: 12.5px;
+  }
+
+  .callout {
+    border-left: 3px solid var(--accent-2); background: var(--ok-bg);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13.5px; margin: 20px 0;
+  }
+  .callout.warn { border-left-color: var(--accent); background: var(--warn-bg); }
+  .callout strong { display: block; margin-bottom: 3px; }
+
+  .mini-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 8px; }
+  .mini-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; box-shadow: var(--shadow); font-size: 13px;
+  }
+  .mini-card .mini-num { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11px; color: var(--ink-soft); }
+
+  footer.foot {
+    margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="eyebrow">Reference · Visual</div>
+      <h1>Email & Cron — Full Trigger Map</h1>
+      <p class="lede">Every automated email, where it actually comes from, and the one recurring cron in the whole system — walked through step by step.</p>
+    </div>
+    <span class="status-pill"><span class="dot"></span>13 emails · 1 cron</span>
+  </header>
+
+  <div class="legend">
+    <span class="source-tag source-custom">Custom PHP</span>
+    <span class="source-tag source-gf">Gravity Forms</span>
+    <span class="source-tag source-wc">WooCommerce Native</span>
+    <span class="source-tag source-cron">Cron</span>
+  </div>
+
+  <h2 class="part-title">Part 1 of 3</h2>
+  <h3 class="part-heading">The one cron job</h3>
+  <p class="part-sub">Every other email in this build fires off a real event. This is the single exception — a recurring check with no user action behind it.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-rail"><div class="step-num cron">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">HOOK: mmf_tax_exemption_daily_reminders</span>
+        <h4>Registered once, fires every day</h4>
+        <div class="step-card">
+          <p><code>wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'mmf_tax_exemption_daily_reminders' )</code> — set up on <code>init</code>, guarded so it only ever gets scheduled once.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num cron">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">WHAT IT CHECKS</span>
+        <h4>Every approved tax exemption certificate</h4>
+        <div class="step-card">
+          <p>Loops every customer with <code>mmf_tax_exemption_status = approved</code>, works out days-left-until-expiry for each one.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num cron">3</div></div>
+      <div class="step-body">
+        <span class="step-tag">WHAT IT SENDS</span>
+        <h4>Whichever of the 3 reminder emails is due</h4>
+        <div class="step-card">
+          <p>≤3 days left → urgent · ≤30 days left → expiring soon · already past → expired. Each has its own de-dupe flag so it only ever sends once per expiry date.</p>
+          <div class="callout warn">
+            <strong>Not a real system cron</strong>
+            WP-Cron only fires on a page load. A quiet dev site with no visitors can leave this "due" for hours. Force it with <code>wp cron event run mmf_tax_exemption_daily_reminders</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="part-title">Part 2 of 3</h2>
+  <h3 class="part-heading">Product Certificate flow</h3>
+  <p class="part-sub">Free per-product certification (MFR C of C, material certs, test reports). One email, zero cron — purely a reaction to an order status change.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-rail"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">SETUP</span>
+        <h4>Admin sets a certificate on the product</h4>
+        <div class="step-card">
+          <p><code>_certificate_file_url</code> custom field on the physical product — no separate $0 product needed.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">CHECKOUT</span>
+        <h4>Customer opts in for that line item</h4>
+        <div class="step-card">
+          <p>Stamped as <code>_mmf_cert_opted_in = '1'</code> on the order line item, permanently, at order-creation time.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">FULFILLMENT</span>
+        <h4>Order reaches Completed or Shipped</h4>
+        <div class="step-card">
+          <p>Admin manually changes the status, OR the Shippo webhook auto-completes it on a DELIVERED event — identical result either way.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num email">4</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">EMAIL FIRES <span class="source-tag source-custom">Custom</span></span>
+        <h4>"Your product certificates are ready"</h4>
+        <div class="step-card">
+          <p>Only if: opted in AND a cert file was stamped AND not already sent. Silent no-op otherwise.</p>
+          <p><span class="source-tag source-wc">WC Native</span> WC's own "Completed" order email fires in the <em>same</em> request — two emails, not a duplicate bug.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num">5</div></div>
+      <div class="step-body">
+        <span class="step-tag">AFTER</span>
+        <h4>Customer re-downloads anytime</h4>
+        <div class="step-card">
+          <p>My Account → Certifications tab reads the exact same stamped line-item data the email used.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="example-box">
+    <span class="example-label">Worked example</span>
+    <p><strong>Order #4402</strong> — 2× MMF-TEST-002 (has a cert file), opted in.</p>
+    <p>Admin marks it <strong>Completed</strong> on July 22.</p>
+    <p>→ Certificate email fires with a download link. → WC's own Completed email fires too. → <code>_mmf_cert_email_sent = '1'</code> is set — re-marking it Completed later never re-sends.</p>
+  </div>
+
+  <h2 class="part-title">Part 3 of 3</h2>
+  <h3 class="part-heading">Tax Exemption flow</h3>
+  <p class="part-sub">Sales-tax exemption for qualifying business customers. This one has an ongoing time dimension — certificates expire — which is exactly why it's the flow with a cron.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-rail"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">UPLOAD</span>
+        <h4>Customer uploads a certificate + expiry date</h4>
+        <div class="step-card">
+          <p>At registration (Gravity Forms) or later from My Account. Status becomes "pending."</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num email">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">EMAIL FIRES <span class="source-tag source-custom">Custom</span></span>
+        <h4>Admin review request, ~10 seconds later</h4>
+        <div class="step-card">
+          <p>Queued so it never slows the registration response. Signed one-click Approve/Reject links, no login required, expire after 14 days.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">DECISION</span>
+        <h4>Admin approves or rejects — any of 6 paths</h4>
+        <div class="step-card">
+          <p>The email buttons, the Tax Certificates dashboard (3 ways), the REST API, or Users → Edit — all 6 behave identically.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num email">4</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">EMAIL FIRES <span class="source-tag source-custom">Custom</span></span>
+        <h4>Approved/rejected notice — instant</h4>
+        <div class="step-card">
+          <p>If approved: Net 30 is silently enabled at the same time, and tax exemption goes live immediately at checkout.</p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-rail"><div class="step-num email">5</div></div>
+      <div class="step-body">
+        <span class="step-tag">EMAIL FIRES <span class="source-tag source-custom">Custom</span> <span class="source-tag source-cron">Cron</span></span>
+        <h4>Expiry reminders — cron every day, PLUS instantly at approval</h4>
+        <div class="step-card">
+          <p>The daily cron checks every approved cert going forward. But if the approval in step 3 already lands inside the 3-day (or expired) window, the matching reminder fires <strong>immediately, same request</strong> — see the example below.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="example-box">
+    <span class="example-label">Worked example — why the instant check matters, not just the cron</span>
+    <p>Customer uploads a certificate on <strong>July 19</strong> with an expiry of <strong>July 22</strong> (today).</p>
+    <p>Admin doesn't review it until <strong>July 22</strong> — the expiry date itself — then clicks <strong>Approve</strong>.</p>
+    <p>→ Approval email fires. → <code>days_left = 0</code> falls into the "≤3 days" bucket → the urgent 3-day reminder fires <strong>in that same click</strong>, not tomorrow.</p>
+    <p>Without the instant check, the customer gets approval confirmed but zero warning it expires today — they'd only find out when tomorrow's cron runs, by which point it's already the <em>expired</em> email, not the 3-day one.</p>
+  </div>
+
+  <div class="callout">
+    <strong>These two flows never share state</strong>
+    Product Certificate opt-in (<code>_mmf_cert_opted_in</code>, on an order line item) and Tax Exemption status (<code>mmf_tax_exemption_status</code>, on the customer's account) are completely separate records. Approving one has zero effect on the other.
+  </div>
+
+  <div class="mini-grid">
+    <div class="mini-card"><span class="mini-num">01–05</span><br>Tax Exemption emails</div>
+    <div class="mini-card"><span class="mini-num">06</span><br>Product Certificate email</div>
+    <div class="mini-card"><span class="mini-num">07</span><br>Password reset</div>
+    <div class="mini-card"><span class="mini-num">08–09</span><br>Gravity Forms registration</div>
+    <div class="mini-card"><span class="mini-num">10–13</span><br>WooCommerce native</div>
+  </div>
+
+  <footer class="foot">
+    Full written detail: <span class="mono">wordpress/guide/tax-net30-certificate-flows-guide.md</span> ·
+    GF templates: <span class="mono">wordpress/guide/gravity-forms-email-templates.md</span> ·
+    Shippo webhook: <span class="mono">wordpress/guide/shippo-guide.md</span> §8
+  </footer>
+
+</div>

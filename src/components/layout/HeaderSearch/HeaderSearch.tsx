@@ -3,7 +3,7 @@
  * Description: Responsive header global search with live WordPress suggestions.
  * Developer: KP-184
  * Created Date: 2026-06-25
- * Last Modified: 2026-07-16
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -40,14 +40,17 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
 
   function handleSearch() {
     const trimmed = query.trim();
-    // WordPress standard: an empty search term is simply no filter at all —
-    // WP_Query skips the search clause entirely when `s` is empty, showing
-    // everything rather than an error. Match that here.
-    router.push(
-      trimmed
-        ? `${catalogListingPath}?search=${encodeURIComponent(trimmed)}`
-        : catalogListingPath
-    );
+    // Close the suggestion dropdown before navigating — otherwise it stays
+    // open with stale suggestions floating over the results page, since
+    // this component lives in the layout and never remounts on navigation.
+    setIsOpen(false);
+
+    // Header search is the GLOBAL search — always route through WordPress's
+    // own search URL convention (?s=) at the site root, same as core WP
+    // search forms, even when empty. It lands on the search RESULTS page
+    // (which prompts for a term) rather than jumping straight to the shop
+    // catalog — those are two different destinations on purpose.
+    router.push(trimmed ? `/?s=${encodeURIComponent(trimmed)}` : "/?s=");
   }
 
   return (
@@ -56,7 +59,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
       action={catalogListingPath}
       method="GET"
       className={cn(
-        "relative hidden w-full max-w-[690px] flex-1 items-center lg:flex",
+        "relative hidden w-full max-w-[715px] flex-1 items-center lg:flex",
         className
       )}
       onSubmit={(event) => {
@@ -85,12 +88,12 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
 
             setQuery(value);
           }}
-          className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-link text-near-black outline-none placeholder:text-[#A5A5A5]"
+          className="h-12 flex-1 rounded-none border border-navy border-r-0 bg-white px-4 py-3.5 text-body text-near-black outline-none placeholder:text-[#A5A5A5]"
         />
         <button
           type="submit"
           aria-label="Search"
-          className="h-12 rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
+          className="h-12 w-[55px] flex items-center justify-center rounded-none bg-amber px-4 py-3.5 text-white transition-colors hover:bg-amber/90"
         >
           <FaMagnifyingGlass size={16} />
         </button>

@@ -393,6 +393,11 @@ function CheckoutForm({
   // client-side navigation to /checkout/success completes (clearing the cart
   // before navigation would otherwise flash the empty-cart/error screen).
   const [orderComplete, setOrderComplete] = useState(false);
+  // A ref (not state) so in-flight address/rate/coupon requests that resolve
+  // after the order is placed can check synchronously — state would still
+  // read stale "false" in a closure captured before the order completed,
+  // letting a late response overwrite the just-cleared cart with the old total.
+  const orderCompleteRef = useRef(false);
 
   const { fields } = settings;
 
@@ -558,8 +563,10 @@ function CheckoutForm({
       shipping_address: effectiveShipping,
       billing_address: effectiveBilling,
     });
-    if (ok && "cart" in data) applyState(data);
-    else if ("message" in data && data.message) notifyError(data.message);
+    if (!orderCompleteRef.current) {
+      if (ok && "cart" in data) applyState(data);
+      else if ("message" in data && data.message) notifyError(data.message);
+    }
     setIsUpdatingRates(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationReady, shipping, billing, email, sameAsBilling, applyState]);
@@ -601,7 +608,9 @@ function CheckoutForm({
     let cancelled = false;
     void (async () => {
       const { ok, data } = await fetch_checkout_state();
-      if (!cancelled && ok && 'cart' in data) applyState(data as CheckoutStateResponse);
+      if (!cancelled && !orderCompleteRef.current && ok && 'cart' in data) {
+        applyState(data as CheckoutStateResponse);
+      }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -611,8 +620,10 @@ function CheckoutForm({
     setPendingRateId(rate_id);
     setIsUpdatingRates(true);
     const { ok, data } = await select_shipping_rate({ package_id, rate_id });
-    if (ok && "cart" in data) applyState(data);
-    else if ("message" in data && data.message) notifyError(data.message);
+    if (!orderCompleteRef.current) {
+      if (ok && "cart" in data) applyState(data);
+      else if ("message" in data && data.message) notifyError(data.message);
+    }
     setIsUpdatingRates(false);
     setPendingRateId(null);
   };
@@ -623,10 +634,12 @@ function CheckoutForm({
     setCouponError("");
     setIsApplyingCoupon(true);
     const { ok, data } = await apply_coupon(code);
-    if (ok && "cart" in data) {
-      applyState(data); setCouponCode(""); setCouponOpen(false); notifySuccess("Coupon applied.");
-    } else {
-      setCouponError(("message" in data && data.message) || "Coupon code is invalid.");
+    if (!orderCompleteRef.current) {
+      if (ok && "cart" in data) {
+        applyState(data); setCouponCode(""); setCouponOpen(false); notifySuccess("Coupon applied.");
+      } else {
+        setCouponError(("message" in data && data.message) || "Coupon code is invalid.");
+      }
     }
     setIsApplyingCoupon(false);
   };
@@ -634,8 +647,10 @@ function CheckoutForm({
   const handleRemoveCoupon = async (code: string) => {
     setIsApplyingCoupon(true);
     const { ok, data } = await remove_coupon(code);
-    if (ok && "cart" in data) { applyState(data); notifySuccess("Coupon removed."); }
-    else notifyError(("message" in data && data.message) || "Coupon could not be removed.");
+    if (!orderCompleteRef.current) {
+      if (ok && "cart" in data) { applyState(data); notifySuccess("Coupon removed."); }
+      else notifyError(("message" in data && data.message) || "Coupon could not be removed.");
+    }
     setIsApplyingCoupon(false);
   };
 
@@ -736,6 +751,7 @@ function CheckoutForm({
       cert_opted_in: Object.fromEntries([...next].map((key) => [key, true])),
     })
       .then(({ ok, data }) => {
+        if (orderCompleteRef.current) return;
         if (ok && "cart" in data) {
           setCart(data.cart);
           setCheckout(data.checkout);
@@ -925,6 +941,7 @@ function CheckoutForm({
       // Lock the UI into the "redirecting" state BEFORE clearing the cart —
       // otherwise the null-cart guard renders the error/empty screen for a
       // frame while router.push is still in flight.
+      orderCompleteRef.current = true;
       setOrderComplete(true);
       onOrderComplete();
 

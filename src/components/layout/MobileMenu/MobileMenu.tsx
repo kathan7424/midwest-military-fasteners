@@ -136,16 +136,16 @@ export default function MobileMenu({
                   {phone ? (
                     <a
                       href={`tel:${normalizeTel(phone)}`}
-                      className="flex items-center gap-2 text-link text-blue hover:text-navy transition-colors"
+                      className="group flex items-center gap-2 text-link text-blue hover:text-amber group-hover:[&_svg]:fill-amber transition-colors"
                     >
-                      <FaPhone size={13} />
+                      <svg className="transition-colors" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M0 2L4 0L7.03125 4L4.5 6.5C5.53125 8.6875 7.3125 10.4688 9.5 11.5L12 8.96875L16 12L14 16H13.5C6.03125 16 0 9.96875 0 2.5V2Z" fill="currentColor"/></svg>
                       {phone}
                     </a>
                   ) : null}
                   {email ? (
                     <a
                       href={`mailto:${email}`}
-                      className="text-link text-blue uppercase hover:text-navy transition-colors"
+                      className="text-link text-blue uppercase hover:text-amber transition-colors"
                     >
                       {email}
                     </a>
@@ -161,7 +161,7 @@ export default function MobileMenu({
                       target={registerLink.target}
                       title={registerLink.title}
                       onClick={closeMenu}
-                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
+                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link text-white transition-colors hover:bg-navy"
                     >
                       <svg width="13" height="16" viewBox="0 0 13 16" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M6.5 7.5C4.4375 7.5 2.75 5.8125 2.75 3.75C2.75 1.6875 4.4375 0 6.5 0C8.5625 0 10.25 1.6875 10.25 3.75C10.25 5.8125 8.5625 7.5 6.5 7.5ZM13 15.75H0L2 9.25H11L13 15.75Z" fill="white"/> </svg> 
                       {registerLink.title ?? "REGISTER"}
@@ -173,7 +173,7 @@ export default function MobileMenu({
                       target={loginLink.target}
                       title={loginLink.title}
                       onClick={closeMenu}
-                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
+                      className="flex flex-1 items-center justify-center gap-2 bg-blue px-4 py-3 text-link text-white transition-colors hover:bg-navy"
                     >
                       <svg width="16" height="14" viewBox="0 0 16 14" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M11 2H10V0H16V14H10V12H14V2H11ZM10.7188 7.71875L6 12.4062L4.59375 11C4.78125 10.8125 5.78125 9.8125 7.59375 8H0V6H7.59375L4.59375 3L6 1.59375L6.71875 2.28125L10.7188 6.28125L11.4062 7L10.7188 7.71875Z" fill="white"/> </svg> 
                       {loginLink.title ?? "LOGIN"}
@@ -212,7 +212,7 @@ export default function MobileMenu({
   ) : null;
 
   return (
-    <div className="lg:hidden">
+    <div className="flex lg:hidden">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}

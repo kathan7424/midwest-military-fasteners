@@ -3,7 +3,7 @@
  * Description: Site footer with dynamic settings and footer menu.
  * Developer: KP-184
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
  */
 
 import Link from "next/link";
@@ -39,15 +39,15 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
       {hasBottomBar ? (
         <div className="bg-[#c79a00]">
           <div className="mx-auto max-w-[1680px] px-5">
-            <div className="flex flex-col items-center justify-between gap-4 py-4 text-sm text-white lg:flex-row">
+             <div className="flex flex-col items-center justify-between gap-4 py-3 text-link text-white lg:flex-row">
               {copyright_text ? (
-                <div className="mb-0 text-center lg:text-left">
+                <div className="mb-0 text-center text-white/70 lg:text-left">
                   {copyright_link && isUsableLink(copyright_link.url) ? (
                     <Link
                       href={normalizeWpUrl(copyright_link.url)}
                       target={copyright_link.target || undefined}
                       prefetch={false}
-                      className="transition-colors hover:text-black"
+                      className="text-white transition-colors hover:text-black"
                     >
                       {copyright_text}
                     </Link>
@@ -64,7 +64,7 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
                       <Link
                         href={normalizeWpUrl(item.url || "#")}
                         prefetch={false}
-                        className="transition-colors hover:text-black"
+                        className="text-white transition-colors hover:text-black"
                       >
                         {item.title}
                       </Link>
@@ -74,14 +74,14 @@ export default function Footer({ footerMenu, settings }: FooterProps) {
               ) : null}
 
               {hasBuildBy ? (
-                <div>
+                <div className="text-white/70">
                   {build_by_text ? `${decodeHtmlEntities(build_by_text)} ` : null}
                   {build_by_link?.title ? (
                     <Link
                       href={resolveLinkUrl(build_by_link.url, "#")}
                       target={build_by_link.target || undefined}
                       prefetch={false}
-                      className="transition-colors hover:text-black"
+                      className="text-white/70 transition-colors hover:text-black"
                     >
                       {decodeHtmlEntities(build_by_link.title)}
                     </Link>

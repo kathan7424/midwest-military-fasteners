@@ -5,7 +5,7 @@
  *              Specs download, Qty + Add to Order.
  * Developer: pod2
  * Created Date: 2026-06-26
- * Last Modified: 2026-07-07
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -86,8 +86,7 @@ function getProductColumns(isLoggedIn: boolean): ColumnDef<Product>[] {
     cell: ({ row }) => (
       <Link
         href={build_product_path(row.original.slug || row.original.partNumber)}
-        prefetch={false}
-        className="font-semibold text-amber hover:underline"
+        className="hover:underline"
       >
         {row.original.partNumber}
       </Link>

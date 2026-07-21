@@ -3,7 +3,7 @@
  * Description: Your Order mini-cart dropdown — Figma design.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -214,7 +214,7 @@ export default function HeaderCartDropdown({
               <Link
                 href="/cart"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 bg-blue px-4 py-3 text-link font-semibold text-white transition-colors hover:bg-navy"
+                 className="flex items-center justify-center gap-2 bg-blue px-4 py-3.5 text-[18px] md:text-[20px] font-bold font-condensed leading-none uppercase text-white transition-colors hover:bg-navy"
               >
                 <svg
                   className="h-auto w-[18px]"
@@ -236,7 +236,7 @@ export default function HeaderCartDropdown({
                 <Link
                   href="/checkout"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-2.5 bg-amber px-5 py-3 font-semibold uppercase text-link text-white transition-colors hover:bg-blue"
+                  className="flex items-center gap-2.5 bg-amber px-4 py-3.5 text-[18px] md:text-[20px] font-bold font-condensed leading-none text-white transition-colors hover:bg-blue"
                 >
                   Checkout
                   <svg
