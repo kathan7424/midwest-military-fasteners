@@ -26,6 +26,7 @@ interface CartState {
   isMutating: boolean;
   updatingItemKey: string | null;
   fetchCart: () => Promise<void>;
+  clearCart: () => void;
   addItem: (payload: {
     productId?: number;
     sku?: string;
@@ -93,6 +94,14 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   setCart(cart) {
     set({ cart });
+  },
+
+  clearCart() {
+    // WC-standard cart fragment refresh: set empty immediately for instant
+    // feedback, then sync with wc/store/v1/cart to confirm the server cleared
+    // the session (equivalent to wc-ajax=get_refreshed_fragments after checkout).
+    set({ cart: EMPTY_CART });
+    void get().fetchCart();
   },
 
   async fetchCart() {

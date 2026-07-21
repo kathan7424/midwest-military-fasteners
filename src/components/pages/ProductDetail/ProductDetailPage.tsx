@@ -5,7 +5,7 @@
  *              with the ISO footer. Static frontend; data passed in as props.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-01
+ * Last Modified: 2026-07-21
  */
 
 import { Filter } from "lucide-react";
@@ -135,7 +135,7 @@ export default function ProductDetailPage({
 
               <QtyAddToOrder
                 size="lg"
-                className="mt-6"
+                className="flex-wrap mt-6"
                 productId={product.id}
                 sku={product.sku}
                 productName={product.partNumber || product.sku}

@@ -1,3 +1,11 @@
+/**
+ * File Name: LayoutWrapper.tsx
+ * Description: 
+ * Developer: KP-184
+ * Created Date: 2026-07-21
+ * Last Modified: 2026-07-21
+ */
+
 "use client";
 
 import { useEffect } from "react";

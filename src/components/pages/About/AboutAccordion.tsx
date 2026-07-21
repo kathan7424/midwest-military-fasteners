@@ -9,7 +9,7 @@ export default function AboutAccordion({ items }: { items: AboutPageFaqItem[] })
       {items.map((item, idx) => (
         <AccordionPrimitive.Item key={idx} className="mb-5 last:mb-0">
           <AccordionPrimitive.Header className="flex">
-            <AccordionPrimitive.Trigger className="group relative flex flex-1 items-center justify-between gap-2 bg-[#FAFAFA] px-6 py-4 text-left text-link font-normal text-[#336699] hover:bg-[#f3f3f3] aria-disabled:pointer-events-none aria-disabled:opacity-50">
+             <AccordionPrimitive.Trigger className="group relative flex flex-1 items-center justify-between gap-2 bg-[#FAFAFA] px-6 py-4 text-left text-link font-normal text-[#336699] hover:bg-[#f3f3f3] aria-disabled:pointer-events-none aria-disabled:opacity-50">
               {item.question}
               <ChevronDownIcon className="pointer-events-none shrink-0 text-[#CC9900] group-aria-expanded:hidden" />
               <ChevronUpIcon className="pointer-events-none hidden shrink-0 text-[#CC9900] group-aria-expanded:inline" />

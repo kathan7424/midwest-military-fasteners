@@ -5,7 +5,7 @@
  *              provides no content. Reused across product / cart pages.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -52,6 +52,7 @@ export default function IsoSection({
             width={164}
             height={144}
             className="h-auto w-[164px]"
+            style={{ height: "auto" }}
           />
         </Link>
       ) : null}

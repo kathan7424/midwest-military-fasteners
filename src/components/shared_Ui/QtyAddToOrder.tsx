@@ -3,7 +3,7 @@
  * Description: QTY input + Add to Order with WooCommerce cart integration.
  * Developer: pod2
  * Created Date: 2026-07-01
- * Last Modified: 2026-07-07
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -167,7 +167,7 @@ export default function QtyAddToOrder({
   }
 
   return (
-    <div className={cn("flex items-center gap-2.5 flex-wrap", className)}>
+    <div className={cn("flex items-center gap-2.5", className)}>
       <input
         type="number"
         min={1}
@@ -188,7 +188,7 @@ export default function QtyAddToOrder({
         disabled={isSubmitting}
         onClick={() => void handleAdd()}
         className={cn(
-          "bg-amber font-bold font-condensed uppercase transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
+         "bg-amber font-bold font-condensed uppercase transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
           isLg ? "px-5 lg:px-[30px] py-3.5 text-[18px] md:text-[20px] leading-none text-white" : "px-3 py-2 text-link text-white"
         )}
       >

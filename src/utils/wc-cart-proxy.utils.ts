@@ -30,6 +30,20 @@ import {
 } from "@/utils/cart-stock.utils";
 import { decodeHtmlEntities, formatNoticeMessage } from "@/utils/text.utils";
 
+// Headers.forEach combines multiple Set-Cookie values into one comma-joined
+// string, which breaks cookie values that contain commas. getSetCookie()
+// (WHATWG Fetch / Node.js 18.14+) returns each header separately.
+function forwardSetCookieHeaders(from: Response, to: NextResponse): void {
+  const h = from.headers as Headers & { getSetCookie?: () => string[] };
+  const cookies =
+    typeof h.getSetCookie === "function"
+      ? h.getSetCookie()
+      : (from.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
+  for (const c of cookies) {
+    if (c.trim()) to.headers.append("set-cookie", c.trim());
+  }
+}
+
 interface StoreCartPrice {
   price: string;
   currency_minor_unit?: number;
@@ -56,6 +70,7 @@ interface StoreCartItem {
   extensions?: {
     mmf_cert?: {
       has_certificate?: boolean;
+      certificate_price?: number;
     };
   };
   low_stock_remaining?: number | null;
@@ -195,6 +210,7 @@ export function mapStoreCartToCartData(storeCart: StoreCartResponse): CartData {
       sold_individually: Boolean(item.sold_individually),
       is_in_stock: mapIsInStock(item),
       has_certificate: Boolean(item.extensions?.mmf_cert?.has_certificate),
+      certificate_price: Number(item.extensions?.mmf_cert?.certificate_price ?? 0),
     };
   });
 
@@ -284,6 +300,106 @@ export function mapStoreCartToCheckoutState(
 }
 
 /**
+ * Sanitize a client-supplied cert opt-in map before forwarding to WC.
+ *
+ * Keeps only entries with a plausible cart-item-key shape (WC uses 32-char
+ * md5 hashes) whose value is exactly true, capped at 100 items — a cart
+ * can never legitimately exceed that. Returns undefined when nothing valid
+ * remains so callers can skip the extensions payload entirely.
+ */
+export function sanitizeCertOptInMap(
+  raw: unknown
+): Record<string, boolean> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+
+  const out: Record<string, boolean> = {};
+  let count = 0;
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value !== true) continue;
+    if (!/^[a-f0-9]{6,64}$/i.test(key)) continue;
+    out[key] = true;
+    if (++count >= 100) break;
+  }
+
+  return count > 0 ? out : undefined;
+}
+
+// Cert-availability lookups hit WP once per SKU, then serve from this
+// process-local TTL cache — checkout address/shipping/coupon refreshes reuse
+// it instead of re-querying WP on every totals recalculation. Bounded so a
+// catalog crawl can't grow it unbounded.
+const CERT_LOOKUP_TTL_MS = 5 * 60_000;
+const CERT_LOOKUP_MAX_ENTRIES = 500;
+const certLookupCache = new Map<string, { value: boolean; expiresAt: number }>();
+
+async function lookupCertAvailability(sku: string): Promise<boolean> {
+  const cached = certLookupCache.get(sku);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  let value = false;
+  try {
+    const response = await fetch(
+      // ?_nc busts Pantheon's Varnish cache (same reason as fetchStoreCart).
+      `${ENV.WP_SITE_URL}/wp-json/spec-parts/v1/products/sku/${encodeURIComponent(sku)}?_nc=${Date.now()}`,
+      { cache: "no-store", signal: AbortSignal.timeout(5000) }
+    );
+    if (response.ok) {
+      const data = (await response.json()) as { certificate_file_url?: string };
+      value = Boolean(data.certificate_file_url);
+    } else {
+      // Lookup failed — don't cache, so the next request retries.
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  if (certLookupCache.size >= CERT_LOOKUP_MAX_ENTRIES) {
+    // Simple bound: drop the oldest entry (Map preserves insertion order).
+    const oldest = certLookupCache.keys().next().value;
+    if (oldest !== undefined) {
+      certLookupCache.delete(oldest);
+    }
+  }
+  certLookupCache.set(sku, { value, expiresAt: Date.now() + CERT_LOOKUP_TTL_MS });
+
+  return value;
+}
+
+/**
+ * Fill has_certificate for cart items the Store API extension didn't cover.
+ *
+ * Primary source is the mmf_cert Store API extension (wordpress/inc/cart.php).
+ * The spec-parts catalog endpoint exposes certificate_file_url per product,
+ * so it answers the same question when the extension data is absent — the
+ * checkout opt-in checkbox renders either way. Fail-open: lookup errors just
+ * leave has_certificate false for that item.
+ */
+async function enrichCartCertAvailability(cart: CartData): Promise<CartData> {
+  const pending = cart.items.filter((item) => !item.has_certificate && item.sku);
+  if (pending.length === 0) {
+    return cart;
+  }
+
+  const results = await Promise.all(
+    pending.map(async (item) => [item.key, await lookupCertAvailability(item.sku)] as const)
+  );
+
+  const certByKey = new Map<string, boolean>(results);
+
+  return {
+    ...cart,
+    items: cart.items.map((item) =>
+      certByKey.get(item.key) ? { ...item, has_certificate: true } : item
+    ),
+  };
+}
+
+/**
  * Build a proxy response carrying both the mapped cart and checkout state,
  * persisting the Store API session cookies (nonce + cart token).
  */
@@ -319,27 +435,20 @@ export async function buildCheckoutCartStateResponse(
 
   const response = NextResponse.json(
     {
-      cart: mapStoreCartToCartData(raw),
+      cart: await enrichCartCertAvailability(mapStoreCartToCartData(raw)),
       checkout: mapStoreCartToCheckoutState(raw),
     },
     { status: wpResponse.status }
   );
   response.headers.set("Cache-Control", "no-store, private");
 
-  // Forward any WP Set-Cookie headers (e.g. refreshed WP login session) before
-  // the dedicated nonce/cart-token cookies so they are not clobbered.
-  wpResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
-      response.headers.append("set-cookie", value);
-    }
-  });
-
+  forwardSetCookieHeaders(wpResponse, response);
   persistStoreSessionCookies(wpResponse, response);
 
   return response;
 }
 
-function persistStoreSessionCookies(
+export function persistStoreSessionCookies(
   wpResponse: Response,
   response: NextResponse
 ): void {
@@ -480,12 +589,7 @@ export async function buildStoreCartResponse(
   const response = NextResponse.json(cart, { status: wpResponse.status });
   response.headers.set("Cache-Control", "no-store, private");
 
-  wpResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
-      response.headers.append("set-cookie", value);
-    }
-  });
-
+  forwardSetCookieHeaders(wpResponse, response);
   persistStoreSessionCookies(wpResponse, response);
 
   return response;
@@ -527,13 +631,7 @@ export async function buildStoreCartMutationResponse(
   );
   response.headers.set("Cache-Control", "no-store, private");
 
-  // Forward any Set-Cookie headers WP sends (e.g. session refresh on add-to-cart).
-  wpResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
-      response.headers.append("set-cookie", value);
-    }
-  });
-
+  forwardSetCookieHeaders(wpResponse, response);
   persistStoreSessionCookies(wpResponse, response);
 
   return response;

@@ -65,7 +65,14 @@ function buildRegisterSchema(hasCertificate: boolean) {
     .refine((data) => data.password === data.confirm_password, {
       message: "Passwords do not match.",
       path: ["confirm_password"],
-    });
+    })
+    .refine(
+      (data) => data.password.toLowerCase() !== data.email.trim().toLowerCase(),
+      {
+        message: "Password cannot be the same as your email address.",
+        path: ["password"],
+      }
+    );
 }
 
 type RegisterFormValues = z.infer<ReturnType<typeof buildRegisterSchema>>;

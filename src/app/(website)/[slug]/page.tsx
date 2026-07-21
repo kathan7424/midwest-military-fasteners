@@ -84,6 +84,7 @@ export default async function Page({ params, searchParams }: Props) {
     <WpPageContent
       title={page_title || undefined}
       content={page_content}
+      banner={wp_page?.mmf_banner}
     />
   );
 }
@@ -103,10 +104,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Fall through to Yoast lookup.
   }
 
+  const settings = await fetchSiteSettings().catch(() => null);
+  const defaultOgImage = settings?.seoAnalytics?.default_og_image;
+
   try {
     const yoast = await fetchYoastBySlug(slug.toLowerCase());
-    return buildYoastMetadata(yoast);
+    return buildYoastMetadata(yoast, defaultOgImage);
   } catch {
-    return buildYoastMetadata();
+    return buildYoastMetadata(null, defaultOgImage);
   }
 }

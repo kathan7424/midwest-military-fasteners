@@ -3,7 +3,7 @@
  * Description: Responsive header global search with live WordPress suggestions.
  * Developer: KP-184
  * Created Date: 2026-06-25
- * Last Modified: 2026-07-16
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -14,6 +14,7 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
 import { SEARCH_PLACEHOLDER } from "@/data/hero.data";
 import { useGlobalSearch } from "@/hooks/use-global-search";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { cn } from "@/lib/utils";
 
 interface HeaderSearchProps {
@@ -22,6 +23,9 @@ interface HeaderSearchProps {
 
 export default function HeaderSearch({ className }: HeaderSearchProps) {
   const router = useRouter();
+  // The catalog listing lives at the WC Shop page path (site config), and the
+  // listing filters by the `search` query param — never a hardcoded route.
+  const { catalogListingPath } = useSiteConfig();
 
   const {
     query,
@@ -36,14 +40,23 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
 
   function handleSearch() {
     const trimmed = query.trim();
-    if (!trimmed) return;
-    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+    // Close the suggestion dropdown before navigating — otherwise it stays
+    // open with stale suggestions floating over the results page, since
+    // this component lives in the layout and never remounts on navigation.
+    setIsOpen(false);
+
+    // Header search is the GLOBAL search — always route through WordPress's
+    // own search URL convention (?s=) at the site root, same as core WP
+    // search forms, even when empty. It lands on the search RESULTS page
+    // (which prompts for a term) rather than jumping straight to the shop
+    // catalog — those are two different destinations on purpose.
+    router.push(trimmed ? `/?s=${encodeURIComponent(trimmed)}` : "/?s=");
   }
 
   return (
     <form
       ref={wrapperRef}
-      action="/catalog"
+      action={catalogListingPath}
       method="GET"
       className={cn(
         "relative hidden w-full max-w-[715px] flex-1 items-center lg:flex",
@@ -57,7 +70,7 @@ export default function HeaderSearch({ className }: HeaderSearchProps) {
       <div className="flex w-full">
         <input
           type="search"
-          name="q"
+          name="search"
           value={query}
           placeholder={SEARCH_PLACEHOLDER}
           onFocus={() => {

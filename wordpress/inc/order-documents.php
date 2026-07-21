@@ -7,42 +7,61 @@
 
 defined( 'ABSPATH' ) || exit;
 
-add_filter( 'woocommerce_register_shop_order_statuses', 'mmf_register_shipped_order_status' );
+add_action( 'init', 'mmf_register_shipped_order_status' );
 add_filter( 'wc_order_statuses', 'mmf_add_shipped_status_label' );
 add_action( 'rest_api_init', 'mmf_register_order_documents_routes' );
 add_action( 'woocommerce_checkout_create_order_line_item', 'mmf_store_order_line_item_documents', 10, 4 );
 
 /**
- * Register "shipped" as a valid WooCommerce order status.
+ * Register "shipped" as a real WordPress post status.
  *
- * @param array $statuses Existing statuses.
- * @return array
+ * WooCommerce order statuses need TWO registrations: this one
+ * (register_post_status, so WP's own admin-list queries and status counts
+ * recognize wc-shipped as a real status — without it, orders moved to
+ * Shipped silently vanish from Orders → All since the "All" list query only
+ * includes statuses WordPress has actually registered) and the wc_order_statuses
+ * filter below (so it shows up as a label/option in WC's own status dropdown
+ * and status tabs). There is no single "woocommerce_register_shop_order_statuses"
+ * filter — that hook name doesn't exist in WooCommerce core.
  */
-function mmf_register_shipped_order_status( array $statuses ): array {
-	$statuses['wc-shipped'] = array(
-		'label'                     => _x( 'Shipped', 'Order status', 'woocommerce' ),
-		'public'                    => true,
-		'exclude_from_search'       => false,
-		'show_in_admin_all_list'    => true,
-		'show_in_admin_status_list' => true,
-		'label_count'               => _n_noop(
-			'Shipped <span class="count">(%s)</span>',
-			'Shipped <span class="count">(%s)</span>',
-			'woocommerce'
-		),
+function mmf_register_shipped_order_status(): void {
+	register_post_status(
+		'wc-shipped',
+		array(
+			'label'                     => _x( 'Shipped', 'Order status', 'woocommerce' ),
+			'public'                    => true,
+			'exclude_from_search'       => false,
+			'show_in_admin_all_list'    => true,
+			'show_in_admin_status_list' => true,
+			'label_count'               => _n_noop(
+				'Shipped <span class="count">(%s)</span>',
+				'Shipped <span class="count">(%s)</span>',
+				'woocommerce'
+			),
+		)
 	);
-	return $statuses;
 }
 
 /**
- * Add "Shipped" to the order status dropdown in WC admin.
+ * Add "Shipped" to the order status dropdown in WC admin, right after
+ * Processing — matching where it actually sits in the fulfillment flow.
  *
  * @param array $order_statuses Existing status labels.
  * @return array
  */
 function mmf_add_shipped_status_label( array $order_statuses ): array {
-	$order_statuses['wc-shipped'] = _x( 'Shipped', 'Order status', 'woocommerce' );
-	return $order_statuses;
+	$with_shipped = array();
+	foreach ( $order_statuses as $key => $label ) {
+		$with_shipped[ $key ] = $label;
+		if ( 'wc-processing' === $key ) {
+			$with_shipped['wc-shipped'] = _x( 'Shipped', 'Order status', 'woocommerce' );
+		}
+	}
+	// Safety net: if wc-processing wasn't found (unlikely), still add it.
+	if ( ! isset( $with_shipped['wc-shipped'] ) ) {
+		$with_shipped['wc-shipped'] = _x( 'Shipped', 'Order status', 'woocommerce' );
+	}
+	return $with_shipped;
 }
 add_action( 'woocommerce_order_status_changed', 'mmf_send_certificates_ready_email', 10, 4 );
 // Fallback: stamp cert opt-in on line items AFTER order is created AND after
@@ -92,8 +111,19 @@ function mmf_store_order_line_item_documents( $item, $cart_item_key, $values, $o
 	$opted_in_map = ! empty( $mmf_cert_opted_in_request_map )
 		? $mmf_cert_opted_in_request_map
 		: ( WC()->session ? (array) WC()->session->get( 'mmf_cert_opted_in', array() ) : array() );
-	if ( ! empty( $opted_in_map[ $cart_item_key ] ) ) {
+	$is_opted_in = ! empty( $opted_in_map[ $cart_item_key ] );
+	if ( $is_opted_in ) {
 		$item->add_meta_data( '_mmf_cert_opted_in', '1', true );
+	}
+	if ( function_exists( 'mmf_cert_log' ) ) {
+		mmf_cert_log(
+			'line_item hook (early — may run before update_callback)',
+			array(
+				'cart_item_key' => $cart_item_key,
+				'opted_in_map'  => $opted_in_map,
+				'stamped'       => $is_opted_in,
+			)
+		);
 	}
 }
 
@@ -117,6 +147,16 @@ function mmf_stamp_cert_opted_in_fallback( WC_Order $order ): void {
 			: array();
 	}
 
+	if ( function_exists( 'mmf_cert_log' ) ) {
+		mmf_cert_log(
+			'authoritative fallback hook (woocommerce_store_api_checkout_order_processed)',
+			array(
+				'order_id'     => $order->get_id(),
+				'opted_in_map' => $mmf_cert_opted_in_request_map,
+			)
+		);
+	}
+
 	if ( empty( $mmf_cert_opted_in_request_map ) ) {
 		return;
 	}
@@ -131,7 +171,21 @@ function mmf_stamp_cert_opted_in_fallback( WC_Order $order ): void {
 		}
 
 		$cart_item_key = (string) $item->get_meta( '_mmf_cart_item_key', true );
-		if ( $cart_item_key && ! empty( $mmf_cert_opted_in_request_map[ $cart_item_key ] ) ) {
+		$matched       = $cart_item_key && ! empty( $mmf_cert_opted_in_request_map[ $cart_item_key ] );
+
+		if ( function_exists( 'mmf_cert_log' ) ) {
+			mmf_cert_log(
+				'fallback hook — per-item match check',
+				array(
+					'order_id'      => $order->get_id(),
+					'item_id'       => $item->get_id(),
+					'cart_item_key' => $cart_item_key,
+					'matched'       => $matched,
+				)
+			);
+		}
+
+		if ( $matched ) {
 			$item->update_meta_data( '_mmf_cert_opted_in', '1' );
 			$item->save();
 		}
@@ -534,6 +588,12 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 		return;
 	}
 
+	// Hard once-only guard: survives any status cycle (completed → processing →
+	// completed) and covers both the admin path and the Shippo webhook path.
+	if ( '1' === (string) $order->get_meta( '_mmf_cert_email_sent', true ) ) {
+		return;
+	}
+
 	// Only send if the customer OPTED IN at checkout (cert product in the
 	// order) and the opted-in item actually has a certificate file (SOW:
 	// no opt-in → no certificate delivery, ever). Collect the files so the
@@ -642,12 +702,19 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 	<?php
 	$html = ob_get_clean();
 
-	wp_mail(
+	$sent = wp_mail(
 		$to,
 		$subject,
 		$html,
 		array( 'Content-Type: text/html; charset=UTF-8' )
 	);
+
+	// Mark sent only on success so a mail-server hiccup still allows a retry
+	// on the next eligible status change.
+	if ( $sent ) {
+		$order->update_meta_data( '_mmf_cert_email_sent', '1' );
+		$order->save_meta_data();
+	}
 }
 
 /**

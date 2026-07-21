@@ -1,0 +1,298 @@
+<title>SEO & Analytics — Setup Guide</title>
+<style>
+  :root {
+    --bg: #F2EFE8;
+    --bg-card: #FFFFFF;
+    --ink: #1C1F1A;
+    --ink-soft: #5B5F57;
+    --line: #D8D3C6;
+    --accent: #2E6B57;
+    --accent-ink: #FFFFFF;
+    --accent-2: #C8551A;
+    --accent-2-soft: #FBEDE3;
+    --warn-bg: #FBEDE3;
+    --warn-line: #E0A87A;
+    --ok-bg: #E7F0EA;
+    --ok-line: #9FC0AC;
+    --code-bg: #1A211D;
+    --code-ink: #E4E9E1;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #13160F; --bg-card: #1B2018; --ink: #ECE9DF; --ink-soft: #A6A99C;
+      --line: #333828; --accent: #63A78D; --accent-ink: #0F1712; --accent-2: #E06A2C;
+      --accent-2-soft: #2C2013; --warn-bg: #2C2013; --warn-line: #6B4322;
+      --ok-bg: #1B2A20; --ok-line: #3E5A44; --code-bg: #0E120C; --code-ink: #D7D4C6;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #13160F; --bg-card: #1B2018; --ink: #ECE9DF; --ink-soft: #A6A99C;
+    --line: #333828; --accent: #63A78D; --accent-ink: #0F1712; --accent-2: #E06A2C;
+    --accent-2-soft: #2C2013; --warn-bg: #2C2013; --warn-line: #6B4322;
+    --ok-bg: #1B2A20; --ok-line: #3E5A44; --code-bg: #0E120C; --code-ink: #D7D4C6;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #F2EFE8; --bg-card: #FFFFFF; --ink: #1C1F1A; --ink-soft: #5B5F57;
+    --line: #D8D3C6; --accent: #2E6B57; --accent-ink: #FFFFFF; --accent-2: #C8551A;
+    --accent-2-soft: #FBEDE3; --warn-bg: #FBEDE3; --warn-line: #E0A87A;
+    --ok-bg: #E7F0EA; --ok-line: #9FC0AC; --code-bg: #1A211D; --code-ink: #E4E9E1;
+    --shadow: 0 1px 2px rgba(28,31,26,0.06), 0 4px 14px rgba(28,31,26,0.05);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 48px 24px 96px; }
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; }
+
+  header.top {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 36px;
+  }
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600;
+  }
+  h1 { font-size: 30px; margin: 6px 0 8px; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--ink-soft); font-size: 15px; max-width: 46ch; }
+  .status-pill {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ink);
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .diagram {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 22px 24px; box-shadow: var(--shadow); margin-bottom: 40px;
+  }
+  .diagram-title { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 0 0 16px; text-transform: uppercase; letter-spacing: 0.06em;}
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 18px; }
+  .flow:last-child { margin-bottom: 0; }
+  .flow-node {
+    background: var(--ok-bg); border: 1px solid var(--ok-line); border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; font-weight: 600; text-align: center; color: var(--ink);
+  }
+  .flow-node.dim { background: transparent; border: 1px dashed var(--line); color: var(--ink-soft); font-weight: 500; }
+  .flow-node.accent { background: var(--accent-2-soft); border-color: var(--accent-2); }
+  .flow-arrow { color: var(--ink-soft); font-size: 18px; padding: 0 10px; }
+
+  .steps { position: relative; }
+  .step {
+    position: relative; display: grid; grid-template-columns: 44px 1fr; gap: 20px; padding-bottom: 36px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step-rail { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 15px;
+    flex-shrink: 0; box-shadow: var(--shadow);
+  }
+  .step-line { flex: 1; width: 2px; background: var(--line); margin-top: 4px; }
+  .step:last-child .step-line { display: none; }
+  .step-body { padding-top: 4px; }
+  .step-body h2 { font-size: 18px; margin: 0 0 4px; }
+  .step-tag {
+    display: inline-block; font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    font-size: 11px; letter-spacing: 0.05em; color: var(--ink-soft); margin-bottom: 8px;
+  }
+  .step-card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .step-card p { margin: 0 0 10px; font-size: 14.5px; }
+  .step-card p:last-child { margin-bottom: 0; }
+  .step-card ul { margin: 8px 0 0; padding-left: 20px; font-size: 14.5px; }
+  .step-card li { margin-bottom: 6px; }
+  .step-card li:last-child { margin-bottom: 0; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    background: var(--code-bg); color: var(--code-ink); padding: 2px 7px;
+    border-radius: 5px; font-size: 13px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 12px 14px;
+    border-radius: 8px; overflow-x: auto; font-size: 12.5px; margin: 10px 0 0;
+  }
+  pre code { background: none; padding: 0; }
+
+  .callout {
+    border-left: 3px solid var(--accent-2); background: var(--warn-bg);
+    padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 13.5px; margin-top: 12px;
+  }
+  .callout.ok { border-left-color: var(--accent); background: var(--ok-bg); }
+  .callout strong { display: block; margin-bottom: 2px; }
+
+  table.checklist { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 4px; }
+  table.checklist th, table.checklist td {
+    text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top;
+  }
+  table.checklist th { color: var(--ink-soft); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.checklist tr:last-child td { border-bottom: none; }
+
+  footer.foot {
+    margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+
+  @media (max-width: 560px) {
+    header.top { flex-direction: column; }
+    .flow { flex-direction: column; align-items: flex-start; }
+    .flow-arrow { transform: rotate(90deg); padding: 6px 0; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <div class="eyebrow">Headless SEO</div>
+      <h1>SEO & Analytics Setup Guide</h1>
+      <p class="lede">Where every SEO signal actually lives, how Yoast and GTM/GA4 reach the Next.js frontend, and the one WP screen you need to fill in.</p>
+    </div>
+    <span class="status-pill"><span class="dot"></span>Live &amp; verified</span>
+  </header>
+
+  <div class="diagram">
+    <p class="diagram-title">Per-page SEO — Yoast stays the single source of truth</p>
+    <div class="flow">
+      <div class="flow-node">Admin edits Yoast fields<br><span style="font-size:11px;font-weight:400;">(title, description, social image)</span></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node dim">WP REST<br><code style="font-size:11px;">yoast_head_json</code></div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node accent">Next.js<br>page &lt;head&gt;</div>
+    </div>
+    <p class="diagram-title" style="margin-top:20px;">Site-wide tracking — one settings screen, zero code touches</p>
+    <div class="flow">
+      <div class="flow-node">WP Admin<br>Settings → SEO &amp; Analytics</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node dim">/custom/v1/<br>site-settings</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-node accent">GTM + GA4<br>script tags</div>
+    </div>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">ALREADY WORKS — NO SETUP NEEDED</span>
+        <h2>Per-page SEO stays 100% inside Yoast</h2>
+        <div class="step-card">
+          <p>Nothing changes about how you edit SEO day to day. Open any Page, Post, or Product in wp-admin, scroll to the Yoast box at the bottom, and fill in the SEO title, meta description, and social image exactly like always.</p>
+          <p>The frontend reads this automatically — Yoast attaches a <code>yoast_head_json</code> field to WordPress's own REST API for every page/post/product, and Next.js pulls it at build/request time.</p>
+          <div class="callout ok">
+            <strong>Pages covered right now</strong>
+            Home page, every WP Page (About, Quality, Contact, etc.), and every individual Product Detail page — each gets its own Yoast-driven title, description, canonical URL, and social preview.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">WP ADMIN → SETTINGS → SEO &amp; ANALYTICS</span>
+        <h2>Fill in GTM / GA4 — the one screen that matters</h2>
+        <div class="step-card">
+          <p>This is a new settings page built specifically for this. Three fields:</p>
+          <table class="checklist">
+            <tr><th>Field</th><th>Format</th><th>What it's for</th></tr>
+            <tr><td>GTM Container ID</td><td><code>GTM-XXXXXXX</code></td><td>Loads the full Google Tag Manager snippet on every page</td></tr>
+            <tr><td>GA4 Measurement ID</td><td><code>G-XXXXXXXXXX</code></td><td>Only fill this in if you're NOT routing GA4 through GTM — using both double-fires GA4</td></tr>
+            <tr><td>Default Social Share Image</td><td>Media Library URL</td><td>Fallback image for pages Yoast has nothing set for (see step 4)</td></tr>
+          </table>
+          <div class="callout">
+            <strong>Validation is strict on purpose</strong>
+            Anything that doesn't match the exact <code>GTM-XXXXXXX</code> / <code>G-XXXXXXXXXX</code> pattern is silently rejected on save — a typo can never leak into a live script tag on the storefront.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">AUTOMATIC — NOTHING TO DEPLOY</span>
+        <h2>GTM/GA4 scripts appear the moment you save</h2>
+        <div class="step-card">
+          <p>Those two IDs travel through the <em>existing</em> site-settings API — the same one already fetched on every single page for the header/footer/logo. No extra network round trip, no separate endpoint to maintain.</p>
+          <p>On the Next.js side, the scripts use <code>next/script</code> (Next's own documented pattern for GTM — not a raw <code>&lt;script&gt;</code> tag), and they're fully conditional:</p>
+          <ul>
+            <li>No GTM ID saved → no GTM script renders at all, anywhere</li>
+            <li>No GA4 ID saved → no GA4 script renders</li>
+            <li>Fill either one in → it appears on every page on the next request, automatically</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">4</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">FALLBACK ONLY — YOAST ALWAYS WINS FIRST</span>
+        <h2>Social share image — global fallback, per-page override</h2>
+        <div class="step-card">
+          <p>Priority order, every time a page is shared on Facebook/LinkedIn/etc.:</p>
+          <ol style="margin:8px 0 0;padding-left:20px;font-size:14.5px;">
+            <li>Yoast's own image for that specific page (set in the Yoast box, or auto-picked from the featured image)</li>
+            <li>If Yoast truly has nothing → the Default Social Share Image from step 2</li>
+            <li>If neither exists → no image tag renders (never a broken image link)</li>
+          </ol>
+          <p style="margin-top:10px;">This means you almost never need to touch the default — it only ever shows up for pages nobody has bothered to set a specific image for yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">5</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <span class="step-tag">ALREADY WORKING</span>
+        <h2>Favicon</h2>
+        <div class="step-card">
+          <p>Set once under <strong>WP Admin → Settings → General → Site Icon</strong> — this is the real favicon shown in browser tabs, bookmarks, and mobile home-screen icons, and it's already configured and confirmed live.</p>
+          <div class="callout">
+            <strong>About the "GET /favicon.ico 404" dev log line</strong>
+            Some browsers additionally probe <code>/favicon.ico</code> on your own domain as a legacy habit, separate from the real Site Icon (which lives on the WP domain and is correctly wired via the page's own <code>&lt;link rel="icon"&gt;</code> tag). A code-level fallback icon now exists at <code>/icon.svg</code> for whenever the Site Icon isn't set — but that one specific log line is cosmetic dev-server noise, not something a visitor ever sees.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-rail"><div class="step-num">6</div></div>
+      <div class="step-body">
+        <span class="step-tag">AUTOMATIC — DYNAMIC, NOT STATIC</span>
+        <h2>robots.txt &amp; sitemap.xml</h2>
+        <div class="step-card">
+          <p>Both live at the Next.js root and regenerate from live WordPress data — nothing to edit by hand, ever.</p>
+          <table class="checklist">
+            <tr><th>File</th><th>What's in it</th></tr>
+            <tr><td><code>/robots.txt</code></td><td>Allows everything except <code>/api/</code>, <code>/checkout</code>, <code>/cart</code>, <code>/my-account</code>, and the auth pages — none of those have indexable content of their own</td></tr>
+            <tr><td><code>/sitemap.xml</code></td><td>Every static page, every product category, every part series, and every product — pulled live from WordPress each time it's regenerated (hourly)</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer class="foot">
+    WordPress settings: <span class="mono">wordpress/inc/seo-settings.php</span> ·
+    API extension: <span class="mono">wordpress/inc/api.php</span> (<code>seoAnalytics</code> block on <code>/custom/v1/site-settings</code>) ·
+    Frontend: <span class="mono">src/app/layout.tsx</span>, <span class="mono">src/components/shared_Ui/AnalyticsScripts.tsx</span>, <span class="mono">src/utils/seo.utils.ts</span>
+  </footer>
+
+</div>

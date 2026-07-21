@@ -81,6 +81,10 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | AUTH-11 | Register with certificate + PAST expiry date | Rejected client-side (future-date rule) and server-side (400 "must be a future date") |
 | AUTH-12 | Register with NO certificate and NO expiry | Succeeds — expiry only required when a certificate is attached |
 | AUTH-13 | Register page expiry field | Same segmented MM/DD/YYYY React Aria picker as Documents tab (typing + calendar popover) — not a native date input |
+| AUTH-14 | Register with password identical to the email address (case-insensitive) | Inline error "Password cannot be the same as your email address." on the password field — no account created. Bypassing the client (API POST directly to `/auth/register`) → 400 `password_matches_email` |
+| AUTH-15 | Reset password (forgot-password flow) to a value identical to the account's own email | Server rejects with 400 `password_matches_email` before the password is actually changed |
+| AUTH-16 | My Account → change password to a value identical to the logged-in user's own email | Server rejects with 400 `password_matches_email`; password unchanged |
+| AUTH-17 | Submit the Gravity Forms registration form directly (bypassing the Next.js app) with password identical to the submitted email | GF field validation blocks the submission inline with "Password cannot be the same as your email address." — no WP user created |
 
 ## TC-CART — Cart
 
@@ -138,6 +142,11 @@ Stripe test card: `4242 4242 4242 4242` (any future expiry/CVC). Decline card: `
 | CHK-34 | Logged-in customer opens /checkout twice rapidly (or in React dev StrictMode) | Checkout loads both times — concurrent deduplicated GETs each get a cloned response; NO "Could not load checkout" from a body-already-read empty payload |
 | CHK-35 | Logged-in customer with a stale/expired WC Store API nonce cookie opens /checkout | Checkout loads their cart — proxy recovery drops the stale WC session first (keeping the WP login), then falls back to a clean guest session; never a hard "Checkout unavailable" from a stale cookie |
 | CHK-36 | Force a checkout load failure (stop WP) and read the error banner | Banner shows the upstream message, or "Could not load checkout (code N)" — code 0 = no response reached the browser, otherwise the proxy HTTP status; browser console has `[checkout] state load failed: status=...` |
+| CHK-37 | Change the ZIP code (triggers the 800ms-debounced rate refresh), then click Place Order within that 800ms window before the rate refresh response returns | Header cart badge reads 0 right after the success redirect — the late-arriving rate-refresh response is discarded (order already complete) instead of overwriting the just-cleared cart with the old (pre-order) total/item count |
+| CHK-38 | Select a different shipping rate or apply/remove a coupon in the instant just before clicking Place Order | Same as CHK-37 — the late response is discarded once the order completes; header count stays at 0 |
+| CHK-39 | Logged-in customer places a real card order, then immediately `GET /api/cart` directly (bypassing the UI entirely) | Server itself now returns an empty cart — confirmed live before the fix: order reached "processing" (paid) but the SAME item was still returned by a fresh, cache-busted `/api/cart` call; root cause was WooCommerce restoring the session cart from the customer's `_woocommerce_persistent_cart_{blog_id}` user-meta backup, since `empty_cart()` alone wasn't clearing it in this setup. Fixed by force-clearing both the session cart AND that meta on `woocommerce_payment_complete` (`mmf_force_empty_cart_after_payment` in cart.php) |
+| CHK-40 | Guest places a real card order, then `GET /api/cart` directly afterward | Empty cart — guests have no persistent-cart user meta, so this path was never affected, but confirm no regression |
+| CHK-41 | Decline a card (4000...0002) | `woocommerce_payment_complete` never fires for a declined payment — cart must still be intact after the decline (no regression from the new force-clear hook) |
 
 ## TC-CERT-OPTIN — Product Certification Opt-in (SOW)
 
@@ -154,7 +163,30 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | CERT-07 | Same order in My Account | Certifications tab lists the cert; order detail line item shows the cert download; order history exposes it — all only AFTER shipped/completed |
 | CERT-08 | Place order WITHOUT opt-in (product has a cert file) | NO cert email, NO cert in Certifications tab / order detail / history — opt-in at purchase is the only delivery path (SOW) |
 | CERT-09 | Order with opt-in on product A but not product B (both certifiable) | Only product A's certificate is delivered/downloadable |
-| CERT-10 | Cert-eligible order re-marked completed→processing→completed | "Certificates ready" email sent ONCE (no re-send spam) |
+| CERT-10 | Cert-eligible order re-marked completed→processing→completed | "Certificates ready" email sent ONCE — `_mmf_cert_email_sent` order meta guards every path (admin + webhook) |
+| CERT-11 | Shippo webhook `track_updated` DELIVERED for an order already marked Shipped by admin | Order found (custom-status lookup), auto-completed, NO duplicate email (shipped→completed transition + sent-flag both guard) |
+| CERT-12 | Shippo webhook fails/never fires; admin manually sets Completed or Shipped | Same email + My Account cert flow triggers — status-change hook is the single trigger point, source doesn't matter |
+| CERT-13 | Place order WITH opt-in, then check the order line item immediately (before any status change) | `_mmf_cert_opted_in = 1` already stamped — captured via `rest_request_before_callbacks` fallback even if `woocommerce_store_api_register_update_callback` isn't available on the installed WC version |
+| CERT-14 | WooCommerce → Product Certifications (admin dashboard) after CERT-05 | Row appears with state "Awaiting fulfillment" |
+| CERT-15 | Same order after CERT-06 (email sent) | Row updates to state "Sent" |
+| CERT-16 | Order marked Completed, but the product's `_certificate_file_url` was deleted before completion | Row shows "Missing certificate file"; no email sent (matches CERT-08 behavior) |
+| CERT-17 | Order Completed, opted in, cert file present, but wp_mail() fails (bad SMTP config) | Row shows "Not sent — needs a look"; `_mmf_cert_email_sent` stays unset so the next status change retries the send |
+| CERT-18 | Admin marks any order Shipped, then visits WooCommerce → Orders → All | Order still appears in the All list (previously vanished — `wc-shipped` was never registered via `register_post_status()`, only referenced in a non-existent `woocommerce_register_shop_order_statuses` filter, so WP's default "All" list query didn't recognize it as a real status) |
+| CERT-19 | WooCommerce → Orders — check the status filter tabs at the top | "Shipped" appears as its own tab (right after Processing) with a live count, same as Processing/Completed |
+| CERT-20 | Place a real order opting in to a cert-eligible product (any SKU with a real `_certificate_file_url`), then check WooCommerce → Status → Logs (source `mmf-cert-optin`) | 4 log entries in order: checkout request received (extensions present?), update_callback received, line_item hook (early match check), authoritative fallback hook + per-item match check. Whichever entry shows `false`/empty first pinpoints exactly where the opt-in was dropped — added because a real customer order (opted in, real cert file, order Completed) still showed no certificate, and the Product Certifications dashboard showed zero opt-ins ever recorded |
+
+## TC-CERT-PAID — Paid Certificates mode (future option, default OFF)
+
+Setting: WooCommerce → Settings → Products → **Product Certifications** → "Paid certificates" checkbox (default off).
+
+| ID | Steps | Expected |
+|---|---|---|
+| CPAID-01 | Setting OFF (default) | Checkout cert checkboxes show "Free"; no price field on product edit screen; totals never change on toggle — exact SOW behavior |
+| CPAID-02 | Enable setting → product edit screen | "Certificate price ($)" field appears under the Certificate URL field; blank/0 = free |
+| CPAID-03 | Set price $5 on a cert product → checkout → tick opt-in | Label shows $5.00 (not Free); totals update live with fee line "Certification — {SKU}"; Place Order disabled while totals sync |
+| CPAID-04 | Untick the opt-in | Fee removed, totals revert; on sync failure the checkbox reverts and an error toast shows (UI never disagrees with what WC will charge) |
+| CPAID-05 | Place order with paid cert | Order contains fee line "Certification — {SKU}" at the set price; `_mmf_cert_opted_in` stamped; email/My Account delivery identical to free flow |
+| CPAID-06 | Disable setting again | Prices ignored everywhere (extension emits 0, fee hook no-ops); flow returns to free opt-in — no data lost, `_certificate_price` meta stays for re-enable |
 
 ## TC-COUPON — Coupons
 
@@ -178,11 +210,16 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | TAX-05 | Admin clicks APPROVE in email **while NOT logged in to WP** | Status approved; customer receives branded approval email; branded result page shown (no WP login prompt) |
 | TAX-05b | Admin clicks APPROVE in email while logged in to WP | Same as TAX-05 + link to Tax Certificates dashboard shown on result page |
 | TAX-05c | Admin clicks APPROVE button **twice** (idempotent) | Second click shows "status was already set — no change made"; no duplicate email sent |
-| TAX-06 | Admin changes status via Users → Edit → dropdown → Update | Customer email sent (approved/rejected) — only when status actually changed |
+| TAX-06 | Admin changes status via Users → Edit → dropdown → Update | Customer email sent (approved/rejected) — only when status actually changed; Net 30 auto-enabled on approval |
+| TAX-06b | Admin approves via Tax Certificates dashboard quick-approve button (GET link) | Customer email sent; Net 30 auto-enabled; settings notice reads "Customer notified and Net 30 enabled" |
+| TAX-06c | Admin approves via full-edit form (Tax Certs → Edit → Status → Save) | Customer email sent only if status changed from previous; Net 30 auto-enabled |
+| TAX-06d | Admin approves via PATCH REST (inline table save) | Customer email sent; Net 30 auto-enabled |
+| TAX-06e | Admin rejects via any admin path | Customer rejection email sent; Net 30 NOT disabled (existing eligibility preserved) |
 | TAX-07 | Approved + valid expiry → place order | Tax = $0 at checkout (WC/TaxJar exempt) |
 | TAX-07b | Approved cert whose expiry date has PASSED (or set expiry to yesterday via admin) → checkout with taxable address (e.g. MI) | Tax IS charged — exempt flag re-syncs live on every totals calculation, even mid-session without re-login |
 | TAX-07c | Cert expires while user stays logged in; admin then re-approves with future expiry | Next cart/checkout recalculation returns to $0 tax — no logout/login needed |
-| TAX-08 | Expiry within 30 days (set via admin) | Daily cron sends "expires soon" email once; banner shows "about to expire" |
+| TAX-08 | Expiry within 30 days but more than 3 days (set via admin) | Daily cron sends "expires soon" email once (yellow heading); separate 3-day email not yet sent; banner shows "about to expire" |
+| TAX-08b | Expiry within 3 days (set via admin) | Daily cron sends URGENT "Expiring in 3 Days" email (red heading, "Renew Certificate Now" CTA); flag `mmf_tax_reminder_expiring_3day` prevents re-send; 30-day email (different flag) may also have fired earlier |
 | TAX-09 | Certificate URL from another user's account (logged in as user B) | 403 — download is owner-or-admin only |
 | TAX-10 | Certificate attachment via /wp-json/wp/v2/media (logged out) | Not listed (private post status) |
 | TAX-11 | Approve link from email older than 14 days | "Invalid or expired action link. Please ask the customer to re-submit..." — 403 response |
@@ -190,8 +227,14 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | TAX-13 | Reject URL used to approve (swap `do=reject` → `do=approve`) | 403 — action is part of the HMAC; tampered token fails |
 | TAX-14 | Cert uploaded at registration → admin email received | Admin email arrives within ~30s with Approve/Reject buttons and cert download link |
 | TAX-15 | Cert uploaded from Documents tab → admin email received | Same as TAX-14 |
-| TAX-16 | Expiry reminder email (≤30 days) | HTML email with yellow heading, "Renew Certificate" CTA button, only sent once per expiry date |
-| TAX-17 | Expired reminder email (<0 days) | HTML email with red heading, "Upload New Certificate" CTA, only sent once per expiry date |
+| TAX-16 | Expiry reminder email (4–30 days out) | HTML email with yellow heading, "Renew Certificate" CTA; flag `mmf_tax_reminder_expiring` prevents duplicate for same expiry date |
+| TAX-16b | Expiry reminder email (≤3 days out) | URGENT red-heading email ("Certificate Expiring in 3 Days"); flag `mmf_tax_reminder_expiring_3day` separate from 30-day flag — both emails fire for the same cert at different thresholds |
+| TAX-17 | Expired reminder email (<0 days) | HTML email with red heading, "Upload New Certificate" CTA; flag `mmf_tax_reminder_expired` prevents duplicate |
+| TAX-17b | Admin approves a certificate whose expiry date is already ≤3 days away (or already past) — via ANY of the 6 approval paths | The matching reminder email (3-day urgent, or expired) fires immediately in that same request — does NOT wait for the next day's cron tick |
+| TAX-17c | Admin approves a cert with expiry >3 days away, then the daily cron runs later for the same user | Cron sees the reminder flag is unset for that expiry date and sends normally — the immediate check at approval time and the cron never double-send (same de-dupe flags, whichever runs first wins) |
+| TAX-17d | Certificate expiry set to exactly 0, 1, 2, or 3 days from today (each tested separately) | `$days_left <= 3` catches all four — 3-day urgent reminder fires for every one of them, not just 3 |
+| TAX-18 | WooCommerce → Tax Exemption Emails (admin page) after any reminder sends | Row appears: customer, reminder type (30-Day Notice / 3-Day Urgent / Expired), days left at send, certificate expiry, exact subject line, sent timestamp — most recent first |
+| TAX-19 | Same certificate later renewed with a new expiry, reminders fire again | New log rows appear alongside the old ones — the log is a history, never overwritten (unlike the de-dupe meta flags, which do get reset on renewal) |
 | TAX-18 | GF admin notification with `{mmf_approve_url}`/`{mmf_reject_url}` | Tags replaced with working HMAC-signed URLs (contain `admin-post.php?action=mmf_tax_cert_action&token=`) |
 | TAX-19 | GF notification when WP user not yet created (pending activation) | Tags fall back to Tax Certificates dashboard URL — no broken/empty link |
 | TAX-20 | All code-sent tax emails (approve/reject/reminders) | Use shared template: logo header, white card on #F9F9F9, #CC9900 footer with current year — matches GF notification design |
@@ -207,6 +250,12 @@ Setup (WP admin, per certifiable product): on the PHYSICAL product, set the cust
 | N30-04 | Place Net 30 order | No Stripe call; success page shows "Net 30 — Purchase Order Terms"; WC order Processing with COD method |
 | N30-05 | Toggle off → customer's next checkout | Net 30 gone immediately |
 | N30-06 | Non-admin hits the toggle AJAX endpoint directly | 403 (capability + nonce) |
+| N30-07 | Admin approves tax cert via Approve/Reject button in email | `mmf_net30_eligible = yes` automatically set; customer's next checkout shows Net 30 option |
+| N30-08 | Admin approves via Tax Certificates dashboard quick-approve button | Same: Net 30 enabled without needing the manual toggle |
+| N30-09 | Admin approves via full-edit form (Tax Certificates → Edit) | Same: Net 30 enabled |
+| N30-10 | Admin approves via PATCH REST (JS inline save in the table) | Same: Net 30 enabled |
+| N30-11 | Admin approves via Users → Edit → Status dropdown → Update | Same: Net 30 enabled |
+| N30-12 | Admin rejects a certificate | Net 30 NOT enabled; existing Net 30 eligibility unchanged |
 
 ## TC-DOC — Tax Exemption Date Picker
 
@@ -304,6 +353,12 @@ address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
 | SHIP-08 | Order detail API as a DIFFERENT logged-in user | 403 — tracking numbers never leak across accounts |
 | SHIP-09 | Product missing weight or dimensions | No live rate for it — fix product data (import warns); checkout code is not the bug |
 | SHIP-10 | Order without tracking yet (processing) | No "Shipment Tracking" section — appears only once tracking exists |
+| SHIP-11 | Place order → check Shippo dashboard within ~10 s | The order appears in Shippo with Package fields pre-filled (dims + weight); no "Package info required" error |
+| SHIP-12 | Place order → wp-admin WC order meta | `_mmf_shippo_shipment_id` set on the order (visible under Custom Fields or via WC order meta) |
+| SHIP-13 | Place order a second time with same order (re-trigger hook manually) | `_mmf_shippo_shipment_id` already exists → skip logged; no duplicate Shipment created |
+| SHIP-14 | Place order where a product has no weight | Shipment creation skipped; warning in WC → Status → Logs (source: mmf-shippo-sync) |
+| SHIP-15 | Place order where a product has weight but no dims | Shipment created with `1×1×1 in` placeholder; warning in logs; admin sees package weight in Shippo |
+| SHIP-16 | WC store address incomplete (no city or zip) | Shipment creation skipped with warning; existing checkout flow unaffected |
 
 ## TC-SET — WooCommerce Settings Reactivity
 
@@ -324,6 +379,32 @@ address set. Full setup + flow: [shippo-guide.md](shippo-guide.md).
 | PERF-04 | Type in search box repeatedly (same query) | Repeat lookups return fast (30s per-query micro-cache + shared 60s CDN cache); results still fresh within ~1 min of WP changes |
 | PERF-05 | Load any page twice | `/api/menu` served from cache on repeat (5-min TTL); menu edits appear within 5 min in prod, instantly in dev |
 | PERF-06 | Place order end-to-end (Stripe test card) | Order succeeds — place-order also uses the single-round-trip fast path |
+| PERF-07 | Visit `/product` (main catalog listing, not a category/series page) | Renders without an extra sequential wait — the redirect-slug check now reads only `fetchSiteSettings()` instead of the full 4-way shell bundle (menu+footer+auth+settings), so `CatalogListingPage`'s own fetch starts as soon as settings resolve instead of waiting on menu/footer/auth too |
+| PERF-08 | On any catalog listing page, click pagination page 2, then immediately click page 3 before page 2's data returns | Only page 3's data ever renders — the page-2 request is aborted (`AbortController`, not just a discarded response), so it doesn't keep running on the network after being superseded |
+| PERF-09 | Same rapid-click test on a sidebar series link (client-side series switch) | Same — the superseded series request is aborted, not just ignored |
+| PERF-10 | `next build` | `optimizePackageImports` (lucide-react, react-icons, @tanstack/react-table) trims those packages to only the specific icons/modules each page actually imports instead of the full barrel file |
+
+## TC-SEO-PERF — SEO & Core Web Vitals Compliance
+
+| ID | Steps | Expected |
+|---|---|---|
+| SEOP-01 | View source on `/product-category/*` | `<title>` and meta description are category-specific ("Cap Nuts \| Midwest Military Fasteners"), not the site-wide default — previously these listing pages had no `generateMetadata` at all |
+| SEOP-02 | Same for `/product-series/*` (the rare non-redirected fallback case, series not attached to a sidebar category) | Series-specific title/description |
+| SEOP-03 | View source on any page's `<head>` | `<link rel="preconnect" href="https://use.typekit.net">` appears before the Typekit stylesheet link — mitigates the FOUT/connection-latency cost of a third-party font service that can't be moved to `next/font` (Adobe Fonts kit, not self-hostable without a license check) |
+| SEOP-04 | Breadcrumb links (any catalog/product page) | Now prefetch on hover/viewport like every other nav link — previously had `prefetch={false}` with no stated reason |
+
+## TC-BANNER — Shared "Banner Area" Page Banner
+
+| ID | Steps | Expected |
+|---|---|---|
+| BAN-01 | About page, Quality page | Both render the same hero banner markup (now via the shared `PageBanner` component) — no visual change from before |
+| BAN-02 | WP Admin → Custom Fields → Banner Area → Location Rules → add "About" and/or "Quality" page | Those pages' banners now read from the shared `about_heading`/`sub_heading`/`banner_image` fields instead of their old separate ones — no code change needed |
+| BAN-03 | Any page in the Banner Area group's Location Rules (e.g. Privacy Policy, Terms & Conditions) with the ACF "Heading" field left BLANK | Banner shows the WordPress page title instead — resolved server-side (`mmf_get_page_banner_fields()` in api.php), never blank |
+| BAN-04 | Same page with the ACF "Heading" field filled in | Banner shows that custom heading, not the page title |
+| BAN-05 | Privacy Policy / Terms & Conditions pages | Now render the full banner (image + heading + sub-heading) via `/wp/v2/pages`'s new `mmf_banner` field — previously these pages had ACF banner fields available but nothing on the frontend rendered them at all |
+| BAN-06 | Add a brand-new page to the Banner Area group's Location Rules (not About/Quality/Privacy/Terms) | Its `/wp/v2/pages` response automatically includes `mmf_banner` — no new endpoint or Next.js code required, matching the "future pages just work" requirement |
+| BAN-07 | Quality page whose banner still uses the OLD `banner_heading` field (not yet migrated to the shared `about_heading`) | Falls back to `banner_heading` before falling back to the page title — no visual regression until the admin re-saves the page under the shared field |
+| BAN-08 | Any page in the Banner Area group with NO banner image uploaded | Solid navy (`#1A3659`, the site's header-bar blue) background instead of the previous generic dark gray |
 
 ## TC-SEC — Security Regression (run after ANY auth/upload/API change)
 

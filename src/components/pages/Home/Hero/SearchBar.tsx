@@ -14,12 +14,16 @@ import { FaMagnifyingGlass } from "react-icons/fa6";
 import GlobalSearchDropdown from "@/components/shared_Ui/GlobalSearchDropdown";
 import { SEARCH_PLACEHOLDER } from "@/data/hero.data";
 import { useGlobalSearch } from "@/hooks/use-global-search";
+import { useSiteConfig } from "@/components/providers/SiteConfigProvider";
 import { SearchBarProps } from "@/types/hero.types";
 
 export default function SearchBar({
   placeholder = SEARCH_PLACEHOLDER,
 }: SearchBarProps) {
   const router = useRouter();
+  // The catalog listing lives at the WC Shop page path (site config), and the
+  // listing filters by the `search` query param — never a hardcoded route.
+  const { catalogListingPath } = useSiteConfig();
 
   // Home hero search: products, product categories, and part series only.
   // The header search stays global (pages + products + everything).
@@ -35,8 +39,18 @@ export default function SearchBar({
 
   function handleSearch() {
     const trimmed = query.trim();
-    if (!trimmed) return;
-    router.push(`/catalog?q=${encodeURIComponent(trimmed)}`);
+    // Close the suggestion dropdown before navigating — matches HeaderSearch;
+    // defensive here too in case the navigation is ever slow enough to show
+    // the stale dropdown for a frame.
+    setIsOpen(false);
+    // WordPress standard: an empty search term is simply no filter at all —
+    // WP_Query skips the search clause entirely when `s` is empty, showing
+    // everything rather than an error. Match that here.
+    router.push(
+      trimmed
+        ? `${catalogListingPath}?search=${encodeURIComponent(trimmed)}`
+        : catalogListingPath
+    );
   }
 
   return (

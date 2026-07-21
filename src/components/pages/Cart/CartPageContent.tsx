@@ -3,7 +3,7 @@
  * Description: Dynamic cart table — Figma columns, qty field, responsive layout.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-13
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -27,7 +27,7 @@ function CartCheckoutButton() {
   return (
     <Link
       href="/checkout"
-      className="inline-flex w-auto items-center justify-center gap-2.5 bg-amber px-5 lg:px-[30px] py-3.5 text-[18px] md:text-[20px] font-condensed font-bold leading-none uppercase text-white transition-colors hover:bg-blue"
+       className="inline-flex w-auto items-center justify-center gap-2.5 bg-amber px-5 lg:px-[30px] py-3.5 text-[18px] md:text-[20px] font-condensed font-bold leading-none uppercase text-white transition-colors hover:bg-blue"
     >
       Checkout
       <FaChevronRight size={12} aria-hidden="true" />

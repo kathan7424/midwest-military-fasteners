@@ -9,7 +9,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, DownloadCloud, Truck } from "lucide-react";
+import { ArrowLeft, DownloadCloud, Truck } from "lucide-react";
 
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import {

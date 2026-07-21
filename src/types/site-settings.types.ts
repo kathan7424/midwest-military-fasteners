@@ -44,11 +44,18 @@ export interface FooterSettings {
   build_by_link: LinkField | null;
 }
 
+export interface SeoAnalyticsSettings {
+  gtm_id: string;
+  ga4_id: string;
+  default_og_image: string;
+}
+
 export interface SiteSettings {
   branding: BrandingSettings;
   header: HeaderSettings;
   footer: FooterSettings;
   woocommerce?: WooCommerceSettings;
+  seoAnalytics?: SeoAnalyticsSettings;
 }
 
 export interface WooCommerceSettings {

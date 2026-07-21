@@ -3,7 +3,7 @@
  * Description: Shared search suggestion dropdown for header and hero.
  * Developer: KP-184
  * Created Date: 2026-07-06
- * Last Modified: 2026-07-06
+ * Last Modified: 2026-07-21
  */
 
 "use client";

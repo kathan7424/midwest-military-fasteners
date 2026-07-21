@@ -45,9 +45,28 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
       },
     });
-  } catch (error) {
-    console.error("Search API Error:", error);
+  } catch {
+    // One retry — a cold Pantheon dev backend or a momentary blip fails the
+    // first request often enough that it's worth a single extra attempt
+    // before giving up.
+    try {
+      const results = await fetchSearchResults(query, 15, scope);
+      return NextResponse.json(results, {
+        headers: {
+          "Cache-Control": "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+        },
+      });
+    } catch (error) {
+      console.error("Search API Error:", error);
 
-    return NextResponse.json({ error: "Search fetch failed" }, { status: 500 });
+      // Suggestions are cosmetic — a failed lookup should show "no results",
+      // never a console error. Degrade to an empty response instead of 500.
+      return NextResponse.json({
+        query,
+        posts: [],
+        terms: [],
+        total: { posts: 0, terms: 0 },
+      });
+    }
   }
 }

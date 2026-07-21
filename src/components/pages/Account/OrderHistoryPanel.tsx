@@ -11,7 +11,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Download, DownloadCloud } from "lucide-react";
+import { DownloadCloud } from "lucide-react";
 
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import { map_product_spec_href } from "@/utils/spec-parts.utils";

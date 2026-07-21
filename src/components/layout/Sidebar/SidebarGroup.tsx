@@ -21,12 +21,14 @@ interface SidebarGroupProps {
   group: SidebarGroupData;
   activeGroupId?: string;
   activeSeriesId?: string;
+  onSeriesSelect?: (seriesId: string, href: string) => boolean;
 }
 
 export default function SidebarGroup({
   group,
   activeGroupId,
   activeSeriesId,
+  onSeriesSelect,
 }: SidebarGroupProps) {
   const hasSeries = group.series.length > 0;
   const isActiveGroup = group.id === activeGroupId;
@@ -74,6 +76,7 @@ export default function SidebarGroup({
               key={series.id}
               series={series}
               active={series.id === activeSeriesId}
+              onSeriesSelect={onSeriesSelect}
             />
           ))}
         </ul>

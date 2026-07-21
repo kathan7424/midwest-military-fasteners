@@ -7,6 +7,7 @@
  * Created Date: 2026-07-07
  */
 
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { ProductDetailPage } from "@/components/pages/ProductDetail";
@@ -16,11 +17,13 @@ import {
   fetch_spec_parts_product_by_sku,
   fetch_spec_parts_products,
 } from "@/services/spec-parts.service";
+import { fetchYoastBySlug } from "@/services/seo.service";
 import { fetchSiteSettings } from "@/services/site-settings.service";
 import { isUserLoggedIn } from "@/services/auth.service";
 import { build_product_path } from "@/utils/catalog-url.utils";
 import { get_catalog_listing_path } from "@/utils/catalog-path.utils";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
+import { buildYoastMetadata } from "@/utils/seo.utils";
 
 export const revalidate = 300;
 export const dynamicParams = true;
@@ -82,6 +85,25 @@ async function render_product_detail(slug: string) {
       showTierPricing={logged_in}
     />
   );
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { segments } = await params;
+
+  if (segments?.length !== 1) {
+    // Legacy 2-segment route just 301s to the canonical slug URL — nothing
+    // renders there, so metadata doesn't matter for it.
+    return {};
+  }
+
+  const [yoast, settings] = await Promise.all([
+    fetchYoastBySlug(decodeURIComponent(segments[0]), "product").catch(
+      () => null
+    ),
+    fetchSiteSettings().catch(() => null),
+  ]);
+
+  return buildYoastMetadata(yoast, settings?.seoAnalytics?.default_og_image);
 }
 
 export default async function Page({ params }: Props) {

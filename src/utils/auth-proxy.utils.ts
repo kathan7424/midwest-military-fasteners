@@ -51,6 +51,27 @@ export function clearWcSessionCookies(response: NextResponse): void {
 }
 
 /**
+ * Forward every Set-Cookie header from a WP response individually.
+ *
+ * Headers.prototype.forEach combines multiple Set-Cookie values into one
+ * comma-joined string, which corrupts cookies whose own value contains a
+ * comma (every cookie's Expires attribute does: "Expires=Thu, 21-Aug-2026...").
+ * getSetCookie() (WHATWG Fetch / Node.js 18.14+) returns each header
+ * separately — critical here since login/logout can set several cookies
+ * (WP auth cookie pair + WC session cookies) in the same response.
+ */
+function forwardSetCookieHeaders(from: Response, to: NextResponse): void {
+  const h = from.headers as Headers & { getSetCookie?: () => string[] };
+  const cookies =
+    typeof h.getSetCookie === "function"
+      ? h.getSetCookie()
+      : (from.headers.get("set-cookie") ?? "").split(/,(?=[^ ])/);
+  for (const c of cookies) {
+    if (c.trim()) to.headers.append("set-cookie", c.trim());
+  }
+}
+
+/**
  * Build a Next.js response from a WordPress fetch, forwarding Set-Cookie headers.
  */
 export async function buildProxiedResponse(
@@ -61,11 +82,7 @@ export async function buildProxiedResponse(
 
   const response = NextResponse.json(data, { status: wpResponse.status });
 
-  wpResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") {
-      response.headers.append("set-cookie", value);
-    }
-  });
+  forwardSetCookieHeaders(wpResponse, response);
 
   if (options.clearWcSession) {
     clearWcSessionCookies(response);

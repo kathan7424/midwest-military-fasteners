@@ -52,7 +52,7 @@
 
   /* --- Line Heights (from Figma) --- */
   --leading-heading:  1.1;    /* 110% — H1, H2, H3, H4 */
-  --leading-section:  1.2;    /* 120% — section titles*/
+  --leading-section:  1.2;    /* 120% — section titles, body */
   --leading-body:     1.5;   /* 150% — body text*/
   --leading-nav:      1.97;   /* 197% — nav links, category labels */
 
@@ -97,7 +97,7 @@
     color: var(--color-blue);
     transition: 0.3s;
   }
-  a:hover {
+   a:hover {
     color:var(--color-amber)
   }
 
@@ -133,7 +133,7 @@
   /* --- Base body --- */
   body {
     background: var(--color-white);
-    color: var(--color-black);
+   color: var(--color-black);
     font-family: var(--font-sans);
     font-size: var(--text-link);
     line-height: var(--leading-body);
