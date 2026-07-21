@@ -62,7 +62,7 @@ export default function CartPageView({ sidebarCategories, couponsEnabled, isLogg
 
           <CartPageContent couponsEnabled={couponsEnabled} />
 
-          <IsoSection align="left" className="mt-auto pb-[18px] pt-10" />
+          <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
         </main>
       </div>
     </div>

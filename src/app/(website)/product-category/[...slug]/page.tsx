@@ -5,6 +5,7 @@
  * Created Date: 2026-07-07
  */
 
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ProductPage } from "@/components/pages/Product";
@@ -14,6 +15,7 @@ import {
   fetch_spec_parts_category_by_slug,
   fetch_spec_parts_products,
 } from "@/services/spec-parts.service";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 import {
   find_spec_parts_category,
   build_catalog_breadcrumb,
@@ -21,9 +23,48 @@ import {
 } from "@/utils/catalog-page.utils";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
 import { isUserLoggedIn } from "@/services/auth.service";
+import { decodeHtmlEntities } from "@/utils/text.utils";
 
 export const revalidate = 300;
 export const dynamicParams = true;
+
+type MetadataProps = {
+  params: Promise<{ slug: string[] }>;
+};
+
+export async function generateMetadata({
+  params,
+}: MetadataProps): Promise<Metadata> {
+  const { slug } = await params;
+  const active_category_slug = slug[slug.length - 1];
+
+  const [category, settings] = await Promise.all([
+    fetch_spec_parts_category_by_slug(active_category_slug).catch(() => null),
+    fetchSiteSettings().catch(() => null),
+  ]);
+
+  if (!category) {
+    return {};
+  }
+
+  const site_name = settings?.branding.site_title || "Midwest Military Fasteners";
+  const name = decodeHtmlEntities(category.name);
+  const title = `${name} | ${site_name}`;
+  const description = category.description
+    ? decodeHtmlEntities(category.description)
+    : `Shop ${name} at ${site_name} — genuine, certified fasteners.`;
+  const ogImage = category.image || settings?.seoAnalytics?.default_og_image;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(ogImage && { images: [{ url: ogImage }] }),
+    },
+  };
+}
 
 export async function generateStaticParams() {
   try {

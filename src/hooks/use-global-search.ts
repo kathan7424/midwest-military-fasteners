@@ -14,24 +14,14 @@ import { SearchSuggestion } from "@/types/hero.types";
 import { SearchApiResponse } from "@/types/search.types";
 import { decodeHtmlEntities } from "@/utils/text.utils";
 import { normalizeWpUrl } from "@/utils/url.utils";
-
-const TYPE_LABELS: Record<string, string> = {
-  product: "Product",
-  page: "Page",
-  post: "Post",
-};
-
-const TAXONOMY_LABELS: Record<string, string> = {
-  category: "Category",
-  post_tag: "Tag",
-  product_cat: "Category",
-  product_tag: "Tag",
-};
+import { SEARCH_TYPE_LABELS, get_search_taxonomy_label } from "@/utils/search.utils";
 
 function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
   const posts: SearchSuggestion[] = data.posts.map((post) => ({
     id: `post-${post.id}`,
-    code: decodeHtmlEntities(post.product?.sku || TYPE_LABELS[post.type] || post.type),
+    code: decodeHtmlEntities(
+      post.product?.sku || SEARCH_TYPE_LABELS[post.type] || post.type
+    ),
     title: decodeHtmlEntities(post.title),
     url: normalizeWpUrl(post.url),
     type:
@@ -42,7 +32,7 @@ function mapSearchResponse(data: SearchApiResponse): SearchSuggestion[] {
 
   const terms: SearchSuggestion[] = data.terms.map((term) => ({
     id: `term-${term.id}-${term.taxonomy}`,
-    code: TAXONOMY_LABELS[term.taxonomy] || "Term",
+    code: get_search_taxonomy_label(term.taxonomy),
     title: decodeHtmlEntities(term.name),
     url: normalizeWpUrl(term.url),
     type: "term",

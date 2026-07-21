@@ -109,7 +109,7 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
 
   return (
     <div className="relative mx-auto w-full overflow-x-clip px-5 py-6 xl:px-5 xl:py-[30px]">
-      <div className="flex flex-col gap-8 lg:flex-row h-full">
+      <div className="flex flex-col gap-8 lg:flex-row">
         {/* Sidebar — Figma design: top 6px blue border, neutral-50 bg */}
         <aside className="h-fit w-full shrink-0 border-t-[6px] border-[#336699] bg-neutral-50 px-[27px] pb-[27px] pt-[23px] lg:w-[295px]">
           <h2 className="mb-[18px] text-xl font-bold text-[#14151c]">My Account</h2>
@@ -206,7 +206,7 @@ export default function MyAccountView({ user }: { user: AccountUser | null }) {
               {section === "documents" ? <TaxDocumentsPanel /> : null}
             </>
           )}
-           <IsoSection align="left" className="mt-auto pb-[18px] pt-10" />
+           <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
         </main>
       </div>
     </div>

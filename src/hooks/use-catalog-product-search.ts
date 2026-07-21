@@ -56,8 +56,22 @@ export function useCatalogProductSearch({
   const [tablePage, setTablePage] = useState(currentPage);
   const [tableTotalPages, setTableTotalPages] = useState(totalPages);
   const [isSearching, setIsSearching] = useState(false);
+  const [activeSeriesSlug, setActiveSeriesSlug] = useState(seriesSlug);
   const requestIdRef = useRef(0);
   const skipInitialFetchRef = useRef(true);
+  // Pagination/series-switch fetches previously had no AbortController — a
+  // superseded request (rapid page clicks) still ran to completion on the
+  // network even though its response was discarded via requestIdRef. Reused
+  // here the same way the search-as-you-type effect already does it.
+  const pagingAbortRef = useRef<AbortController | null>(null);
+
+  // Adopt a new series from the URL (e.g. direct link / browser back) when it
+  // changes and wasn't just set by our own client-side switch.
+  const [prevSeriesSlug, setPrevSeriesSlug] = useState(seriesSlug);
+  if (prevSeriesSlug !== seriesSlug) {
+    setPrevSeriesSlug(seriesSlug);
+    setActiveSeriesSlug(seriesSlug);
+  }
 
   useEffect(() => {
     skipInitialFetchRef.current = true;
@@ -120,6 +134,10 @@ export function useCatalogProductSearch({
 
   const handlePageChange = useCallback(
     (page: number) => {
+      pagingAbortRef.current?.abort();
+      const controller = new AbortController();
+      pagingAbortRef.current = controller;
+
       const requestId = ++requestIdRef.current;
       setIsPaging(true);
 
@@ -137,9 +155,10 @@ export function useCatalogProductSearch({
       fetch_catalog_products_client({
         search: debouncedSearch.trim() || undefined,
         category: categorySlug,
-        series: seriesSlug,
+        series: activeSeriesSlug,
         page,
         per_page: 10,
+        signal: controller.signal,
       })
         .then((response) => {
           if (requestId !== requestIdRef.current) {
@@ -154,6 +173,9 @@ export function useCatalogProductSearch({
           window.scrollTo({ top: 0, behavior: "smooth" });
         })
         .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
           console.error("Catalog pagination failed:", error);
         })
         .finally(() => {
@@ -162,7 +184,58 @@ export function useCatalogProductSearch({
           }
         });
     },
-    [pathname, debouncedSearch, categorySlug, seriesSlug]
+    [pathname, debouncedSearch, categorySlug, activeSeriesSlug]
+  );
+
+  // Client-side series switch (sidebar series links within the SAME category):
+  // same fast pattern as pagination — no full page navigation, just a scoped
+  // catalog API fetch + pushState. Only valid when the target series belongs
+  // to the current category page; the Sidebar caller is responsible for that
+  // check (a different category still does a real navigation).
+  const handleSeriesChange = useCallback(
+    (nextSeriesSlug: string | undefined, href: string) => {
+      pagingAbortRef.current?.abort();
+      const controller = new AbortController();
+      pagingAbortRef.current = controller;
+
+      const requestId = ++requestIdRef.current;
+      setIsPaging(true);
+      setActiveSeriesSlug(nextSeriesSlug);
+      window.history.pushState(null, "", href);
+
+      fetch_catalog_products_client({
+        search: debouncedSearch.trim() || undefined,
+        category: categorySlug,
+        series: nextSeriesSlug,
+        page: 1,
+        per_page: 10,
+        signal: controller.signal,
+      })
+        .then((response) => {
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+
+          setTableProducts(
+            response.products.map(map_spec_parts_product_to_table_product)
+          );
+          setTablePage(response.page);
+          setTableTotalPages(response.pages);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        })
+        .catch((error) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          console.error("Catalog series switch failed:", error);
+        })
+        .finally(() => {
+          if (requestId === requestIdRef.current) {
+            setIsPaging(false);
+          }
+        });
+    },
+    [debouncedSearch, categorySlug]
   );
 
   useEffect(() => {
@@ -189,7 +262,7 @@ export function useCatalogProductSearch({
     fetch_catalog_products_client({
       search: query,
       category: categorySlug,
-      series: seriesSlug,
+      series: activeSeriesSlug,
       page: 1,
       per_page: 10,
       signal: controller.signal,
@@ -221,7 +294,7 @@ export function useCatalogProductSearch({
     return () => {
       controller.abort();
     };
-  }, [debouncedSearch, categorySlug, seriesSlug, pathname, initialSearch]);
+  }, [debouncedSearch, categorySlug, activeSeriesSlug, pathname, initialSearch]);
 
   const isPendingSearch =
     filter.trim() !== "" &&
@@ -235,6 +308,8 @@ export function useCatalogProductSearch({
     filter,
     handleFilterChange,
     handlePageChange,
+    handleSeriesChange,
+    activeSeriesSlug,
     visibleProducts,
     tablePage,
     tableTotalPages,

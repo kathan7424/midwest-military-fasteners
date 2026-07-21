@@ -8,7 +8,7 @@
 import { permanentRedirect } from "next/navigation";
 
 import CatalogListingPage from "@/components/pages/Product/CatalogListingPage";
-import { getWebsiteShellData } from "@/services/shell-data.service";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 import {
   build_catalog_listing_url,
   get_catalog_listing_path,
@@ -24,8 +24,15 @@ type Props = {
 
 export default async function Page({ searchParams }: Props) {
   const params = await searchParams;
-  const shell = await getWebsiteShellData();
-  const catalog_path = get_catalog_listing_path(shell.settings?.woocommerce);
+  // Only the WC shop-page-slug setting is needed for the redirect check —
+  // fetching the full shell bundle (menu + footer + auth, via
+  // getWebsiteShellData) here would block CatalogListingPage's own
+  // Promise.all from starting until all four resolved, even though it only
+  // needs settings itself. React.cache() means this is the same in-flight
+  // settings fetch the layout and CatalogListingPage already use — no extra
+  // network call, just a narrower dependency before rendering the catalog.
+  const settings = await fetchSiteSettings().catch(() => null);
+  const catalog_path = get_catalog_listing_path(settings?.woocommerce);
 
   if (catalog_path !== "/product") {
     permanentRedirect(

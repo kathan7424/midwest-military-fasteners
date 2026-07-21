@@ -10,7 +10,7 @@
 
  * Created Date: 2026-06-26
 
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
 
  */
 
@@ -154,6 +154,10 @@ export default function ProductPage({
 
     handlePageChange,
 
+    handleSeriesChange,
+
+    activeSeriesSlug,
+
     visibleProducts,
 
     tablePage,
@@ -181,6 +185,24 @@ export default function ProductPage({
     pathname,
 
   });
+
+  // Sidebar series links within the SAME category page switch instantly via
+  // the client-side catalog fetch (same fast path as pagination/search) —
+  // no full server round-trip re-fetching sidebar/settings/auth for a filter
+  // that only ever changes the product list. A series belonging to a
+  // DIFFERENT category still falls through to a real <Link> navigation.
+  const handleSidebarSeriesSelect = (seriesId: string, href: string): boolean => {
+    // get_category_slug_from_pathname expects a pathname (no query string) —
+    // strip it here since series hrefs carry ?series=... on the same segment.
+    const target_category = get_category_slug_from_pathname(href.split("?")[0] ?? href);
+
+    if (!categorySlug || target_category !== categorySlug) {
+      return false;
+    }
+
+    handleSeriesChange(seriesId, href);
+    return true;
+  };
 
 
 
@@ -242,7 +264,9 @@ export default function ProductPage({
 
             activeGroupId={categorySlug}
 
-            activeSeriesId={seriesSlug}
+            activeSeriesId={activeSeriesSlug}
+
+            onSeriesSelect={handleSidebarSeriesSelect}
 
           />
 
@@ -296,7 +320,9 @@ export default function ProductPage({
 
                   activeGroupId={categorySlug}
 
-                  activeSeriesId={seriesSlug}
+                  activeSeriesId={activeSeriesSlug}
+
+                  onSeriesSelect={handleSidebarSeriesSelect}
 
                 />
 
@@ -361,7 +387,7 @@ export default function ProductPage({
 
 
 
-          <div className="relative mb-4">
+          <div className="relative mb-4 w-full max-w-[506px]">
 
             <input
 
@@ -516,7 +542,7 @@ export default function ProductPage({
 
           {/* ISO */}
 
-          <IsoSection align="left" className="mt-auto pb-[18px]" />
+           <IsoSection align="left" className="mt-auto pb-2.5" />
 
         </main>
 

@@ -17,11 +17,13 @@ import {
   INPUT_ERROR_CLASS,
   LABEL_CLASS,
 } from "@/components/shared_Ui/form-styles";
+import PasswordField from "@/components/shared_Ui/PasswordField";
 import SkeletonBlock from "@/components/shared_Ui/skeletons/SkeletonBlock";
 import {
   change_password,
   update_account_details,
 } from "@/services/account.client";
+import { notifyError, notifySuccess } from "@/utils/notifications";
 
 function FieldError({ message }: { message: string }) {
   if (!message) return null;
@@ -45,10 +47,6 @@ export default function AccountDetailsPanel({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [detailsMessage, setDetailsMessage] = useState("");
-  const [detailsError, setDetailsError] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState("");
-  const [passwordError, setPasswordError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   if (!user) {
@@ -77,8 +75,6 @@ export default function AccountDetailsPanel({
 
   const handleSaveDetails = async (event: React.FormEvent) => {
     event.preventDefault();
-    setDetailsMessage("");
-    setDetailsError("");
 
     if (!validateDetails()) return;
 
@@ -93,9 +89,9 @@ export default function AccountDetailsPanel({
     });
 
     if (ok) {
-      setDetailsMessage("Account details saved.");
+      notifySuccess("Account details saved.");
     } else {
-      setDetailsError(data.message || "Could not save account details.");
+      notifyError(data.message || "Could not save account details.");
     }
 
     setIsSaving(false);
@@ -103,8 +99,6 @@ export default function AccountDetailsPanel({
 
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
-    setPasswordMessage("");
-    setPasswordError("");
 
     const errors: Record<string, string> = {};
 
@@ -127,12 +121,12 @@ export default function AccountDetailsPanel({
     });
 
     if (ok) {
-      setPasswordMessage("Password changed successfully.");
+      notifySuccess("Password changed successfully.");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } else {
-      setPasswordError(data.message || "Could not change password.");
+      notifyError(data.message || "Could not change password.");
     }
 
     setIsChangingPassword(false);
@@ -230,13 +224,6 @@ export default function AccountDetailsPanel({
           </div>
         </div>
 
-        {detailsMessage ? (
-          <p className="mt-4 text-sm font-semibold text-green-700">{detailsMessage}</p>
-        ) : null}
-        {detailsError ? (
-          <p className="mt-4 text-sm text-red-600">{detailsError}</p>
-        ) : null}
-
         <button
           type="submit"
           disabled={isSaving}
@@ -257,14 +244,13 @@ export default function AccountDetailsPanel({
             <span className={LABEL_CLASS}>
               Current password (leave blank to leave unchanged)
             </span>
-            <input
-              type="password"
+            <PasswordField
               value={currentPassword}
               onChange={(e) => {
                 setCurrentPassword(e.target.value);
                 setFieldErrors((prev) => ({ ...prev, currentPassword: "" }));
               }}
-              className={`${INPUT_CLASS} ${fieldErrors.currentPassword ? INPUT_ERROR_CLASS : ""}`}
+              isInvalid={Boolean(fieldErrors.currentPassword)}
               autoComplete="current-password"
             />
             <FieldError message={fieldErrors.currentPassword ?? ""} />
@@ -274,14 +260,13 @@ export default function AccountDetailsPanel({
             <span className={LABEL_CLASS}>
               New password (leave blank to leave unchanged)
             </span>
-            <input
-              type="password"
+            <PasswordField
               value={newPassword}
               onChange={(e) => {
                 setNewPassword(e.target.value);
                 setFieldErrors((prev) => ({ ...prev, newPassword: "" }));
               }}
-              className={`${INPUT_CLASS} ${fieldErrors.newPassword ? INPUT_ERROR_CLASS : ""}`}
+              isInvalid={Boolean(fieldErrors.newPassword)}
               autoComplete="new-password"
             />
             <FieldError message={fieldErrors.newPassword ?? ""} />
@@ -291,26 +276,18 @@ export default function AccountDetailsPanel({
             <span className={LABEL_CLASS}>
               Confirm new password
             </span>
-            <input
-              type="password"
+            <PasswordField
               value={confirmPassword}
               onChange={(e) => {
                 setConfirmPassword(e.target.value);
                 setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
               }}
-              className={`${INPUT_CLASS} ${fieldErrors.confirmPassword ? INPUT_ERROR_CLASS : ""}`}
+              isInvalid={Boolean(fieldErrors.confirmPassword)}
               autoComplete="new-password"
             />
             <FieldError message={fieldErrors.confirmPassword ?? ""} />
           </label>
         </div>
-
-        {passwordMessage ? (
-          <p className="mt-4 text-sm font-semibold text-green-700">{passwordMessage}</p>
-        ) : null}
-        {passwordError ? (
-          <p className="mt-4 text-sm text-red-600">{passwordError}</p>
-        ) : null}
 
         <button
           type="submit"

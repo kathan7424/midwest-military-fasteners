@@ -39,6 +39,10 @@ export default function SearchBar({
 
   function handleSearch() {
     const trimmed = query.trim();
+    // Close the suggestion dropdown before navigating — matches HeaderSearch;
+    // defensive here too in case the navigation is ever slow enough to show
+    // the stale dropdown for a frame.
+    setIsOpen(false);
     // WordPress standard: an empty search term is simply no filter at all —
     // WP_Query skips the search clause entirely when `s` is empty, showing
     // everything rather than an error. Match that here.
@@ -68,7 +72,7 @@ export default function SearchBar({
           onKeyDown={(event) => {
             if (event.key === "Enter") handleSearch();
           }}
-          className="h-14 min-w-0 flex-1 border border-navy px-4 text-base font-normal text-near-black placeholder:text-base placeholder:text-mid-gray focus:border-b-transparent focus:outline-none sm:h-16 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:h-[72px] lg:px-8 lg:text-[24px] lg:placeholder:text-[24px]"
+          className="h-14 min-w-0 flex-1 border border-navy px-4 text-base font-normal text-near-black placeholder:text-base placeholder:text-mid-gray focus:outline-none sm:h-16 sm:px-6 sm:text-lg sm:placeholder:text-lg lg:h-[72px] lg:px-8 lg:text-[24px] lg:placeholder:text-[24px]"
         />
         <button
           type="button"

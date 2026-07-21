@@ -63,6 +63,14 @@ const nextConfig: NextConfig = {
       dynamic: 60,
       static: 300,
     },
+    // These ship a full barrel-file import by default — every icon/component
+    // in the package gets bundled even when a page uses just one or two.
+    // Next.js rewrites the import to the specific submodule at build time.
+    optimizePackageImports: [
+      "lucide-react",
+      "react-icons",
+      "@tanstack/react-table",
+    ],
   },
   images: {
     remotePatterns: [

@@ -104,6 +104,27 @@ due?" on every page load and runs it inline if so. That means:
   All three can fire independently for the same certificate as its expiry
   date gets closer — that's intentional, not a duplicate-email bug.
 
+### The edge case the cron alone can't cover — approving into an already-tight window
+
+If a certificate is approved with an expiry date that's already inside the
+3-day window (or already expired — e.g. an admin approving a stale upload),
+waiting for tomorrow's daily cron tick means the customer gets no warning
+until a full day later. To close that gap, the per-user reminder logic was
+extracted into its own function —
+`mmf_maybe_send_tax_exemption_reminder_for_user( int $user_id )` — which is
+now called two ways:
+
+1. **The daily cron** (`mmf_send_tax_exemption_reminders()`) loops every
+   approved user through it, exactly as before.
+2. **Every one of the 6 admin approval paths** (see above) now also calls it
+   directly, immediately after setting `mmf_tax_exemption_status` to
+   approved and enabling Net 30 — so a cert approved with a 1-day-left
+   expiry gets its urgent reminder in the very same request, not tomorrow.
+
+Both call sites hit the exact same de-dupe flags, so there's no risk of a
+double-send — whichever one runs first "claims" that reminder for that
+expiry date, and the other silently no-ops.
+
 ---
 
 ## Flow B — Net 30 Terms

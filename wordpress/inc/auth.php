@@ -83,6 +83,45 @@ function mmf_headless_cookie_auth( $result ) {
 	return null;
 }
 add_action( 'gform_after_submission_' . MMF_REGISTRATION_FORM_ID, 'mmf_create_customer_from_gravity_entry', 10, 2 );
+add_filter( 'gform_field_validation_' . MMF_REGISTRATION_FORM_ID, 'mmf_validate_gf_registration_password', 10, 4 );
+
+/**
+ * Enforce the same 8-character minimum on the Gravity Forms registration
+ * password field as the Next.js form and every other password path
+ * (change password, reset password) — someone submitting the raw GF form
+ * directly (bypassing the headless frontend) must not be able to create an
+ * account with a weaker password than every other path allows.
+ *
+ * @param array           $result Validation result for this field.
+ * @param mixed           $value  Submitted field value.
+ * @param array           $form   Full form array.
+ * @param GF_Field        $field  Field being validated.
+ * @return array
+ */
+function mmf_validate_gf_registration_password( array $result, $value, array $form, $field ): array {
+	if ( (string) $field->id !== MMF_GF_FIELD_PASSWORD ) {
+		return $result;
+	}
+
+	// Password fields with confirmation enabled submit an array keyed by
+	// sub-input ("8.1" => password, "8.2" => confirm) rather than a scalar.
+	$password = is_array( $value ) ? (string) ( $value[ MMF_GF_FIELD_PASSWORD . '.1' ] ?? '' ) : (string) $value;
+
+	if ( $password !== '' && strlen( $password ) < 8 ) {
+		$result['is_valid'] = false;
+		$result['message']  = __( 'Password must be at least 8 characters.', 'midwest-military' );
+		return $result;
+	}
+
+	$email = (string) rgpost( 'input_' . str_replace( '.', '_', MMF_GF_FIELD_EMAIL ) );
+
+	if ( $password !== '' && $email !== '' && strtolower( $password ) === strtolower( $email ) ) {
+		$result['is_valid'] = false;
+		$result['message']  = __( 'Password cannot be the same as your email address.', 'midwest-military' );
+	}
+
+	return $result;
+}
 
 /**
  * Register custom auth REST routes.
@@ -765,6 +804,14 @@ function mmf_auth_reset_password( WP_REST_Request $request ) {
 		);
 	}
 
+	if ( strtolower( $new_password ) === strtolower( $user->user_email ) ) {
+		return new WP_Error(
+			'password_matches_email',
+			'Password cannot be the same as your email address.',
+			array( 'status' => 400 )
+		);
+	}
+
 	reset_password( $user, $new_password );
 
 	return rest_ensure_response(
@@ -818,6 +865,14 @@ function mmf_auth_register( WP_REST_Request $request ) {
 		return new WP_Error(
 			'weak_password',
 			'Password must be at least 8 characters.',
+			array( 'status' => 400 )
+		);
+	}
+
+	if ( strtolower( $password ) === strtolower( $email ) ) {
+		return new WP_Error(
+			'password_matches_email',
+			'Password cannot be the same as your email address.',
 			array( 'status' => 400 )
 		);
 	}
@@ -1228,6 +1283,10 @@ function mmf_account_change_password( WP_REST_Request $request ) {
 
 	if ( strlen( $new_password ) < 8 ) {
 		return new WP_Error( 'weak_password', 'Password must be at least 8 characters.', array( 'status' => 400 ) );
+	}
+
+	if ( strtolower( $new_password ) === strtolower( $user->user_email ) ) {
+		return new WP_Error( 'password_matches_email', 'Password cannot be the same as your email address.', array( 'status' => 400 ) );
 	}
 
 	wp_set_password( $new_password, $user_id );

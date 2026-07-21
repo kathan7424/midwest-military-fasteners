@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 
+import PageBanner from "@/components/shared_Ui/PageBanner";
 import type { AboutPageData } from "@/types/about-page.types";
 
 interface Props {
@@ -13,49 +14,11 @@ export default function AboutPage({ pageData }: Props) {
 
   const { heading, sub_heading, banner_image, image, content_heading, content } = pageData;
 
-  const hasBannerContent = heading || sub_heading || banner_image?.url;
   const hasContentSection = image?.url || content_heading || content;
 
   return (
     <section className="bg-white">
-      {/* Hero Banner */}
-      {hasBannerContent ? (
-        <div className="relative flex min-h-[300px] w-full items-center py-[50px] md:py-[80px] lg:py-[130px]">
-          {banner_image?.url ? (
-            <Image
-              src={banner_image.url}
-              alt={banner_image.alt || ""}
-              fill
-              className="absolute inset-0 object-cover"
-              priority
-            />
-          ) : (
-            <div className="absolute inset-0 bg-gray-700" />
-          )}
-          <div className="absolute inset-0 bg-black/45" />
-          <div className="relative z-10 mx-auto flex h-full items-center justify-center">
-            <div className="px-5 text-center">
-              {sub_heading ? (
-                <p className="mb-5 text-h5 font-normal uppercase text-white lg:text-h4">
-                  {sub_heading}
-                </p>
-              ) : null}
-              {(sub_heading && heading) ? (
-                <div className="mx-auto mb-5 h-1 w-[40px] md:w-[86px]">
-                  <svg width="86" height="5" viewBox="0 0 86 5" fill="none" xmlns="http://www.w3.org/2000/svg" className="mx-auto h-auto w-full">
-                    <line y1="2.5" x2="86" y2="2.5" stroke="#CC9900" strokeWidth={5} />
-                  </svg>
-                </div>
-              ) : null}
-              {heading ? (
-                <h1 className="mx-auto text-[30px] font-bold leading-[1.1] text-white sm:text-[36px] md:max-w-4xl md:text-[44px] lg:text-[52px] xl:text-[60px]">
-                  {heading}
-                </h1>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <PageBanner heading={heading} subHeading={sub_heading} bannerImage={banner_image} />
 
       {/* Image & Content */}
       {hasContentSection ? (

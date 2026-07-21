@@ -528,6 +528,72 @@ function mmf_get_home_page() {
 }
 
 /**
+ * Resolve the shared "Banner Area" ACF fields for ANY page.
+ *
+ * Fields are named about_heading/sub_heading/banner_image regardless of
+ * which page the field group's Location Rules attach it to — add another
+ * page there and this function (and anything that calls it) picks it up
+ * automatically, no code change needed.
+ *
+ * Heading fallback: an empty about_heading (and empty legacy field, if one
+ * is given for a page whose banner predates this shared group) resolves to
+ * the WordPress page title, so a banner section is never left blank.
+ *
+ * @param int    $page_id              Page to read banner fields from.
+ * @param string $legacy_heading_field Optional pre-existing ACF field name
+ *                                     to fall back to before the page title
+ *                                     (e.g. Quality's old "banner_heading").
+ * @return array{heading: string, sub_heading: string, banner_image: array|null}
+ */
+function mmf_get_page_banner_fields( int $page_id, string $legacy_heading_field = '' ): array {
+	$heading = (string) get_field( 'about_heading', $page_id );
+
+	if ( '' === $heading && '' !== $legacy_heading_field ) {
+		$heading = (string) get_field( $legacy_heading_field, $page_id );
+	}
+
+	if ( '' === trim( $heading ) ) {
+		// get_the_title() returns the title HTML-entity-encoded ("Shipping
+		// &#038; Returns") — WP's own storage convention for post_title.
+		// The ACF heading fields above are plain typed text and never go
+		// through that encoding, so only the title-fallback path needs
+		// decoding before it reaches the frontend as banner text.
+		$heading = wp_specialchars_decode( get_the_title( $page_id ), ENT_QUOTES );
+	}
+
+	return array(
+		'heading'      => sanitize_text_field( $heading ),
+		'sub_heading'  => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
+		'banner_image' => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
+	);
+}
+
+/**
+ * Expose the shared "Banner Area" fields on the standard /wp/v2/pages
+ * endpoint as `mmf_banner` — so Privacy Policy, Terms & Conditions, or any
+ * future page added to the field group's Location Rules gets its banner
+ * automatically through the generic page fetch, with no new endpoint.
+ */
+add_action(
+	'rest_api_init',
+	function (): void {
+		register_rest_field(
+			'page',
+			'mmf_banner',
+			array(
+				'get_callback' => static function ( array $page ): array {
+					return mmf_get_page_banner_fields( (int) $page['id'] );
+				},
+				'schema'       => array(
+					'type'    => 'object',
+					'context' => array( 'view' ),
+				),
+			)
+		);
+	}
+);
+
+/**
  * Endpoint: GET /custom/v1/contact-page
  *
  * Returns ACF fields for the Contact Us page (page ID 131).
@@ -567,13 +633,15 @@ function mmf_get_about_page() {
 		return new WP_Error( 'no_page', 'About page not found', array( 'status' => 404 ) );
 	}
 
-	return rest_ensure_response( array(
-		'heading'         => sanitize_text_field( (string) get_field( 'about_heading', $page_id ) ),
-		'sub_heading'     => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
-		'banner_image'    => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
-		'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
-		'content_heading' => sanitize_text_field( (string) get_field( 'heading', $page_id ) ),
-		'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
+	$banner = mmf_get_page_banner_fields( $page_id );
+
+	return rest_ensure_response( array_merge(
+		$banner,
+		array(
+			'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
+			'content_heading' => sanitize_text_field( (string) get_field( 'heading', $page_id ) ),
+			'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
+		)
 	) );
 }
 
@@ -623,13 +691,9 @@ function mmf_get_quality_page() {
 
 	// New unique names first; legacy field-key lookups cover values saved
 	// before the rename (until the page is re-saved in WP Admin).
-	$banner_heading  = (string) get_field( 'banner_heading', $page_id );
 	$section_heading = (string) get_field( 'section_heading', $page_id );
 	$faq_sec_heading = (string) get_field( 'faq_sec_heading', $page_id );
 
-	if ( '' === $banner_heading ) {
-		$banner_heading = (string) get_field( 'field_6a55e1411d81e', $page_id );
-	}
 	if ( '' === $section_heading ) {
 		$section_heading = (string) get_field( 'field_6a55e1411da31', $page_id );
 	}
@@ -637,18 +701,25 @@ function mmf_get_quality_page() {
 		$faq_sec_heading = (string) get_field( 'field_6a55e1411dba9', $page_id );
 	}
 
-	return rest_ensure_response( array(
-		'banner_heading'  => sanitize_text_field( $banner_heading ),
-		'sub_heading'     => sanitize_text_field( (string) get_field( 'sub_heading', $page_id ) ),
-		'banner_image'    => mmf_format_acf_image( get_field( 'banner_image', $page_id ) ),
-		'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
-		'section_heading' => sanitize_text_field( $section_heading ),
-		'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
-		'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
-		'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
-		'faq_sec_heading' => sanitize_text_field( $faq_sec_heading ),
-		'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
-		'faq_list'        => $faq_items,
+	// Banner: shared about_heading (once Quality joins the "Banner Area"
+	// group's Location Rules) first, then Quality's own pre-existing
+	// banner_heading field, then the page title — mmf_get_page_banner_fields()
+	// handles all three in order.
+	$banner = mmf_get_page_banner_fields( $page_id, 'banner_heading' );
+
+	return rest_ensure_response( array_merge(
+		$banner,
+		array(
+			'banner_heading'  => $banner['heading'],
+			'image'           => mmf_format_acf_image( get_field( 'image', $page_id ) ),
+			'section_heading' => sanitize_text_field( $section_heading ),
+			'content'         => wp_kses_post( (string) get_field( 'content', $page_id ) ),
+			'logo_image'      => mmf_format_acf_image( get_field( 'logo_image', $page_id ) ),
+			'button'          => mmf_format_acf_link( get_field( 'button', $page_id ) ),
+			'faq_sec_heading' => sanitize_text_field( $faq_sec_heading ),
+			'faq_description' => wp_kses_post( (string) get_field( 'description', $page_id ) ),
+			'faq_list'        => $faq_items,
+		)
 	) );
 }
 
@@ -1114,6 +1185,7 @@ function mmf_get_site_settings() {
 			'build_by_link'   => mmf_format_acf_link( $build_by_link ),
 		),
 		'woocommerce' => mmf_get_woocommerce_settings(),
+		'seoAnalytics' => function_exists( 'mmf_get_seo_analytics_settings' ) ? mmf_get_seo_analytics_settings() : array(),
 	);
 
 	return rest_ensure_response( $response );
@@ -1450,11 +1522,15 @@ function mmf_search_post_ids_by_slug( string $search_term, array $post_types, in
 function mmf_get_search_excerpt( int $post_id ): string {
 	$excerpt = get_the_excerpt( $post_id );
 	if ( ! empty( $excerpt ) ) {
-		return wp_strip_all_tags( $excerpt );
+		return wp_strip_all_tags( strip_shortcodes( $excerpt ) );
 	}
+	// strip_shortcodes() — same call WP core's own wp_trim_excerpt() makes —
+	// removes shortcode markup like [parts_catalog] entirely rather than
+	// executing it (do_shortcode() here would run a full catalog-rendering
+	// shortcode just to build a one-line text excerpt).
 	$content = get_post_field( 'post_content', $post_id );
 	return wp_trim_words(
-		wp_strip_all_tags( (string) $content ),
+		wp_strip_all_tags( strip_shortcodes( (string) $content ) ),
 		24,
 		'...'
 	);

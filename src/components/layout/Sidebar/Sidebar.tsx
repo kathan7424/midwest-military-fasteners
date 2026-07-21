@@ -5,7 +5,7 @@
  *              of part-series links.
  * Developer: pod2
  * Created Date: 2026-06-19
- * Last Modified: 2026-07-10
+ * Last Modified: 2026-07-21
  */
 
 "use client";
@@ -20,6 +20,12 @@ interface SidebarProps {
   categories?: SidebarCategory[];
   activeGroupId?: string;
   activeSeriesId?: string;
+  /**
+   * Called before navigating a series link. Return true to intercept
+   * (client-side fast path already handled it) or false to let the
+   * default <Link> navigation proceed as normal.
+   */
+  onSeriesSelect?: (seriesId: string, href: string) => boolean;
 }
 
 function resolve_openable_group(
@@ -41,6 +47,7 @@ export default function Sidebar({
   categories = [],
   activeGroupId,
   activeSeriesId,
+  onSeriesSelect,
 }: SidebarProps) {
   // Single-open accordion across ALL category sections: opening a group
   // closes whichever group was open before, anywhere in the sidebar.
@@ -66,7 +73,7 @@ export default function Sidebar({
   return (
     <nav
       aria-label="Product categories"
-      className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6"
+      className="w-full border-t-6 border-blue bg-off-white p-5 xl:p-6 lg:max-h-[calc(100vh-97px)] overflow-y-auto"
     >
       {categories.map((category) => {
         // Controlled value per section: only the section containing the open
@@ -98,6 +105,7 @@ export default function Sidebar({
                   group={group}
                   activeGroupId={activeGroupId}
                   activeSeriesId={activeSeriesId}
+                  onSeriesSelect={onSeriesSelect}
                 />
               ))}
             </Accordion>

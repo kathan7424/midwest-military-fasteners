@@ -9,6 +9,7 @@
  * Created Date: 2026-07-16
  */
 
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { ProductPage } from "@/components/pages/Product";
@@ -16,6 +17,7 @@ import {
   fetch_sidebar_categories,
   fetch_spec_parts_products,
 } from "@/services/spec-parts.service";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 import { map_spec_parts_product_to_table_product } from "@/utils/spec-parts.utils";
 import { isUserLoggedIn } from "@/services/auth.service";
 
@@ -26,6 +28,43 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ search?: string; page?: string }>;
 };
+
+type MetadataProps = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({
+  params,
+}: MetadataProps): Promise<Metadata> {
+  const { slug } = await params;
+  const series_slug = decodeURIComponent(slug.trim());
+
+  const [products_response, settings] = await Promise.all([
+    fetch_spec_parts_products({ series: series_slug, per_page: 1, page: 1 }).catch(
+      () => null
+    ),
+    fetchSiteSettings().catch(() => null),
+  ]);
+
+  const series_label =
+    products_response?.products[0]?.product_series.find(
+      (series) => series.slug === series_slug
+    )?.name ?? series_slug.toUpperCase();
+
+  const site_name = settings?.branding.site_title || "Midwest Military Fasteners";
+  const title = `${series_label} | ${site_name}`;
+  const description = `Shop the ${series_label} series at ${site_name} — genuine, certified fasteners.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(settings?.seoAnalytics?.default_og_image && {
+        images: [{ url: settings.seoAnalytics.default_og_image }],
+      }),
+    },
+  };
+}
 
 export default async function ProductSeriesPage({ params, searchParams }: Props) {
   const { slug } = await params;

@@ -9,10 +9,13 @@
 import type { Metadata } from "next";
 
 import Hero from "@/components/pages/Home/Hero";
+import SearchResultsPage from "@/components/pages/Search/SearchResultsPage";
 import IsoSection from "@/components/shared_Ui/IsoSection";
 import { fetchHomePage } from "@/services/home-page.service";
 import { fetchProductCatalog } from "@/services/product-catalog.service";
+import { fetchSearchResults } from "@/services/search.service";
 import { fetchYoastBySlug } from "@/services/seo.service";
+import { fetchSiteSettings } from "@/services/site-settings.service";
 import { HomePageBanner } from "@/types/home-page.types";
 import { CategorySectionData } from "@/types/product-catalog.types";
 import { mapCatalogToCategorySections } from "@/utils/catalog.utils";
@@ -28,16 +31,55 @@ const EMPTY_BANNER: HomePageBanner = {
   banner_image: null,
 };
 
-export async function generateMetadata(): Promise<Metadata> {
+interface HomePageProps {
+  searchParams: Promise<{ s?: string }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: HomePageProps): Promise<Metadata> {
+  const { s } = await searchParams;
+
+  if (s !== undefined) {
+    const query = s.trim();
+    return {
+      title: query
+        ? `Search Results for "${query}" — Midwest Military Fasteners`
+        : "Search — Midwest Military Fasteners",
+    };
+  }
+
+  const settings = await fetchSiteSettings().catch(() => null);
+  const defaultOgImage = settings?.seoAnalytics?.default_og_image;
+
   try {
     const yoast = await fetchYoastBySlug(HOME_SLUG);
-    return buildYoastMetadata(yoast);
+    return buildYoastMetadata(yoast, defaultOgImage);
   } catch {
-    return buildYoastMetadata();
+    return buildYoastMetadata(null, defaultOgImage);
   }
 }
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: HomePageProps) {
+  // WordPress-standard search URL (?s=) — same convention as WP core search
+  // forms. Renders its own results template here, independent of the
+  // product catalog (WP itself does this via search.php, not the shop page).
+  const { s } = await searchParams;
+
+  if (s !== undefined) {
+    const query = s.trim();
+    const results = query
+      ? await fetchSearchResults(query, 20, "global").catch(() => ({
+          query,
+          posts: [],
+          terms: [],
+          total: { posts: 0, terms: 0 },
+        }))
+      : { query: "", posts: [], terms: [], total: { posts: 0, terms: 0 } };
+
+    return <SearchResultsPage query={query} results={results} />;
+  }
+
   // Both fetches run in parallel - page waits only for the slowest one.
   const [home_result, catalog_result] = await Promise.allSettled([
     fetchHomePage(),

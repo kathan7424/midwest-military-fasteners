@@ -16,17 +16,31 @@ import type { SidebarSeries } from "./types";
 interface SidebarItemProps {
   series: SidebarSeries;
   active?: boolean;
+  onSeriesSelect?: (seriesId: string, href: string) => boolean;
 }
 
-export default function SidebarItem({ series, active = false }: SidebarItemProps) {
+export default function SidebarItem({
+  series,
+  active = false,
+  onSeriesSelect,
+}: SidebarItemProps) {
   return (
-    <li> 
+    <li>
       <Link
         href={series.href}
         // Full prefetch: only the open accordion group's links are mounted,
         // so this pre-renders a handful of series pages and makes clicks instant.
         prefetch
         aria-current={active ? "page" : undefined}
+        onClick={(event) => {
+          // Same-category series switch: the caller (ProductPage) takes it
+          // client-side via the fast catalog fetch — no real navigation.
+          // A different category returns false and this falls through to
+          // the normal <Link> navigation.
+          if (onSeriesSelect?.(series.id, series.href)) {
+            event.preventDefault();
+          }
+        }}
         className={cn(
           "block py-2.5 text-link transition-opacity hover:opacity-75",
           active
