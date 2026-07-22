@@ -579,18 +579,47 @@ function mmf_get_customer_order_documents() {
 function mmf_send_certificates_ready_email( int $order_id, string $old_status, string $new_status, WC_Order $order ): void {
 	$cert_statuses = array( 'completed', 'shipped' );
 
+	// Trigger source matters for debugging — Shippo's webhook and the admin
+	// status dropdown both call $order->update_status(), which fires this
+	// hook synchronously and identically either way. shippo-webhook.php sets
+	// this global true only for the duration of ITS update_status() call, so
+	// it's a reliable way to tell the two triggers apart in the log.
+	global $mmf_shippo_triggering_status_change;
+	$trigger_source = ! empty( $mmf_shippo_triggering_status_change ) ? 'shippo_webhook' : 'admin_or_other';
+
+	if ( function_exists( 'mmf_cert_log' ) ) {
+		mmf_cert_log(
+			'mmf_send_certificates_ready_email invoked',
+			array(
+				'order_id'       => $order_id,
+				'old_status'     => $old_status,
+				'new_status'     => $new_status,
+				'trigger_source' => $trigger_source,
+			)
+		);
+	}
+
 	if ( ! in_array( $new_status, $cert_statuses, true ) ) {
+		if ( function_exists( 'mmf_cert_log' ) ) {
+			mmf_cert_log( 'email skipped — new_status not cert-eligible', array( 'order_id' => $order_id, 'new_status' => $new_status ) );
+		}
 		return;
 	}
 
 	// Don't re-send if already in a cert-eligible status (e.g. shipped → completed).
 	if ( in_array( $old_status, $cert_statuses, true ) ) {
+		if ( function_exists( 'mmf_cert_log' ) ) {
+			mmf_cert_log( 'email skipped — already was cert-eligible (re-transition)', array( 'order_id' => $order_id, 'old_status' => $old_status ) );
+		}
 		return;
 	}
 
 	// Hard once-only guard: survives any status cycle (completed → processing →
 	// completed) and covers both the admin path and the Shippo webhook path.
 	if ( '1' === (string) $order->get_meta( '_mmf_cert_email_sent', true ) ) {
+		if ( function_exists( 'mmf_cert_log' ) ) {
+			mmf_cert_log( 'email skipped — already sent (once-only guard)', array( 'order_id' => $order_id ) );
+		}
 		return;
 	}
 
@@ -598,12 +627,24 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 	// order) and the opted-in item actually has a certificate file (SOW:
 	// no opt-in → no certificate delivery, ever). Collect the files so the
 	// email can deliver direct download links per item.
-	$cert_files = array();
+	$cert_files      = array();
+	$per_item_debug  = array();
 	foreach ( $order->get_items() as $item ) {
-		if ( ! $item instanceof WC_Order_Item_Product || ! mmf_item_cert_opted_in( $item ) ) {
+		if ( ! $item instanceof WC_Order_Item_Product ) {
 			continue;
 		}
-		$docs = mmf_get_line_item_documents( $item );
+		$opted_in = mmf_item_cert_opted_in( $item );
+		$docs     = mmf_get_line_item_documents( $item );
+		$per_item_debug[] = array(
+			'item_id'              => $item->get_id(),
+			'product_name'         => $item->get_name(),
+			'opted_in_meta'        => $item->get_meta( '_mmf_cert_opted_in', true ),
+			'opted_in_resolved'    => $opted_in,
+			'certificate_file_url' => $docs['certificate_file_url'],
+		);
+		if ( ! $opted_in ) {
+			continue;
+		}
 		if ( ! empty( $docs['certificate_file_url'] ) ) {
 			$cert_files[] = array(
 				'name' => $item->get_name(),
@@ -612,7 +653,14 @@ function mmf_send_certificates_ready_email( int $order_id, string $old_status, s
 		}
 	}
 
+	if ( function_exists( 'mmf_cert_log' ) ) {
+		mmf_cert_log( 'per-item opt-in + cert-file check', array( 'order_id' => $order_id, 'items' => $per_item_debug, 'cert_files_found' => count( $cert_files ) ) );
+	}
+
 	if ( empty( $cert_files ) ) {
+		if ( function_exists( 'mmf_cert_log' ) ) {
+			mmf_cert_log( 'email skipped — no opted-in item has a certificate file', array( 'order_id' => $order_id ) );
+		}
 		return;
 	}
 

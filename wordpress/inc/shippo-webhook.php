@@ -321,6 +321,12 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 	// ---- Complete the order ----
 	// This triggers woocommerce_order_status_changed → mmf_send_certificates_ready_email()
 	// which sends the Documents email and makes the Documents tab accessible.
+	// The global flag lets that hook's debug log tell "Shippo webhook" apart
+	// from "admin manually changed the status" — update_status() fires the
+	// status-changed hook synchronously, so the flag is only ever true for
+	// the duration of this one call.
+	global $mmf_shippo_triggering_status_change;
+	$mmf_shippo_triggering_status_change = true;
 	$order->update_status(
 		'completed',
 		sprintf(
@@ -329,6 +335,7 @@ function mmf_shippo_webhook_handler( WP_REST_Request $request ): WP_REST_Respons
 			$tracking_number
 		)
 	);
+	$mmf_shippo_triggering_status_change = false;
 
 	/**
 	 * Fires after a Shippo DELIVERED event successfully completes a WC order.
