@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { ENV } from "@/config/env";
 import {
   buildCheckoutCartStateResponse,
   fetchStoreCartWithRecovery,
@@ -17,6 +18,47 @@ import {
   wcStoreMutation,
 } from "@/utils/wc-cart-proxy.utils";
 import { formatNoticeMessage } from "@/utils/text.utils";
+
+// Direct, dependency-free alternative to the WC Store API
+// extensions.mmf_cert.cert_opted_in mechanism — that path depends on
+// woocommerce_store_api_register_update_callback() firing at the right
+// moment relative to order-item creation, which live testing showed
+// dropping the opt-in even when this proxy sent it correctly and WC
+// accepted the request (200 OK, no rejection). Called once the order
+// definitely exists, so it can't race with order creation the way the
+// extensions payload does. Non-fatal — checkout must never fail because
+// of this follow-up call.
+async function stampOrderCertOptIn(
+  orderId: number,
+  cartItemKeys: string[]
+): Promise<void> {
+  try {
+    const res = await fetch(
+      `${ENV.WP_SITE_URL}/wp-json/custom/v1/orders/${orderId}/cert-opt-in`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-MMF-Proxy": process.env.MMF_PROXY_SECRET || "1",
+        },
+        body: JSON.stringify({ cart_item_keys: cartItemKeys }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    void debugCertOptInLog("stampOrderCertOptIn result", {
+      orderId,
+      cartItemKeys,
+      status: res.status,
+      body: await res.json().catch(() => null),
+    });
+  } catch (error) {
+    void debugCertOptInLog("stampOrderCertOptIn failed", {
+      orderId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -169,6 +211,15 @@ export async function POST(request: NextRequest) {
         { message, code: raw?.code },
         { status: wpResponse.status || 500 }
       );
+    }
+
+    // Direct stamp — bypasses the flaky extensions.mmf_cert mechanism
+    // entirely now that the order (and its _mmf_cart_item_key line-item
+    // meta) definitely exist. Awaited so it's guaranteed to run before the
+    // shopper reaches the confirmation page, but failures never block
+    // checkout — see stampOrderCertOptIn's own try/catch.
+    if (certOptIn && typeof raw.order_id === "number") {
+      await stampOrderCertOptIn(raw.order_id, Object.keys(certOptIn));
     }
 
     const response = NextResponse.json(raw, { status: wpResponse.status });

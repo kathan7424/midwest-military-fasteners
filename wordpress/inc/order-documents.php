@@ -236,6 +236,111 @@ function mmf_register_order_documents_routes(): void {
 			),
 		)
 	);
+
+	register_rest_route(
+		'custom/v1',
+		'/orders/(?P<id>\d+)/cert-opt-in',
+		array(
+			'methods'             => 'POST',
+			'callback'            => 'mmf_set_order_cert_opt_in',
+			'permission_callback' => 'mmf_verify_proxy_secret_request',
+			'args'                => array(
+				'id' => array(
+					'validate_callback' => function ( $param ) {
+						return is_numeric( $param );
+					},
+				),
+			),
+		)
+	);
+}
+
+/**
+ * Trusted server-to-server auth for endpoints the Next.js proxy calls
+ * immediately after an action it just performed (no end-user session
+ * needed or available at that point). Same shared-secret mechanism as
+ * mmf_headless_cookie_auth() (auth.php) - the header is only ever sent by
+ * our own server-side proxy, never reachable from a browser.
+ *
+ * @return bool
+ */
+function mmf_verify_proxy_secret_request(): bool {
+	if ( empty( $_SERVER['HTTP_X_MMF_PROXY'] ) ) {
+		return false;
+	}
+
+	$secret = defined( 'MMF_PROXY_SECRET' ) ? (string) MMF_PROXY_SECRET : '1';
+
+	return hash_equals( $secret, (string) wp_unslash( $_SERVER['HTTP_X_MMF_PROXY'] ) );
+}
+
+/**
+ * POST /custom/v1/orders/{id}/cert-opt-in
+ *
+ * Direct, dependency-free alternative to the WC Store API
+ * extensions.mmf_cert.cert_opted_in mechanism (cart.php) - that path
+ * depends on woocommerce_store_api_register_update_callback() firing at
+ * the right time relative to order-item creation, which live testing
+ * showed dropping the opt-in even when the client sent it correctly and
+ * WooCommerce accepted the request. This endpoint sidesteps all of that:
+ * called once the order (and its _mmf_cart_item_key line-item meta,
+ * already stamped by mmf_store_order_line_item_documents) definitely
+ * exist - matching is a plain string comparison, nothing WC-Blocks-version
+ * dependent.
+ *
+ * @param WP_REST_Request $request Request object.
+ * @return WP_REST_Response|WP_Error
+ */
+function mmf_set_order_cert_opt_in( WP_REST_Request $request ) {
+	if ( ! function_exists( 'wc_get_order' ) ) {
+		return new WP_Error( 'woocommerce_missing', 'WooCommerce is not active.', array( 'status' => 500 ) );
+	}
+
+	$order_id = (int) $request->get_param( 'id' );
+	$order    = wc_get_order( $order_id );
+
+	if ( ! $order instanceof WC_Order ) {
+		return new WP_Error( 'not_found', 'Order not found.', array( 'status' => 404 ) );
+	}
+
+	$requested_keys = $request->get_param( 'cart_item_keys' );
+	if ( ! is_array( $requested_keys ) ) {
+		return new WP_Error( 'invalid_params', 'cart_item_keys must be an array.', array( 'status' => 400 ) );
+	}
+
+	$keys_lookup = array_flip( array_map( 'sanitize_text_field', $requested_keys ) );
+	$stamped_ids = array();
+
+	foreach ( $order->get_items() as $item ) {
+		if ( ! $item instanceof WC_Order_Item_Product ) {
+			continue;
+		}
+
+		$cart_item_key = (string) $item->get_meta( '_mmf_cart_item_key', true );
+		if ( $cart_item_key && isset( $keys_lookup[ $cart_item_key ] ) ) {
+			$item->update_meta_data( '_mmf_cert_opted_in', '1' );
+			$item->save();
+			$stamped_ids[] = $item->get_id();
+		}
+	}
+
+	if ( function_exists( 'mmf_cert_log' ) ) {
+		mmf_cert_log(
+			'direct cert-opt-in endpoint called',
+			array(
+				'order_id'         => $order_id,
+				'requested_keys'   => $requested_keys,
+				'stamped_item_ids' => $stamped_ids,
+			)
+		);
+	}
+
+	return rest_ensure_response(
+		array(
+			'success'          => true,
+			'stamped_item_ids' => $stamped_ids,
+		)
+	);
 }
 
 /**
