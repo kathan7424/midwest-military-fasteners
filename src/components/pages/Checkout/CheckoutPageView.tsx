@@ -1558,14 +1558,6 @@ function CheckoutForm({
                       </label>
                     ))}
                 </div>
-                {/* TEMP DIAGNOSTIC — visible readout of the exact state that
-                    gets sent to the server, so this can be confirmed without
-                    DevTools while tracking down a live cert opt-in bug.
-                    Remove once the root cause is confirmed. */}
-                <p className="mt-2 text-xs text-dark-gray">
-                  [debug] selected: {certOptedIn.size} —{" "}
-                  {certOptedIn.size > 0 ? [...certOptedIn].join(", ") : "(none)"}
-                </p>
               </div>
             ) : null}
 
