@@ -60,7 +60,7 @@ function StatusBadge({ status }: { status: TaxExemptionStatus }) {
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-link font-semibold uppercase ${cls}`}>
       <Icon className="size-3.5" aria-hidden="true" />
       {label}
     </span>
@@ -152,7 +152,7 @@ function UploadForm({
       > 
       <div className="flex items-start gap-2.5 flex-wrap">
         <div>
-          <p className="mb-1.5 text-sm font-semibold text-dark-gray sr-only">Certificate Expiration Date</p>
+          <p className="mb-1.5 text-link font-semibold text-dark-gray sr-only">Certificate Expiration Date</p>
           <DatePicker
             value={expiryDate ? parseDate(expiryDate) : null}
             onChange={(date) => {
@@ -242,7 +242,7 @@ export default function TaxDocumentsPanel() {
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <StatusBadge status={taxStatus} />
             {taxStatus.is_tax_exempt && taxStatus.notice_type !== "expiring" ? (
-              <span className="text-sm text-[#1a7f37]">
+              <span className="text-link text-[#1a7f37]">
                 ✓ Tax exempt at checkout
               </span>
             ) : null}
@@ -250,7 +250,7 @@ export default function TaxDocumentsPanel() {
 
           <dl className="grid gap-3 text-link sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-dark-gray">
+              <dt className="text-link font-semibold uppercase tracking-wide text-dark-gray">
                 Expiration Date
               </dt>
               <dd className="mt-0.5 text-near-black">
@@ -258,7 +258,7 @@ export default function TaxDocumentsPanel() {
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-dark-gray">
+              <dt className="text-link font-semibold uppercase tracking-wide text-dark-gray">
                 Approval Status
               </dt>
               <dd className="mt-0.5 capitalize text-near-black">
@@ -267,7 +267,7 @@ export default function TaxDocumentsPanel() {
             </div>
             {taxStatus.submitted_at ? (
               <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-dark-gray">
+                <dt className="text-link font-semibold uppercase tracking-wide text-dark-gray">
                   Submitted
                 </dt>
                 <dd className="mt-0.5 text-near-black">

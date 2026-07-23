@@ -42,7 +42,7 @@ export default function PageBanner({
       ) : (
         <div className="absolute inset-0 bg-navy" />
       )}
-      <div className="absolute inset-0 bg-black/45" />
+      {/* <div className="absolute inset-0 bg-black/45" /> */}
       <div className="relative z-10 mx-auto flex h-full items-center justify-center">
         <div className="px-5 text-center">
           {subHeading ? (

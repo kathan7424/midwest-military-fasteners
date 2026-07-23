@@ -246,9 +246,9 @@ export default function ProductPage({
 
   return (
 
-    <div className="mx-auto w-full px-4 py-6 xl:px-5 xl:py-[30px] relative">
+    <div className="mx-auto w-full py-6 px-5 xl:py-[30px] relative">
 
-      <div className="flex flex-col gap-8 lg:flex-row">
+      <div className="flex flex-col gap-8 lg:flex-row min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-60px)]">
 
         {/* Desktop Sidebar */}
 
@@ -276,7 +276,7 @@ export default function ProductPage({
 
         {/* Main Content */}
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
 
           {/* Mobile / Tablet */}
 
@@ -544,7 +544,7 @@ export default function ProductPage({
 
            <IsoSection align="left" className="mt-auto pb-2.5" />
 
-        </main>
+        </div>
 
       </div>
 

@@ -1116,8 +1116,11 @@ function CheckoutForm({
                   type="checkbox"
                   checked={createAccount}
                   onChange={(e) => setCreateAccount(e.target.checked)}
-                  className="h-4 w-4 accent-amber"
+                  className="h-4 w-4 peer sr-only"
                 />
+                <span className=" flex h-5 w-5 items-center justify-center border border-light-gray bg-white peer-checked:bg-amber peer-checked:border-amber [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100 " >
+                <svg className="h-4 w-4 text-white peer-checked:block" viewBox="0 0 16 16" fill="currentColor" > <path fillRule="evenodd" d="M13.78 3.22a.75.75 0 010 1.06L6.75 11.31a.75.75 0 01-1.06 0L2.22 7.84a.75.75 0 111.06-1.06l2.94 2.94 6.5-6.5a.75.75 0 011.06 0z" clipRule="evenodd" /> </svg>
+                </span>
                 Create an account?
               </label>
             ) : null}
@@ -1180,13 +1183,11 @@ function CheckoutForm({
 
             {/* "Use same address for billing" — WC block checkout standard */}
             <label className="mt-6 flex cursor-pointer items-center gap-3 text-link text-near-black">
-              <input
-                type="checkbox"
-                checked={sameAsBilling}
-                onChange={(e) => setSameAsBilling(e.target.checked)}
-                className="h-4 w-4 accent-amber"
-              />
-              Use same address for billing
+              <input type="checkbox" checked={sameAsBilling} onChange={(e) => setSameAsBilling(e.target.checked)} className="h-4 w-4 peer sr-only" />
+              <span className=" flex h-5 w-5 items-center justify-center border border-light-gray bg-white peer-checked:bg-amber peer-checked:border-amber [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100 " >
+                <svg className="h-4 w-4 text-white peer-checked:block" viewBox="0 0 16 16" fill="currentColor" > <path fillRule="evenodd" d="M13.78 3.22a.75.75 0 010 1.06L6.75 11.31a.75.75 0 01-1.06 0L2.22 7.84a.75.75 0 111.06-1.06l2.94 2.94 6.5-6.5a.75.75 0 011.06 0z" clipRule="evenodd" /> </svg>
+              </span>
+              <span>Use same address for billing</span>
             </label>
 
             {/* Billing address — shown only when different */}
@@ -1276,7 +1277,10 @@ function CheckoutForm({
                                   name={`shipping-${pkg.package_id}`}
                                   checked={pendingRateId !== null ? pendingRateId === rate.rate_id : rate.selected}
                                   onChange={() => void handleSelectRate(pkg.package_id, rate.rate_id)}
+                                  className="h-4 w-4 peer sr-only"
                                 />
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-light-gray peer-checked:border-amber peer-checked:[&_span]:scale-100">
+                                <span className=" h-2.5 w-2.5 rounded-full bg-amber scale-0 transition-transform"/></span>
                                 <span className="text-link text-near-black">{rate.name}</span>
                               </span>
                               <span className="text-link font-semibold text-near-black">
@@ -1343,8 +1347,10 @@ function CheckoutForm({
                         value={gateway}
                         checked={activeGateway === gateway}
                         onChange={() => setSelectedGateway(gateway)}
-                        className="h-4 w-4 accent-amber"
+                        className="h-4 w-4 peer sr-only"
                       />
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-light-gray peer-checked:border-amber peer-checked:[&_span]:scale-100">
+                      <span className=" h-2.5 w-2.5 rounded-full bg-amber scale-0 transition-transform"/></span>
                       <span className="text-link font-semibold text-near-black">
                         {gateway === "cod" ? "Net 30 — Purchase Order Terms" : gateway === "stripe" ? "Credit Card" : gateway}
                       </span>
@@ -1374,8 +1380,10 @@ function CheckoutForm({
                             value={card.id}
                             checked={selectedCardId === card.id}
                             onChange={() => setSelectedCardId(card.id)}
-                            className="h-4 w-4 accent-amber"
+                            className="h-4 w-4 peer sr-only"
                           />
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full border border-light-gray peer-checked:border-amber peer-checked:[&_span]:scale-100">
+                          <span className=" h-2.5 w-2.5 rounded-full bg-amber scale-0 transition-transform"/></span>
                           <CardBrandIcon brand={card.brand} size="sm" />
                           <span className="text-link text-near-black">
                             {saved_card_label(card)}
@@ -1391,8 +1399,10 @@ function CheckoutForm({
                           value={NEW_CARD_ID}
                           checked={!usingSavedCard}
                           onChange={() => setSelectedCardId(NEW_CARD_ID)}
-                          className="h-4 w-4 accent-amber"
+                          className="h-4 w-4 peer sr-only"
                         />
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full border border-light-gray peer-checked:border-amber peer-checked:[&_span]:scale-100">
+                        <span className=" h-2.5 w-2.5 rounded-full bg-amber scale-0 transition-transform"/></span>
                         <span className="text-link text-near-black">
                           Use a new payment method
                         </span>
@@ -1509,8 +1519,11 @@ function CheckoutForm({
                       type="checkbox"
                       checked={saveNewCard}
                       onChange={(e) => setSaveNewCard(e.target.checked)}
-                      className="h-4 w-4 accent-amber"
+                      className="h-4 w-4 peer sr-only"
                     />
+                    <span className=" flex h-5 w-5 items-center justify-center border border-light-gray bg-white peer-checked:bg-amber peer-checked:border-amber [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100 " >
+                    <svg className="h-4 w-4 text-white peer-checked:block" viewBox="0 0 16 16" fill="currentColor" > <path fillRule="evenodd" d="M13.78 3.22a.75.75 0 010 1.06L6.75 11.31a.75.75 0 01-1.06 0L2.22 7.84a.75.75 0 111.06-1.06l2.94 2.94 6.5-6.5a.75.75 0 011.06 0z" clipRule="evenodd" /> </svg>
+                    </span>
                     Save payment information to my account for future purchases.
                   </label>
                 ) : null}
@@ -1543,8 +1556,11 @@ function CheckoutForm({
                             checked={certOptedIn.has(item.key)}
                             disabled={isPlacingOrder || isSyncingCert}
                             onChange={() => handleCertToggle(item.key)}
-                            className="h-4 w-4 shrink-0 accent-amber"
+                            className="h-4 w-4 shrink-0 peer sr-only"
                           />
+                          <span className=" flex h-5 w-5 items-center justify-center border border-light-gray bg-white peer-checked:bg-amber peer-checked:border-amber [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100">
+                            <svg className="h-4 w-4 text-white peer-checked:block" viewBox="0 0 16 16" fill="currentColor" > <path fillRule="evenodd" d="M13.78 3.22a.75.75 0 010 1.06L6.75 11.31a.75.75 0 01-1.06 0L2.22 7.84a.75.75 0 111.06-1.06l2.94 2.94 6.5-6.5a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
+                          </span>
                           <ShieldCheck className="size-4 shrink-0 text-amber" aria-hidden="true" />
                           <span className="truncate">
                             Add certification — {item.sku || item.name}
@@ -1568,8 +1584,11 @@ function CheckoutForm({
                     type="checkbox"
                     checked={showOrderNotes}
                     onChange={(e) => setShowOrderNotes(e.target.checked)}
-                    className="h-4 w-4 accent-amber"
+                    className="h-4 w-4 peer sr-only"
                   />
+                  <span className=" flex h-5 w-5 items-center justify-center border border-light-gray bg-white peer-checked:bg-amber peer-checked:border-amber [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100 " >
+                  <svg className="h-4 w-4 text-white peer-checked:block" viewBox="0 0 16 16" fill="currentColor" > <path fillRule="evenodd" d="M13.78 3.22a.75.75 0 010 1.06L6.75 11.31a.75.75 0 01-1.06 0L2.22 7.84a.75.75 0 111.06-1.06l2.94 2.94 6.5-6.5a.75.75 0 011.06 0z" clipRule="evenodd" /> </svg>
+                  </span>
                   Add a note to your order
                 </label>
                 {showOrderNotes ? (
@@ -1639,7 +1658,7 @@ export default function CheckoutPageView({
 
   if (!stripePromise) {
     return (
-      <div className="mx-auto max-w-3xl px-5 py-16">
+      <div className="mx-auto max-w-3xl px-5 py-16 min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-0px)]">
         <h1 className="mb-4 text-h2 font-bold uppercase text-near-black">Checkout</h1>
         <p className="text-body text-dark-gray">
           Payment is not configured — set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in
@@ -1665,7 +1684,7 @@ export default function CheckoutPageView({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1320px] px-4 py-8 xl:px-5 xl:py-[40px]">
+    <div className="mx-auto w-full max-w-[1320px] py-6 px-5 xl:py-[30px] min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-0px)]">
       <h1 className="mb-6 text-[28px] font-bold uppercase leading-heading text-near-black sm:text-h2">
         Checkout
       </h1>

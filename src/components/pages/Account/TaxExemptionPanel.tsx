@@ -156,12 +156,12 @@ export default function TaxExemptionPanel({
         <div className="mb-6 max-w-3xl border border-light-gray bg-off-white p-5">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <span
-              className={`inline-flex px-3 py-1 text-sm font-semibold uppercase ${get_status_badge_class(status)}`}
+              className={`inline-flex px-3 py-1 text-link font-semibold uppercase ${get_status_badge_class(status)}`}
             >
               {get_status_label(status)}
             </span>
             {status.is_tax_exempt ? (
-              <span className="text-sm text-[#1a7f37]">Tax exempt at checkout</span>
+              <span className="text-link text-[#1a7f37]">Tax exempt at checkout</span>
             ) : null}
           </div>
 
@@ -213,7 +213,7 @@ export default function TaxExemptionPanel({
 
       <form onSubmit={(event) => void handleSubmit(event)} className="max-w-xl space-y-4">
         <div>
-          <p className="mb-1.5 text-sm font-semibold text-dark-gray">
+          <p className="mb-1.5 text-link font-semibold text-dark-gray">
             Expiration Date
           </p>
           <DatePicker
@@ -233,12 +233,12 @@ export default function TaxExemptionPanel({
           error={error}
         />
 
-        {message ? <p className="text-sm text-blue">{message}</p> : null}
+        {message ? <p className="text-link text-blue">{message}</p> : null}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-amber px-5 py-3 text-sm font-bold uppercase text-white transition-colors hover:bg-blue disabled:opacity-60"
+          className="bg-amber px-5 py-3 text-link font-bold uppercase text-white transition-colors hover:bg-blue disabled:opacity-60"
         >
           {isSubmitting ? "Uploading..." : "Submit for Approval"}
         </button>

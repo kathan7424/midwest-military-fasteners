@@ -35,7 +35,7 @@ export default function WpPageContent({ title, content, banner }: WpPageContentP
   }
 
   return (
-    <>
+    <div className="min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px))]">
       {hasBanner ? (
         <PageBanner
           heading={banner!.heading}
@@ -52,6 +52,6 @@ export default function WpPageContent({ title, content, banner }: WpPageContentP
           />
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

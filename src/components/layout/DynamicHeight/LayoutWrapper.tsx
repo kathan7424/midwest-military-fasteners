@@ -1,6 +1,6 @@
 /**
  * File Name: LayoutWrapper.tsx
- * Description: 
+ * Description:
  * Developer: KP-184
  * Created Date: 2026-07-21
  * Last Modified: 2026-07-21
@@ -15,32 +15,56 @@ export default function LayoutWrapper({
 }: {
   children: React.ReactNode;
 }) {
-
   useEffect(() => {
-    const updateHeight = () => {
+    const updateLayoutMeasurements = () => {
       const header = document.querySelector("header");
       const footer = document.querySelector("footer");
+      const main = document.querySelector("main");
 
-      const headerHeight = header?.offsetHeight || 0;
-      const footerHeight = footer?.offsetHeight || 0;
+      if (!header || !footer) return;
 
-      const availableHeight =
-        window.innerHeight - headerHeight - footerHeight;
+      const headerHeight = header.getBoundingClientRect().height;
+      const footerHeight = footer.getBoundingClientRect().height;
+
+      // Store CSS variables
+      document.documentElement.style.setProperty(
+        "--header-height",
+        `${headerHeight}px`
+      );
+
+      document.documentElement.style.setProperty(
+        "--footer-height",
+        `${footerHeight}px`
+      );
 
       document.documentElement.style.setProperty(
         "--available-height",
-        `${availableHeight}px`
+        `calc(100vh - ${headerHeight}px - ${footerHeight}px)`
       );
+
+      // Optional: Apply directly to <main>
+      // if (main) {
+      //   main.style.minHeight = `calc(100vh - ${headerHeight}px - ${footerHeight}px)`;
+      // }
     };
 
-    updateHeight();
+    updateLayoutMeasurements();
 
-    window.addEventListener("resize", updateHeight);
+    const observer = new ResizeObserver(updateLayoutMeasurements);
+
+    const header = document.querySelector("header");
+    const footer = document.querySelector("footer");
+
+    if (header) observer.observe(header);
+    if (footer) observer.observe(footer);
+
+    window.addEventListener("resize", updateLayoutMeasurements);
 
     return () => {
-      window.removeEventListener("resize", updateHeight);
+      observer.disconnect();
+      window.removeEventListener("resize", updateLayoutMeasurements);
     };
   }, []);
 
-  return children;
+  return <>{children}</>;
 }

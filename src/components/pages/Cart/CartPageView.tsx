@@ -31,13 +31,13 @@ interface CartPageViewProps {
 
 export default function CartPageView({ sidebarCategories, couponsEnabled, isLoggedIn }: CartPageViewProps) {
   return (
-    <div className="mx-auto w-full px-4 py-6 xl:px-5 xl:py-[30px] relative">
+    <div className="mx-auto w-full py-6 px-5 xl:py-[30px] relative min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-60px)]">
       <div className="flex flex-col gap-8 lg:flex-row">
         <aside className="hidden w-[300px] shrink-0 lg:block">
           <Sidebar categories={sidebarCategories} />
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="mb-6 lg:hidden">
             <Sheet>
               <SheetTrigger className="fixed left-0 top-[52%] indent-[-1111px] z-1 flex items-center rounded-0 border-0 border-light-gray bg-amber px-4 py-3 text-link text-white hover:bg-light-gray transition">
@@ -63,7 +63,7 @@ export default function CartPageView({ sidebarCategories, couponsEnabled, isLogg
           <CartPageContent couponsEnabled={couponsEnabled} />
 
           <IsoSection align="left" className="mt-auto pb-2.5 pt-10" />
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -51,14 +51,14 @@ export default function CatalogShellSkeleton({
   children,
 }: CatalogShellSkeletonProps) {
   return (
-    <div className="mx-auto w-full px-4 py-6 xl:px-5 xl:py-[30px]">
-      <div className="flex flex-col gap-8 lg:flex-row">
+    <div className="mx-auto w-full py-6 xl:px-5 xl:py-[30px]">
+      <div className="flex flex-col gap-8 lg:flex-row min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-60px)]">
         <aside className="hidden w-[300px] shrink-0 lg:block">
           <BreadcrumbSkeleton />
           <SidebarSkeleton />
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </div>
   );

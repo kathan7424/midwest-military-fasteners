@@ -62,7 +62,7 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-5 py-16">
+    <div className="mx-auto max-w-3xl px-5 py-16 min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px))]">
       <div className="text-center">
         <FaCircleCheck
           className="mx-auto mb-6 text-[64px] text-[#8fae1b]"

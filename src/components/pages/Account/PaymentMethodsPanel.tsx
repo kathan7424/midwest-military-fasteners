@@ -227,7 +227,7 @@ function AddCardForm({
               setCardName(e.target.value);
               if (e.target.value.trim()) setNameError("");
             }}
-            className={`h-10 w-full border bg-white px-3 text-sm text-near-black placeholder-dark-gray outline-none transition-colors ${
+            className={`h-10 w-full border bg-white px-3 text-link text-near-black placeholder-dark-gray outline-none transition-colors ${
               nameError ? "border-red-400" : nameFocused ? "border-blue" : "border-light-gray"
             }`}
           />
@@ -313,14 +313,14 @@ function AddCardForm({
           <button
             type="submit"
             disabled={isSubmitting || !stripe}
-            className="inline-flex items-center gap-2 bg-amber px-6 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
+            className="inline-flex items-center gap-2 bg-amber px-6 py-2.5 text-link font-semibold uppercase text-white transition-colors hover:bg-blue disabled:opacity-50"
           >
             {isSubmitting ? "Saving…" : "Save Card"}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2.5 text-sm font-semibold text-dark-gray transition-colors hover:text-blue"
+            className="px-4 py-2.5 text-link font-semibold text-dark-gray transition-colors hover:text-blue"
           >
             Cancel
           </button>
@@ -363,20 +363,20 @@ function CardRow({
 
   return (
     <div className="flex items-center gap-4 border border-light-gray bg-white p-4">
-      <div className="flex size-9 shrink-0 items-center justify-center bg-off-white">
+      <div className="flex shrink-0 items-center justify-center bg-off-white">
         <CardBrandIcon brand={card.brand} size="md" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="flex items-center gap-2 text-sm font-semibold text-near-black">
+        <p className="flex items-center gap-2 text-body font-semibold text-near-black">
           {brand_label(card.brand)} ending in {card.last4}
           {card.is_default ? (
-            <span className="inline-flex items-center gap-1 bg-navy px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+            <span className="inline-flex items-center gap-1 bg-navy px-2 py-0.5 text-link font-bold uppercase tracking-wide text-white">
               <Star className="size-2.5 fill-current" aria-hidden="true" />
               Default
             </span>
           ) : null}
         </p>
-        <p className="text-xs text-dark-gray">
+        <p className="text-link text-dark-gray">
           Expires {exp_label(card.exp_month, card.exp_year)}
         </p>
       </div>
@@ -385,7 +385,7 @@ function CardRow({
           type="button"
           onClick={() => void handleMakeDefault()}
           disabled={isSettingDefault || isDeleting}
-          className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-xs font-semibold uppercase text-dark-gray transition-colors hover:border-blue hover:text-blue disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-link font-semibold uppercase text-dark-gray transition-colors hover:border-blue hover:text-blue disabled:opacity-50"
           aria-label={`Make ${brand_label(card.brand)} ending in ${card.last4} the default`}
         >
           <Star className="size-3.5" aria-hidden="true" />
@@ -396,7 +396,7 @@ function CardRow({
         type="button"
         onClick={() => void handleDelete()}
         disabled={isDeleting || isSettingDefault}
-        className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-xs font-semibold uppercase text-dark-gray transition-colors hover:border-red-300 hover:text-red-600 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 border border-light-gray px-3 py-1.5 text-link font-semibold uppercase text-dark-gray transition-colors hover:border-red-300 hover:text-red-600 disabled:opacity-50"
         aria-label={`Delete ${brand_label(card.brand)} ending in ${card.last4}`}
       >
         <Trash2 className="size-3.5" aria-hidden="true" />

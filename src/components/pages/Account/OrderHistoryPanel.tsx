@@ -210,7 +210,7 @@ function OrderRow({
             </td>
             <td className="whitespace-nowrap px-4 py-3.5">
               <span
-                className={`inline-flex px-2 py-0.5 text-xs font-semibold uppercase ${status_badge_class(order.status)}`}
+                className={`inline-flex px-2 py-0.5 text-link font-normal uppercase ${status_badge_class(order.status)}`}
               >
                 {order.status_label}
               </span>

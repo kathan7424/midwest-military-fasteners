@@ -71,8 +71,8 @@ export default function ProductDetailPage({
   ];
 
   return (
-    <div className="mx-auto w-full px-4 py-6 xl:px-5 xl:py-[30px] relative">
-      <div className="flex flex-col gap-8 lg:flex-row">
+    <div className="mx-auto w-full py-6 px-5 xl:py-[30px] relative">
+      <div className="flex flex-col gap-8 lg:flex-row min-h-[calc(100vh-var(--header-height,140px)-var(--footer-height,48px)-60px)]">
         {/* Desktop Sidebar */}
         <aside className="hidden w-[300px] shrink-0 lg:block">
           <Breadcrumb items={breadcrumb} className="mb-5" />
@@ -85,7 +85,7 @@ export default function ProductDetailPage({
         </aside>
 
         {/* Main Content */}
-        <main className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* Mobile / Tablet */}
           <div className="mb-6 lg:hidden">
             <Breadcrumb items={breadcrumb} className="mb-4" />
@@ -111,7 +111,7 @@ export default function ProductDetailPage({
           </div>
 
           {/* Title + description */}
-          <h1 className="mb-4 text-h2 font-bold uppercase leading-heading text-near-black">
+          <h1 className="mb-4 text-h2 font-bold uppercase leading-heading text-near-black break-words">
             <span className="text-mid-gray">
               {product.categoryLabel ?? product.seriesLabel ?? "Part"}
             </span>{" "}
@@ -154,7 +154,7 @@ export default function ProductDetailPage({
 
           {/* ISO */}
           <IsoSection align="left" className="mt-auto pb-2.5" />
-        </main>
+        </div>
       </div>
     </div>
   );

@@ -34,8 +34,8 @@ export function CardBrandIcon({
 }) {
   const b = BRANDS[brand.toLowerCase()] ?? { bg: "#8c9ba5", label: "···" };
   const sizeClass = size === "md"
-    ? "h-6 w-10 text-[9px]"
-    : "h-5 w-8 text-[8px]";
+    ? "h-8 w-12 text-[16px]"
+    : "h-8 w-12 text-[16px]";
 
   return (
     <span
