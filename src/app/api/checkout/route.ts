@@ -33,7 +33,7 @@ async function stampOrderCertOptIn(
   cartItemKeys: string[]
 ): Promise<void> {
   try {
-    const res = await fetch(
+    await fetch(
       `${ENV.WP_SITE_URL}/wp-json/custom/v1/orders/${orderId}/cert-opt-in`,
       {
         method: "POST",
@@ -46,35 +46,13 @@ async function stampOrderCertOptIn(
         signal: AbortSignal.timeout(10_000),
       }
     );
-    void debugCertOptInLog("stampOrderCertOptIn result", {
-      orderId,
-      cartItemKeys,
-      status: res.status,
-      body: await res.json().catch(() => null),
-    });
   } catch (error) {
-    void debugCertOptInLog("stampOrderCertOptIn failed", {
-      orderId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    console.error("[checkout] stampOrderCertOptIn failed:", error);
   }
 }
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
-
-// TEMP DIAGNOSTIC — appends to a local file so the cert opt-in capture chain
-// is traceable without needing terminal access to whatever process is
-// running `next dev`. Remove once the live cert-opt-in bug is confirmed fixed.
-async function debugCertOptInLog(step: string, data: unknown): Promise<void> {
-  try {
-    const fs = await import("fs/promises");
-    const line = `${new Date().toISOString()} [${step}] ${JSON.stringify(data)}\n`;
-    await fs.appendFile("cert-optin-debug.log", line);
-  } catch {
-    // Never let diagnostic logging break checkout.
-  }
-}
 
 // WC Store API rejects unknown keys (additionalProperties: false in WC 9+).
 // billing includes email; shipping never does.
@@ -148,15 +126,6 @@ export async function POST(request: NextRequest) {
 
     const certOptIn = sanitizeCertOptInMap(body.cert_opted_in);
 
-    // TEMP DIAGNOSTIC — tracing a live bug where a confirmed-correct
-    // client payload (cert_opted_in present, real cert file, checkbox
-    // checked) still never reaches WC as _mmf_cert_opted_in on the order.
-    // Remove once the root cause is confirmed.
-    void debugCertOptInLog("request received", {
-      body_cert_opted_in: body.cert_opted_in,
-      sanitized_certOptIn: certOptIn,
-    });
-
     // Pass cert opt-in selections as Store API extension data so the
     // mmf_cert update_callback can save them to WC session before order
     // line items are created.
@@ -172,13 +141,6 @@ export async function POST(request: NextRequest) {
       unknown
     > | null;
 
-    void debugCertOptInLog("first wcStoreMutation attempt", {
-      sent_extensions: certOptIn ? { mmf_cert: { cert_opted_in: certOptIn } } : null,
-      status: wpResponse.status,
-      raw_message: raw?.message,
-      raw_extensions_in_response: ( raw as Record<string, unknown> | null )?.extensions,
-    });
-
     // If WP rejects the extensions parameter (mmf_cert namespace not yet
     // registered server-side), retry once WITHOUT extensions. Safe: a 400
     // param-validation rejection happens before any order is created, so no
@@ -192,9 +154,6 @@ export async function POST(request: NextRequest) {
       console.warn(
         "[checkout] WP rejected extensions.mmf_cert (extension not deployed?) — retrying without cert opt-in"
       );
-      void debugCertOptInLog("RETRYING WITHOUT EXTENSIONS — cert opt-in dropped here", {
-        rejection_message: raw.message,
-      });
       wpResponse = await wcStoreMutation(request, "checkout", checkoutPayload);
       raw = (await wpResponse.json().catch(() => null)) as Record<
         string,
